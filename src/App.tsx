@@ -1,56 +1,122 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
   const [patient, setPatient] = useState<Record<string, unknown> | null>(null)
   const [loadingPatient, setLoadingPatient] = useState(false)
   const [patientError, setPatientError] = useState<string | null>(null)
+  const [files, setFiles] = useState<string[] | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch('/synthea/manifest.json')
+        if (!mounted) return
+        if (!res.ok) {
+          setFiles([])
+          return
+        }
+        const m = await res.json()
+        const list = Array.isArray(m?.files) ? m.files : []
+        setFiles(list)
+        if (list.length > 0) setSelected(list[0])
+      } catch {
+        if (!mounted) return
+        setFiles([])
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
     <>
       <div>
-        <a href="https://vite.dev" target="_blank">
+        <a href="https://vite.dev" target="_blank" rel="noopener noreferrer">
           <img src={viteLogo} className="logo" alt="Vite logo" />
         </a>
-        <a href="https://react.dev" target="_blank">
+        <a href="https://react.dev" target="_blank" rel="noopener noreferrer">
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
       <h1>Vite + React</h1>
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
+        {/* <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
-        </button>
-        <button
-          style={{ marginLeft: 12 }}
-          onClick={async () => {
-            setLoadingPatient(true)
-            setPatientError(null)
-            try {
-              // tries to fetch a sample patient exported by Synthea
-              const res = await fetch('/synthea/patient-0.json')
-              if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-              const json = await res.json()
-              setPatient(json)
-            } catch (err: unknown) {
-              setPatient(null)
-              const message = err instanceof Error ? err.message : String(err)
-              setPatientError(message || 'Failed to load patient')
-            } finally {
-              setLoadingPatient(false)
-            }
-          }}
-        >
-          {loadingPatient ? 'Loading…' : 'Load sample patient'}
-        </button>
+        </button> */}
+        <div className="synthea-controls">
+          <button
+            className="synthea-button"
+            onClick={async () => {
+              setLoadingPatient(true)
+              setPatientError(null)
+              try {
+                // if manifest available, use selected or first file; otherwise try the simple path
+                let url = '/synthea/patient-0.json'
+                if (files && files.length > 0) {
+                  const pick = selected ?? files[0]
+                  // files live under /synthea/fhir/<name>
+                  url = `/synthea/fhir/${encodeURIComponent(pick)}`
+                }
+
+                const res = await fetch(url)
+                if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+
+                const contentType = res.headers.get('content-type') || ''
+                let json
+                if (url.toLowerCase().endsWith('.ndjson') || contentType.includes('ndjson')) {
+                  const text = await res.text()
+                  const firstLine = text.split('\n').find(Boolean)
+                  if (!firstLine) throw new Error('NDJSON file empty')
+                  json = JSON.parse(firstLine)
+                } else {
+                  json = await res.json()
+                }
+                setPatient(json)
+              } catch (err: unknown) {
+                setPatient(null)
+                const message = err instanceof Error ? err.message : String(err)
+                setPatientError(message || 'Failed to load patient')
+              } finally {
+                setLoadingPatient(false)
+              }
+            }}
+          >
+            {loadingPatient ? 'Loading…' : 'Load patient'}
+          </button>
+
+          <div>
+            <small className="synthea-label">Generated patients</small>
+            {files === null ? (
+              <small>manifest not loaded</small>
+            ) : files.length === 0 ? (
+              <small>No files found in /synthea/fhir</small>
+            ) : (
+              <select
+                aria-label="Synthea generated files"
+                className="manifest-select"
+                value={selected ?? files[0]}
+                onChange={(e) => setSelected(e.target.value)}
+              >
+                {files.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
       </div>
-      {patientError && <div style={{ color: 'crimson' }}>{patientError}</div>}
+      {patientError && <div className="error-text">{patientError}</div>}
       {patient && (() => {
         const id = typeof patient['id'] === 'string' ? patient['id'] as string : undefined
         const name = (() => {
@@ -69,7 +135,7 @@ function App() {
         const birthDate = typeof patient['birthDate'] === 'string' ? patient['birthDate'] as string : undefined
 
         return (
-          <div style={{ textAlign: 'left', marginTop: 18 }}>
+          <div className="patient-container">
             <h2>Patient (from Synthea)</h2>
             <p>
               <strong>ID:</strong> {id ?? '—'}

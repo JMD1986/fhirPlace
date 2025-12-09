@@ -40,3 +40,26 @@
 .read-the-docs {
   color: #888;
 }
+
+.synthea-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.synthea-button {
+  margin-left: 12px;
+}
+.synthea-label {
+  display: block;
+  margin-bottom: 6px;
+}
+.manifest-select {
+  min-width: 260px;
+}
+.patient-container {
+  text-align: left;
+  margin-top: 18px;
+}
+.error-text {
+  color: crimson;
+}
