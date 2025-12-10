@@ -11,8 +11,8 @@ function App() {
   const [selected, setSelected] = useState<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
+    let mounted = true;
+    (async () => {
       try {
         const res = await fetch('/synthea/manifest.json')
         if (!mounted) return
@@ -33,6 +33,53 @@ function App() {
       mounted = false
     }
   }, [])
+  // load the selected file automatically when selection changes
+  useEffect(() => {
+    let mounted = true
+    if (!selected) return
+    ;(async () => {
+      try {
+        setLoadingPatient(true)
+        setPatientError(null)
+        // files live under /synthea/fhir/<name>
+        const url = `/synthea/fhir/${encodeURIComponent(selected)}`
+        const res = await fetch(url)
+        if (!mounted) return
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+
+        const contentType = res.headers.get('content-type') || ''
+        let json
+        if (selected.toLowerCase().endsWith('.ndjson') || contentType.includes('ndjson')) {
+          const text = await res.text()
+          const firstLine = text.split('\n').find(Boolean)
+          if (!firstLine) throw new Error('NDJSON file empty')
+          json = JSON.parse(firstLine)
+        } else {
+          json = await res.json()
+        }
+        setPatient(json)
+      } catch (err: unknown) {
+        if (!mounted) return
+        setPatient(null)
+        const message = err instanceof Error ? err.message : String(err)
+        setPatientError(message || 'Failed to load patient')
+      } finally {
+        if (!mounted) return
+        setLoadingPatient(false)
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [selected])
+  useEffect(() => {
+    // reset selected if files change and selected is no longer valid
+    // if (files && selected && !files.includes(selected)) {
+    //   setSelected(files.length > 0 ? files[0] : null)
+    // }
+    console.log('files or selected changed', { selected })
+  }, [files, selected])
 
   return (
     <>
@@ -56,6 +103,7 @@ function App() {
               setLoadingPatient(true)
               setPatientError(null)
               try {
+                // if manifest available, use selected or first file; otherwise try the simple path
                 // if manifest available, use selected or first file; otherwise try the simple path
                 let url = '/synthea/patient-0.json'
                 if (files && files.length > 0) {
@@ -149,6 +197,12 @@ function App() {
             <p>
               <strong>Birth date:</strong> {birthDate ?? '—'}
             </p>
+            <div className="patient-json-details">
+              <small>Selected file: <code>{selected ?? '—'}</code></small>
+              <pre className="patient-json">
+                {JSON.stringify(patient, null, 2)}
+              </pre>
+            </div>
           </div>
         )
       })()}

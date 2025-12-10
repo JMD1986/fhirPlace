@@ -63,3 +63,17 @@
 .error-text {
   color: crimson;
 }
+
+.patient-json-details {
+  margin-top: 12px;
+}
+.patient-json {
+  background: #0f1720;
+  color: #d6e9ff;
+  padding: 12px;
+  border-radius: 6px;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  text-align: left;
+}
