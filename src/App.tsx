@@ -1,16 +1,16 @@
-import { useState, useEffect } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
 import "./App.css";
 import SearchContainer from "./components/MainSearch/SearchContainer";
+import Container from "@mui/material/Container";
+import Box from "@mui/material/Box";
 
 function App() {
   return (
-    <>
-      <p className="read-the-docs">
-        <SearchContainer />{" "}
-      </p>
-    </>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <SearchContainer />
+      <Container maxWidth="lg" sx={{ flex: 1, py: 4 }}>
+        {/* Main content area for results or other components */}
+      </Container>
+    </Box>
   );
 }
 
