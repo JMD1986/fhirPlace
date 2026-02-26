@@ -15,7 +15,7 @@ interface PatientResource {
   name?: Array<{ text?: string }>; // simplified
   gender?: string;
   birthDate?: string;
-  [key: string]: any; // allow other FHIR fields
+  [key: string]: unknown; // allow other FHIR fields
 }
 
 import { useParams, useNavigate } from "react-router-dom";

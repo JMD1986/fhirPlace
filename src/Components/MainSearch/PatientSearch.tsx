@@ -11,6 +11,8 @@ import SearchResults from "./SearchResults";
 interface Patient {
   id: string;
   name: string;
+  family?: string;
+  given?: string;
   filename: string;
   resourceType: string;
 }
@@ -36,6 +38,7 @@ export default function PatientSearch() {
         if (!response.ok) throw new Error("Failed to fetch patients");
         const patients = await response.json();
         setAllPatients(patients);
+        setFilteredPatients(patients); // show all by default until search
         setError(null);
       } catch (err) {
         setError("Failed to load patients from server");
@@ -56,32 +59,33 @@ export default function PatientSearch() {
     }));
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setSearched(true);
+    setLoading(true);
 
-    // Filter patients based on search params
-    const results = allPatients.filter((patient) => {
-      const matchName =
-        searchParams.name === "" ||
-        patient.name.toLowerCase().includes(searchParams.name.toLowerCase());
+    try {
+      const params = new URLSearchParams();
+      if (searchParams.name) params.append("name", searchParams.name);
+      if (searchParams.familyName)
+        params.append("family", searchParams.familyName);
+      if (searchParams.givenName)
+        params.append("given", searchParams.givenName);
 
-      const matchFamily =
-        searchParams.familyName === "" ||
-        patient.filename
-          .toLowerCase()
-          .includes(searchParams.familyName.toLowerCase());
-
-      const matchGiven =
-        searchParams.givenName === "" ||
-        patient.filename
-          .toLowerCase()
-          .includes(searchParams.givenName.toLowerCase());
-
-      return matchName && matchFamily && matchGiven;
-    });
-
-    setFilteredPatients(results);
+      const url = `http://localhost:5000/api/patients${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Search request failed");
+      const results = await response.json();
+      setFilteredPatients(results);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to search patients");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
