@@ -11,6 +11,7 @@ import {
   Button,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { useNavigate } from "react-router-dom";
 
 interface Patient {
   id: string;
@@ -21,12 +22,24 @@ interface Patient {
 
 interface SearchResultsProps {
   patients: Patient[];
+  /** called when the user wants to view details for a patient */
+  onView?: (id: string) => void;
 }
 
-export default function SearchResults({ patients }: SearchResultsProps) {
+export default function SearchResults({
+  patients,
+  onView,
+}: SearchResultsProps) {
+  const navigate = useNavigate();
+
   const handleViewDetails = (patientId: string) => {
-    // TODO: Navigate to patient details page or open a modal
-    console.log("View details for patient:", patientId);
+    // navigate first (router-driven)
+    navigate(`/patient/${patientId}`);
+
+    // still call optional callback if provided
+    if (onView) {
+      onView(patientId);
+    }
   };
 
   if (patients.length === 0) {

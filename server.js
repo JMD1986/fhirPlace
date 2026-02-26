@@ -13,6 +13,11 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
+// Serve index.html at root and other static assets if needed
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Serve static files from public/synthea
 app.use('/synthea', express.static(path.join(__dirname, 'public/synthea')));
 
