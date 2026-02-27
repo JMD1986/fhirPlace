@@ -33,7 +33,26 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to extract Patient resource from FHIR Bundle
+  const extractPatientFromBundle = (data: any): PatientResource | null => {
+    // If data already has resourceType: "Patient", return it directly
+    if (data?.resourceType === "Patient") {
+      return data as PatientResource;
+    }
+
+    // If it's a Bundle, drill into the entry array
+    if (data?.resourceType === "Bundle" && Array.isArray(data.entry)) {
+      const patientEntry = data.entry.find(
+        (entry: any) => entry?.resource?.resourceType === "Patient",
+      );
+      return patientEntry?.resource || null;
+    }
+
+    return null;
+  };
+
   useEffect(() => {
+    console.log("Fetching patient with ID:", patientId);
     const fetchPatient = async () => {
       try {
         setLoading(true);
@@ -41,6 +60,7 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
         const res = await fetch(
           `http://localhost:5000/api/patients/${patientId}`,
         );
+        console.log("Fetch response:", res);
         if (!res.ok) {
           if (res.status === 404) {
             throw new Error("Patient not found");
@@ -48,7 +68,16 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
           throw new Error("Failed to fetch patient");
         }
         const data: PatientResource = await res.json();
-        setPatient(data);
+        console.log("Fetched raw data:", data);
+        
+        const extractedPatient = extractPatientFromBundle(data);
+        console.log("Extracted patient:", extractedPatient);
+        
+        if (!extractedPatient) {
+          throw new Error("Could not extract patient resource from response");
+        }
+        
+        setPatient(extractedPatient);
       } catch (err: unknown) {
         console.error(err);
         if (err instanceof Error) {

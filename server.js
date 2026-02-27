@@ -22,7 +22,7 @@ app.get("/", (req, res) => {
 app.use("/synthea", express.static(path.join(__dirname, "public/synthea")));
 
 // Get all patients
-app.get("/api/patients", (req, res) => {
+app.get("/api/Patient?_count=100", (req, res) => {
   try {
     const { name, family, given } = req.query;
     const fhirDir = path.join(__dirname, "public/synthea/fhir");

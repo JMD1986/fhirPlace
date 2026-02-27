@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNavigate } from "react-router-dom";
+import Avatar from "boring-avatars";
 
 interface Patient {
   id: string;
@@ -36,21 +37,37 @@ export default function SearchResults({
     // navigate first (router-driven)
     navigate(`/patient/${patientId}`);
 
-    // still call optional callback if provided
+    // // still call optional callback if provided
     if (onView) {
       onView(patientId);
     }
+    // console.log("View details for patient ID:", patientId);
+  };
+
+  const getName = (patientId: string) => {
+    const parts = patientId.split("_");
+    if (parts.length < 2) return patientId;
+
+    const firstName = parts[0].replace(/\d+/g, "");
+    const lastName = parts[1].replace(/\d+/g, "");
+
+    return `${firstName} ${lastName}`;
+  };
+
+  const getCorrectPatientId = (patientId: string) => {
+    const parts = patientId.split("_");
+    if (parts.length < 2) return patientId;
+
+    return parts[parts.length - 1];
   };
 
   if (patients.length === 0) {
     return (
-      <Paper sx={{ p: 3, textAlign: "center", backgroundColor: "#f5f5f5" }}>
-        <Typography variant="body1" color="textSecondary">
-          No patients found matching your search criteria.
-        </Typography>
-      </Paper>
+      <Typography>No patients found matching your search criteria.</Typography>
     );
   }
+
+  console.log("Rendering SearchResults with patients:", patients);
 
   return (
     <Box>
@@ -72,7 +89,21 @@ export default function SearchResults({
           <TableBody>
             {patients.map((patient) => (
               <TableRow key={patient.id} hover>
-                <TableCell>{patient.name}</TableCell>
+                <TableCell>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <Avatar size={80} name={patient.name} />
+                    <Typography variant="body2">
+                      {getName(patient.name)}
+                    </Typography>
+                  </Box>
+                </TableCell>
                 <TableCell>
                   <Typography
                     variant="body2"
@@ -82,9 +113,9 @@ export default function SearchResults({
                       textOverflow: "ellipsis",
                       maxWidth: "300px",
                     }}
-                    title={patient.id}
+                    title={getCorrectPatientId(patient.id)}
                   >
-                    {patient.id}
+                    {getCorrectPatientId(patient.id)}
                   </Typography>
                 </TableCell>
                 <TableCell>{patient.resourceType}</TableCell>
@@ -93,7 +124,9 @@ export default function SearchResults({
                     size="small"
                     variant="outlined"
                     endIcon={<OpenInNewIcon />}
-                    onClick={() => handleViewDetails(patient.id)}
+                    onClick={() =>
+                      handleViewDetails(getCorrectPatientId(patient.id))
+                    }
                   >
                     View
                   </Button>

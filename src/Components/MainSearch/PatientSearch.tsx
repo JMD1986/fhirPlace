@@ -23,13 +23,13 @@ export default function PatientSearch() {
     familyName: "",
     givenName: "",
   });
-  const [allPatients, setAllPatients] = useState<Patient[]>([]);
+  // we'll only keep filteredPatients since search is performed server-side
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
-  // Load all patients on component mount
+  // Load initial patient list so results table has content before a query
   useEffect(() => {
     const fetchPatients = async () => {
       try {
@@ -37,8 +37,7 @@ export default function PatientSearch() {
         const response = await fetch("http://localhost:5000/api/patients");
         if (!response.ok) throw new Error("Failed to fetch patients");
         const patients = await response.json();
-        setAllPatients(patients);
-        setFilteredPatients(patients); // show all by default until search
+        setFilteredPatients(patients); // display all when component mounts
         setError(null);
       } catch (err) {
         setError("Failed to load patients from server");
