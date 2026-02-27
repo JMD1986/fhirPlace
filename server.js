@@ -10,7 +10,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 5000;
 
-app.use(cors());
+// Configure CORS explicitly
+const corsOptions = {
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Serve static files from public/synthea
