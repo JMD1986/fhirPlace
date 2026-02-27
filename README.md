@@ -1,5 +1,47 @@
 # React + TypeScript + Vite
 
+## Synthea setup
+
+This project uses [Synthea](https://github.com/synthetichealth/synthea) to generate
+synthetic FHIR patient data. The binary is not checked into source control, but you
+can download and run it with the helper scripts below.
+
+### Prerequisites
+
+* Java 11 or newer (JDK required – the JRE alone is insufficient).
+
+### Installing Synthea
+
+```sh
+npm run synthea:setup
+```
+
+This will create a `synthea/` directory in the repository and fetch the
+`synthea-with-dependencies.jar` binary from the official release.
+
+### Running Synthea
+
+Once the jar is downloaded, use the `synthea:run` npm script or invoke `java`
+manually:
+
+```sh
+npm run synthea:run -- -p 1000     # generate 1000 patients with default settings
+# or
+java -jar synthea/synthea-with-dependencies.jar --help
+```
+
+Generated files will appear in the current directory by default; you can add
+`-o public/synthea/fhir` or similar to align with this project’s structure.
+
+### Notes
+
+- The scripts are cross-platform (Node-based). On Windows, PowerShell will
+  execute the setup script via `node`.
+- After you generate FHIR files, run `npm run synthea:manifest` to refresh the
+  manifest used by the front end.
+
+
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

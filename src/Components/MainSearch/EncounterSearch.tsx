@@ -1,7 +1,33 @@
+import { useState, useEffect } from "react";
+import { Button } from "@mui/material";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 
 export default function EncounterSearchBar() {
+    const [filteredEncounters, setFilteredEncounters] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [searched, setSearched] = useState(false);
+    useEffect(() => {
+      const fetchEncounters = async () => {
+        try {
+          setLoading(true);
+          const response = await fetch("http://localhost:5000/api/encounters");
+          if (!response.ok) throw new Error("Failed to fetch encounters");
+          const encounters = await response.json();
+          setFilteredEncounters(encounters); // display all when component mounts
+          setError(null);
+        } catch (err) {
+          setError("Failed to load encounters from server");
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchEncounters();
+    }, []);
+  
   return (
     <Box
       component="form"
@@ -46,6 +72,7 @@ export default function EncounterSearchBar() {
           helperText="Some important text"
         />
       </div>
+      <Button variant="contained" color="primary" onClick={()=>console.log(filteredEncounters)}>Search Encounters</Button>
     </Box>
   );
 }
