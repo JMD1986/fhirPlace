@@ -34,7 +34,7 @@ export default function PatientSearch() {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:5000/api/patients");
+        const response = await fetch("http://localhost:5000/api/patients?_count=100");
         if (!response.ok) throw new Error("Failed to fetch patients");
         const patients = await response.json();
         setFilteredPatients(patients); // display all when component mounts
