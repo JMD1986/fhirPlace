@@ -17,6 +17,9 @@ import Avatar from "boring-avatars";
 interface Patient {
   id: string;
   name: string;
+  birthDate?: string;
+  address?: string;
+  language?: string;
   filename: string;
   resourceType: string;
 }
@@ -54,13 +57,6 @@ export default function SearchResults({
     return `${firstName} ${lastName}`;
   };
 
-  const getCorrectPatientId = (patientId: string) => {
-    const parts = patientId.split("_");
-    if (parts.length < 2) return patientId;
-
-    return parts[parts.length - 1];
-  };
-
   if (patients.length === 0) {
     return (
       <Typography>No patients found matching your search criteria.</Typography>
@@ -80,7 +76,9 @@ export default function SearchResults({
             <TableRow>
               <TableCell sx={{ fontWeight: 600 }}>Patient Name</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Patient ID</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Resource Type</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Birth Date</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Address</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Language</TableCell>
               <TableCell align="right" sx={{ fontWeight: 600 }}>
                 Actions
               </TableCell>
@@ -113,20 +111,41 @@ export default function SearchResults({
                       textOverflow: "ellipsis",
                       maxWidth: "300px",
                     }}
-                    title={getCorrectPatientId(patient.id)}
+                    title={patient.id}
                   >
-                    {getCorrectPatientId(patient.id)}
+                    {patient.id}
                   </Typography>
                 </TableCell>
-                <TableCell>{patient.resourceType}</TableCell>
+                <TableCell>
+                  <Typography variant="body2">
+                    {patient.birthDate || "—"}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography
+                    variant="body2"
+                    title={patient.address}
+                    sx={{
+                      maxWidth: "220px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {patient.address || "—"}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2">
+                    {patient.language || "—"}
+                  </Typography>
+                </TableCell>
                 <TableCell align="right">
                   <Button
                     size="small"
                     variant="outlined"
                     endIcon={<OpenInNewIcon />}
-                    onClick={() =>
-                      handleViewDetails(getCorrectPatientId(patient.id))
-                    }
+                    onClick={() => handleViewDetails(patient.id)}
                   >
                     View
                   </Button>

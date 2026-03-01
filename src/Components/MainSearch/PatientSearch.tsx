@@ -13,6 +13,17 @@ interface Patient {
   name: string;
   family?: string;
   given?: string;
+  gender?: string;
+  birthDate?: string;
+  maritalStatus?: string;
+  phone?: string;
+  address?: string;
+  race?: string;
+  ethnicity?: string;
+  birthPlace?: string;
+  language?: string;
+  ssn?: string;
+  mrn?: string;
   filename: string;
   resourceType: string;
 }
@@ -22,6 +33,10 @@ export default function PatientSearch() {
     name: "",
     familyName: "",
     givenName: "",
+    gender: "",
+    birthDate: "",
+    phone: "",
+    address: "",
   });
   // we'll only keep filteredPatients since search is performed server-side
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -34,7 +49,9 @@ export default function PatientSearch() {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:5000/api/patients?_count=100");
+        const response = await fetch(
+          "http://localhost:5000/api/patients?_count=100",
+        );
         if (!response.ok) throw new Error("Failed to fetch patients");
         const patients = await response.json();
         setFilteredPatients(patients); // display all when component mounts
@@ -70,6 +87,11 @@ export default function PatientSearch() {
         params.append("family", searchParams.familyName);
       if (searchParams.givenName)
         params.append("given", searchParams.givenName);
+      if (searchParams.gender) params.append("gender", searchParams.gender);
+      if (searchParams.birthDate)
+        params.append("birthDate", searchParams.birthDate);
+      if (searchParams.phone) params.append("phone", searchParams.phone);
+      if (searchParams.address) params.append("address", searchParams.address);
 
       const url = `http://localhost:5000/api/patients${
         params.toString() ? `?${params.toString()}` : ""
@@ -121,6 +143,52 @@ export default function PatientSearch() {
               value={searchParams.givenName}
               onChange={handleChange}
               placeholder="Enter given name"
+              variant="outlined"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Gender"
+              name="gender"
+              value={searchParams.gender}
+              onChange={handleChange}
+              placeholder="e.g. male, female"
+              variant="outlined"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Birth Date"
+              name="birthDate"
+              value={searchParams.birthDate}
+              onChange={handleChange}
+              placeholder="YYYY-MM-DD"
+              variant="outlined"
+              type="date"
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Phone"
+              name="phone"
+              value={searchParams.phone}
+              onChange={handleChange}
+              placeholder="e.g. 555-123-4567"
+              variant="outlined"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Address"
+              name="address"
+              value={searchParams.address}
+              onChange={handleChange}
+              placeholder="City, state, or zip"
               variant="outlined"
             />
           </Grid>

@@ -46,6 +46,60 @@ const loadPatients = async () => {
         patientBundleMap.set(patientId, bundle);
 
         // Build the flat summary for the list/search route
+        const phone =
+          patientResource?.telecom?.find((t) => t.system === "phone")?.value ||
+          "";
+
+        const addr = patientResource?.address?.[0];
+        const address = addr
+          ? [
+              addr.line?.join(" "),
+              addr.city,
+              addr.state,
+              addr.postalCode,
+              addr.country,
+            ]
+              .filter(Boolean)
+              .join(", ")
+          : "";
+
+        const findExt = (url) =>
+          patientResource?.extension?.find((e) => e.url?.includes(url));
+
+        const raceExt = findExt("us-core-race");
+        const race =
+          raceExt?.extension?.find((e) => e.url === "text")?.valueString || "";
+
+        const ethnicityExt = findExt("us-core-ethnicity");
+        const ethnicity =
+          ethnicityExt?.extension?.find((e) => e.url === "text")?.valueString ||
+          "";
+
+        const birthPlaceExt = findExt("birthPlace");
+        const birthPlaceAddr = birthPlaceExt?.valueAddress;
+        const birthPlace = birthPlaceAddr
+          ? [birthPlaceAddr.city, birthPlaceAddr.state, birthPlaceAddr.country]
+              .filter(Boolean)
+              .join(", ")
+          : "";
+
+        const language =
+          patientResource?.communication?.[0]?.language?.text ||
+          patientResource?.communication?.[0]?.language?.coding?.[0]?.display ||
+          "";
+
+        const ssn =
+          patientResource?.identifier?.find(
+            (i) =>
+              i.system === "http://hl7.org/fhir/sid/us-ssn" ||
+              i.type?.coding?.[0]?.code === "SS",
+          )?.value || "";
+
+        const mrn =
+          patientResource?.identifier?.find(
+            (i) => i.type?.coding?.[0]?.code === "MR",
+          )?.value || patientId;
+
         list.push({
           id: patientId,
           name: patientResource?.name?.[0]?.text || file.replace(".json", ""),
@@ -53,6 +107,20 @@ const loadPatients = async () => {
           given: Array.isArray(patientResource?.name?.[0]?.given)
             ? patientResource.name[0].given.join(" ")
             : "",
+          gender: patientResource?.gender || "",
+          birthDate: patientResource?.birthDate || "",
+          maritalStatus:
+            patientResource?.maritalStatus?.text ||
+            patientResource?.maritalStatus?.coding?.[0]?.display ||
+            "",
+          phone,
+          address,
+          race,
+          ethnicity,
+          birthPlace,
+          language,
+          ssn,
+          mrn,
           filename: file,
           resourceType: "Patient",
         });
@@ -82,7 +150,8 @@ app.get("/api/patients", (req, res) => {
       return res.status(503).json({ error: "Cache not ready" });
     }
 
-    const { name, family, given } = req.query;
+    const { name, family, given, gender, birthDate, phone, address } =
+      req.query;
     let results = patientListCache;
 
     if (name) {
@@ -96,6 +165,21 @@ app.get("/api/patients", (req, res) => {
     if (given) {
       const q = String(given).toLowerCase();
       results = results.filter((p) => p.given.toLowerCase().includes(q));
+    }
+    if (gender) {
+      const q = String(gender).toLowerCase();
+      results = results.filter((p) => p.gender.toLowerCase().includes(q));
+    }
+    if (birthDate) {
+      results = results.filter((p) => p.birthDate === String(birthDate));
+    }
+    if (phone) {
+      const q = String(phone).toLowerCase();
+      results = results.filter((p) => p.phone.toLowerCase().includes(q));
+    }
+    if (address) {
+      const q = String(address).toLowerCase();
+      results = results.filter((p) => p.address.toLowerCase().includes(q));
     }
 
     res.json(results);
