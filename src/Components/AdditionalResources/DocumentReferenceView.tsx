@@ -14,7 +14,12 @@ import {
   TableRow,
   Chip,
 } from "@mui/material";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 
 interface FhirCoding {
   system?: string;
@@ -62,6 +67,9 @@ const statusColor = (
 export default function DocumentReferenceView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
+  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
   const [doc, setDoc] = useState<DocRefResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,12 +114,13 @@ export default function DocumentReferenceView() {
   const title = doc.type?.text ?? doc.type?.coding?.[0]?.display ?? "Document";
   const category =
     doc.category?.[0]?.text ?? doc.category?.[0]?.coding?.[0]?.display;
-  const encounterId = doc.context?.encounter?.[0]?.reference?.replace(
-    /^urn:uuid:/,
-    "",
-  );
+  const encounterId =
+    encounterIdFromQuery ??
+    doc.context?.encounter?.[0]?.reference?.replace(/^urn:uuid:/, "");
   const patientId =
-    doc._patientId ?? doc.subject?.reference?.replace(/^urn:uuid:/, "");
+    patientIdFromQuery ??
+    doc._patientId ??
+    doc.subject?.reference?.replace(/^urn:uuid:/, "");
 
   const textContent = doc.content?.find((c) =>
     c.attachment?.contentType?.startsWith("text/plain"),
@@ -167,8 +176,13 @@ export default function DocumentReferenceView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back
+      <Button
+        onClick={() =>
+          navigate(encounterId ? `/encounter/${encounterId}` : "/")
+        }
+        sx={{ mb: 2 }}
+      >
+        &larr; Back to Encounter
       </Button>
       <Typography variant="h5" fontWeight={600} gutterBottom>
         {title}

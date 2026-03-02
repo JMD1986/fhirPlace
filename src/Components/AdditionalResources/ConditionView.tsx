@@ -14,7 +14,12 @@ import {
   TableRow,
   Chip,
 } from "@mui/material";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 
 interface FhirCoding {
   system?: string;
@@ -59,6 +64,9 @@ const clinicalColor = (
 export default function ConditionView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
+  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
   const [condition, setCondition] = useState<ConditionResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,10 +116,12 @@ export default function ConditionView() {
     condition.code?.text ?? condition.code?.coding?.[0]?.display ?? "—";
 
   const patientId =
+    patientIdFromQuery ??
     condition._patientId ??
     condition.subject?.reference?.replace(/^urn:uuid:/, "");
   const patientName = condition.subject?.display ?? patientId ?? "—";
   const encounterId =
+    encounterIdFromQuery ??
     condition._encounterId ??
     condition.encounter?.reference?.replace(/^urn:uuid:/, "");
 
@@ -165,8 +175,13 @@ export default function ConditionView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back
+      <Button
+        onClick={() =>
+          navigate(encounterId ? `/encounter/${encounterId}` : "/")
+        }
+        sx={{ mb: 2 }}
+      >
+        &larr; Back to Encounter
       </Button>
       <Typography variant="h5" fontWeight={600} gutterBottom>
         Condition

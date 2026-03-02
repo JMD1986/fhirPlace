@@ -216,15 +216,34 @@ export default function EncounterView() {
       label: "Service Provider",
       value: encounter.serviceProvider?.display ?? "—",
     },
+    ...(encounter.reason && encounter.reason.length > 0
+      ? [
+          {
+            label: "Reason",
+            value: (
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                {encounter.reason.map((r, i) => (
+                  <Chip
+                    key={i}
+                    label={r.text ?? r.coding?.[0]?.display ?? "—"}
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                  />
+                ))}
+              </Box>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const practitioners = encounter.participant ?? [];
   const diagnoses = encounter.diagnosis ?? [];
-  const reasons = encounter.reason ?? [];
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
+      <Button onClick={() => navigate("/")} sx={{ mb: 2 }}>
         &larr; Back to search
       </Button>
 
@@ -238,7 +257,10 @@ export default function EncounterView() {
       <Grid container spacing={3} alignItems="flex-start">
         {/* ── Left column: sidebar ── */}
         <Grid size={{ xs: 12, md: 4 }}>
-          <DocumentReferencePanel encounterId={encounter.id} />
+          <DocumentReferencePanel
+            encounterId={encounter.id}
+            patientId={patientId}
+          />
         </Grid>
 
         {/* ── Right column: main encounter detail ── */}
@@ -348,22 +370,7 @@ export default function EncounterView() {
           )}
 
           {/* ── Reasons ── */}
-          {reasons.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Reasons
-              </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {reasons.map((r, i) => (
-                  <Chip
-                    key={i}
-                    label={r.text ?? r.coding?.[0]?.display ?? "—"}
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
+          {/* reason is shown in main details table */}
         </Grid>
       </Grid>
     </Box>

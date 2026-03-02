@@ -14,7 +14,12 @@ import {
   TableRow,
   Chip,
 } from "@mui/material";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 
 interface FhirCoding {
   system?: string;
@@ -61,6 +66,9 @@ const statusColor = (
 export default function DiagnosticReportView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
+  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
   const [report, setReport] = useState<DiagnosticReportResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,9 +119,12 @@ export default function DiagnosticReportView() {
   const codeName =
     report.code?.text ?? report.code?.coding?.[0]?.display ?? "—";
   const patientId =
-    report._patientId ?? report.subject?.reference?.replace(/^urn:uuid:/, "");
+    patientIdFromQuery ??
+    report._patientId ??
+    report.subject?.reference?.replace(/^urn:uuid:/, "");
   const patientName = report.subject?.display ?? patientId ?? "—";
   const encounterId =
+    encounterIdFromQuery ??
     report._encounterId ??
     report.encounter?.reference?.replace(/^urn:uuid:/, "");
 
@@ -168,8 +179,13 @@ export default function DiagnosticReportView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back
+      <Button
+        onClick={() =>
+          navigate(encounterId ? `/encounter/${encounterId}` : "/")
+        }
+        sx={{ mb: 2 }}
+      >
+        &larr; Back to Encounter
       </Button>
       <Typography variant="h5" fontWeight={600} gutterBottom>
         Diagnostic Report

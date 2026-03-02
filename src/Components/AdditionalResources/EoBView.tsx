@@ -15,7 +15,12 @@ import {
   Chip,
   Stack,
 } from "@mui/material";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 
 interface FhirCoding {
   system?: string;
@@ -83,6 +88,9 @@ const outcomeColor = (
 export default function EoBView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
+  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
   const [eob, setEob] = useState<EoBResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +134,9 @@ export default function EoBView() {
 
   const eobType = eob.type?.coding?.[0]?.code ?? eob.type?.text ?? "—";
   const patientId =
-    eob._patientId ?? eob.patient?.reference?.replace(/^urn:uuid:/, "");
+    patientIdFromQuery ??
+    eob._patientId ??
+    eob.patient?.reference?.replace(/^urn:uuid:/, "");
   const patientName = eob.patient?.display ?? patientId ?? "—";
   const claimId = eob.claim?.reference?.replace(/^urn:uuid:/, "");
 
@@ -205,8 +215,19 @@ export default function EoBView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back
+      <Button
+        onClick={() =>
+          navigate(
+            encounterIdFromQuery
+              ? `/encounter/${encounterIdFromQuery}`
+              : patientId
+                ? `/patient/${patientId}`
+                : "/",
+          )
+        }
+        sx={{ mb: 2 }}
+      >
+        &larr; Back to {encounterIdFromQuery ? "Encounter" : "Patient"}
       </Button>
       <Typography variant="h5" fontWeight={600} gutterBottom>
         Explanation of Benefit

@@ -127,6 +127,7 @@ const formatDate = (iso?: string | null) => {
 // ── Main component ─────────────────────────────────────────────────────────────
 interface Props {
   encounterId: string;
+  patientId?: string;
 }
 
 interface ResourceGroup {
@@ -134,7 +135,10 @@ interface ResourceGroup {
   items: AnyResource[];
 }
 
-export default function DocumentReferencePanel({ encounterId }: Props) {
+export default function DocumentReferencePanel({
+  encounterId,
+  patientId,
+}: Props) {
   const [groups, setGroups] = useState<ResourceGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -284,7 +288,7 @@ export default function DocumentReferencePanel({ encounterId }: Props) {
                       )}
                       <ListItemButton
                         component={Link}
-                        to={`${group.config.viewPath}/${item.id}`}
+                        to={`${group.config.viewPath}/${item.id}?encounterId=${encounterId}${patientId ? `&patientId=${patientId}` : ""}`}
                         sx={{ py: 0.75 }}
                       >
                         <ListItemIcon sx={{ minWidth: 36 }}>

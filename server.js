@@ -501,7 +501,7 @@ app.get("/fhir/Encounter", (req, res) => {
   if (!patientListCache)
     return res.status(503).json({ error: "Cache not ready" });
 
-  const { patient, status, date, type, _id } = req.query;
+  const { patient, status, date, type, _id, reason } = req.query;
   const classCode = req.query["class"];
   const count = parseInt(req.query._count ?? "20", 10);
   const offset = parseInt(req.query._offset ?? "0", 10);
@@ -535,6 +535,20 @@ app.get("/fhir/Encounter", (req, res) => {
         (t) =>
           t.text?.toLowerCase().includes(q) ||
           t.coding?.some((c) => c.display?.toLowerCase().includes(q)),
+      ),
+    );
+  }
+
+  if (reason) {
+    const q = String(reason).toLowerCase();
+    results = results.filter((e) =>
+      e.reason?.some(
+        (r) =>
+          r.text?.toLowerCase().includes(q) ||
+          r.coding?.some(
+            (c) =>
+              c.code === String(reason) || c.display?.toLowerCase().includes(q),
+          ),
       ),
     );
   }

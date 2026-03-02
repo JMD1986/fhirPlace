@@ -14,7 +14,12 @@ import {
   TableRow,
   Chip,
 } from "@mui/material";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 
 interface FhirCoding {
   system?: string;
@@ -62,6 +67,9 @@ const currency = (val?: number, cur?: string) =>
 export default function ClaimsView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
+  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
   const [claim, setClaim] = useState<ClaimResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +111,9 @@ export default function ClaimsView() {
 
   const claimType = claim.type?.coding?.[0]?.code ?? claim.type?.text ?? "—";
   const patientId =
-    claim._patientId ?? claim.patient?.reference?.replace(/^urn:uuid:/, "");
+    patientIdFromQuery ??
+    claim._patientId ??
+    claim.patient?.reference?.replace(/^urn:uuid:/, "");
   const patientName = claim.patient?.display ?? patientId ?? "—";
 
   const rows: { label: string; value: React.ReactNode; mono?: boolean }[] = [
@@ -147,8 +157,19 @@ export default function ClaimsView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back
+      <Button
+        onClick={() =>
+          navigate(
+            encounterIdFromQuery
+              ? `/encounter/${encounterIdFromQuery}`
+              : patientId
+                ? `/patient/${patientId}`
+                : "/",
+          )
+        }
+        sx={{ mb: 2 }}
+      >
+        &larr; Back to {encounterIdFromQuery ? "Encounter" : "Patient"}
       </Button>
       <Typography variant="h5" fontWeight={600} gutterBottom>
         Claim
