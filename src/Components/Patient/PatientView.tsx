@@ -220,7 +220,11 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     return null; // should not happen once loading completes
   }
 
-  const displayName = formatName(patient.name?.[0]) || `Patient/${patient.id}`;
+  const displayName = (formatName(patient.name?.[0]) || `Patient/${patient.id}`)
+    .split(" ")
+    .map((w) => w.replace(/\d+/g, ""))
+    .filter(Boolean)
+    .join(" ");
 
   const tableRows = [
     { label: "ID", value: patient.id },

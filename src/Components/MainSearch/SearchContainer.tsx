@@ -4,18 +4,52 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
-import { Container, MenuItem, Paper, Menu } from "@mui/material";
-import SearchBar from "./SearchBar";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import {
+  Container,
+  MenuItem,
+  Paper,
+  Menu,
+  Tooltip,
+  Box,
+  Chip,
+} from "@mui/material";
+import SearchBar from "./SearchBar"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { useState } from "react";
 import EncounterSearch from "./EncounterSearch";
 import PatientSearch from "./PatientSearch";
+import LoginSignupDialog from "../Auth/LoginSignupDialog";
+import { useAuth } from "../../context/AuthContext";
+
+const SEARCH_TYPE_KEY = "fhirPlace_lastSearchType";
+type SearchType = "patient" | "encounter";
 
 export default function SearchContainer() {
+  const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  // const open = Boolean(anchorEl);
   const [open, setOpen] = useState(false);
-  const [displayEncounterSearch, setDisplayEncounterSearch] = useState(false);
-  const [displayPatientSearch, setDisplayPatientSearch] = useState(true);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  const savedType = (localStorage.getItem(SEARCH_TYPE_KEY) ??
+    "patient") as SearchType;
+  const [displayEncounterSearch, setDisplayEncounterSearch] = useState(
+    savedType === "encounter",
+  );
+  const [displayPatientSearch, setDisplayPatientSearch] = useState(
+    savedType === "patient",
+  );
+  const [searchTitle, setSearchTitle] = useState(
+    savedType === "encounter" ? "Encounter Search" : "Patient Search",
+  );
+
+  const setSearchType = (type: SearchType) => {
+    localStorage.setItem(SEARCH_TYPE_KEY, type);
+    setDisplayEncounterSearch(type === "encounter");
+    setDisplayPatientSearch(type === "patient");
+    setSearchTitle(
+      type === "encounter" ? "Encounter Search" : "Patient Search",
+    );
+  };
 
   // IconButton onClick: setAnchorEl(event.currentTarget)
   // Menu onClose: setAnchorEl(null)
@@ -31,14 +65,12 @@ export default function SearchContainer() {
 
   const displayEncounters = () => {
     handleMenuClose();
-    setDisplayEncounterSearch(true);
-    setDisplayPatientSearch(false);
+    setSearchType("encounter");
   };
 
   const displayPatients = () => {
     handleMenuClose();
-    setDisplayEncounterSearch(false);
-    setDisplayPatientSearch(true);
+    setSearchType("patient");
   };
 
   const handleClose = () => {
@@ -71,14 +103,37 @@ export default function SearchContainer() {
           >
             <MenuItem onClick={displayPatients}>Patient Search</MenuItem>
             <MenuItem onClick={displayEncounters}>Encounter Search</MenuItem>
-            <MenuItem onClick={handleClose}>Logout</MenuItem>
           </Menu>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            FHIR Patient Search
+            {searchTitle}
           </Typography>
-          <Button color="inherit">Login</Button>
+          {user ? (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Tooltip title={user.email}>
+                <Chip
+                  icon={<AccountCircleIcon />}
+                  label={user.username}
+                  color="default"
+                  sx={{
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.5)",
+                    "& .MuiChip-icon": { color: "white" },
+                  }}
+                  variant="outlined"
+                />
+              </Tooltip>
+              <Button color="inherit" onClick={logout}>
+                Logout
+              </Button>
+            </Box>
+          ) : (
+            <Button color="inherit" onClick={() => setAuthOpen(true)}>
+              Login
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
+      <LoginSignupDialog open={authOpen} onClose={() => setAuthOpen(false)} />
       <Container maxWidth="lg">
         <Paper elevation={0} sx={{ mt: 4, p: 3, backgroundColor: "#f5f5f5" }}>
           {displayPatientSearch && <PatientSearch />}

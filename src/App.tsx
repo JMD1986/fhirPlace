@@ -3,21 +3,24 @@ import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import SearchContainer from "./components/MainSearch/SearchContainer";
 import PatientView from "./components/Patient/PatientView";
 import EncounterView from "./components/Encounter/EncounterView";
+import { AuthProvider } from "./context/AuthContext";
 import Box from "@mui/material/Box";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Box
-        sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
-      >
-        <Routes>
-          <Route path="/" element={<SearchContainer />} />
-          <Route path="/patient/:id" element={<PatientViewWrapper />} />
-          <Route path="/encounter/:id" element={<EncounterView />} />
-        </Routes>
-      </Box>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Box
+          sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+        >
+          <Routes>
+            <Route path="/" element={<SearchContainer />} />
+            <Route path="/patient/:id" element={<PatientViewWrapper />} />
+            <Route path="/encounter/:id" element={<EncounterView />} />
+          </Routes>
+        </Box>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
