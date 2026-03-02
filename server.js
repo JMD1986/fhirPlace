@@ -8,11 +8,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 5000;
+const PORT = 5001;
 
 // Configure CORS explicitly
 const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ["http://localhost:5173", "http://localhost:3000"],
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -21,10 +21,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
-// patientListCache  – flat summary objects used by GET /api/patients (+ filters)
-// patientBundleMap  – full FHIR bundles keyed by patient UUID, for GET /api/patients/:id
+// patientListCache    – flat summary objects used by GET /api/patients (+ filters)
+// patientBundleMap    – full transaction Bundles keyed by patient UUID
+// patientResourceMap  – lean FHIR Patient resources keyed by UUID (for /fhir/Patient)
 let patientListCache = null;
 const patientBundleMap = new Map();
+const patientResourceMap = new Map();
 
 const loadPatients = async () => {
   const fhirDir = path.join(__dirname, "public/synthea/fhir");
@@ -51,6 +53,8 @@ const loadPatients = async () => {
 
         // Index the full bundle for the detail route
         patientBundleMap.set(patientId, bundle);
+        // Index the lean Patient resource for the FHIR /fhir/Patient routes
+        patientResourceMap.set(patientId, patientResource);
 
         // Build the flat summary for the list/search route
         const phone =
@@ -232,6 +236,115 @@ app.get("/api/patients-count", (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+// ─── FHIR STU3 Routes ─────────────────────────────────────────────────────────
+const FHIR_CONTENT_TYPE = "application/fhir+json";
+const BASE_URL = `http://localhost:${PORT}`;
+
+// GET /fhir/Patient  – FHIR STU3 search, returns searchset Bundle
+// Supported params: family, given, name, gender, birthdate, _id, _count, _offset
+app.get("/fhir/Patient", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { family, given, name, gender, birthdate, _id, address, phone } =
+    req.query;
+  const count = parseInt(req.query._count ?? "20", 10);
+  const offset = parseInt(req.query._offset ?? "0", 10);
+
+  let results = [...patientResourceMap.values()];
+
+  if (_id) results = results.filter((p) => p.id === String(_id));
+  if (family)
+    results = results.filter((p) =>
+      p.name?.[0]?.family?.toLowerCase().includes(String(family).toLowerCase()),
+    );
+  if (given)
+    results = results.filter((p) =>
+      p.name?.[0]?.given
+        ?.join(" ")
+        .toLowerCase()
+        .includes(String(given).toLowerCase()),
+    );
+  if (name)
+    results = results.filter((p) => {
+      const q = String(name).toLowerCase();
+      const r = p.name?.[0];
+      return (
+        r?.text?.toLowerCase().includes(q) ||
+        r?.family?.toLowerCase().includes(q) ||
+        r?.given?.join(" ").toLowerCase().includes(q)
+      );
+    });
+  if (gender)
+    results = results.filter(
+      (p) => p.gender?.toLowerCase() === String(gender).toLowerCase(),
+    );
+  if (birthdate)
+    results = results.filter((p) => p.birthDate === String(birthdate));
+  if (address) {
+    const q = String(address).toLowerCase();
+    results = results.filter((p) =>
+      p.address?.some((a) =>
+        [a.line?.join(" "), a.city, a.state, a.postalCode, a.country]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      ),
+    );
+  }
+  if (phone) {
+    const q = String(phone).toLowerCase();
+    results = results.filter((p) =>
+      p.telecom?.some(
+        (t) => t.system === "phone" && t.value?.toLowerCase().includes(q),
+      ),
+    );
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const selfUrl = `${BASE_URL}/fhir/Patient?${new URLSearchParams(req.query).toString()}`;
+
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      { relation: "self", url: selfUrl },
+      ...(offset + count < total
+        ? [
+            {
+              relation: "next",
+              url: `${BASE_URL}/fhir/Patient?_count=${count}&_offset=${offset + count}`,
+            },
+          ]
+        : []),
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/Patient/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+// GET /fhir/Patient/:id  – returns the lean Patient resource (not the full Bundle)
+app.get("/fhir/Patient/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const resource = patientResourceMap.get(req.params.id);
+  if (!resource) return res.status(404).json({ error: "Patient not found" });
+
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+// ──────────────────────────────────────────────────────────────────────────────
 
 loadPatients().then(() => {
   app.listen(PORT, () => {

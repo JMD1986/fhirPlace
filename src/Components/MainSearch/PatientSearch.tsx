@@ -8,24 +8,30 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import SearchResults from "./SearchResults";
 
-interface Patient {
-  id: string;
-  name: string;
+// Lean FHIR STU3 Patient resource (subset of fields we use in the UI)
+interface FhirName {
+  text?: string;
   family?: string;
-  given?: string;
+  given?: string[];
+}
+interface FhirAddress {
+  line?: string[];
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+interface FhirCommunication {
+  language?: { text?: string; coding?: { display?: string }[] };
+}
+interface Patient {
+  resourceType: "Patient";
+  id: string;
+  name?: FhirName[];
   gender?: string;
   birthDate?: string;
-  maritalStatus?: string;
-  phone?: string;
-  address?: string;
-  race?: string;
-  ethnicity?: string;
-  birthPlace?: string;
-  language?: string;
-  ssn?: string;
-  mrn?: string;
-  filename: string;
-  resourceType: string;
+  address?: FhirAddress[];
+  communication?: FhirCommunication[];
 }
 
 export default function PatientSearch() {
@@ -44,17 +50,20 @@ export default function PatientSearch() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
-  // Load initial patient list so results table has content before a query
+  // Load first page of patients on mount
   useEffect(() => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
         const response = await fetch(
-          "http://localhost:5000/api/patients?_count=100",
+          "http://localhost:5001/fhir/Patient?_count=20",
         );
         if (!response.ok) throw new Error("Failed to fetch patients");
-        const patients = await response.json();
-        setFilteredPatients(patients); // display all when component mounts
+        const bundle = await response.json();
+        const patients: Patient[] = (bundle.entry ?? []).map(
+          (e: { resource: Patient }) => e.resource,
+        );
+        setFilteredPatients(patients);
         setError(null);
       } catch (err) {
         setError("Failed to load patients from server");
@@ -82,6 +91,8 @@ export default function PatientSearch() {
 
     try {
       const params = new URLSearchParams();
+      // always request all matches — pagination can be added later
+      params.append("_count", "1000");
       if (searchParams.name) params.append("name", searchParams.name);
       if (searchParams.familyName)
         params.append("family", searchParams.familyName);
@@ -89,16 +100,24 @@ export default function PatientSearch() {
         params.append("given", searchParams.givenName);
       if (searchParams.gender) params.append("gender", searchParams.gender);
       if (searchParams.birthDate)
-        params.append("birthDate", searchParams.birthDate);
+        params.append("birthdate", searchParams.birthDate);
       if (searchParams.phone) params.append("phone", searchParams.phone);
       if (searchParams.address) params.append("address", searchParams.address);
 
-      const url = `http://localhost:5000/api/patients${
-        params.toString() ? `?${params.toString()}` : ""
-      }`;
+      const url = `http://localhost:5001/fhir/Patient?${params.toString()}`;
+      console.log("[PatientSearch] fetching:", url);
       const response = await fetch(url);
       if (!response.ok) throw new Error("Search request failed");
-      const results = await response.json();
+      const bundle = await response.json();
+      console.log(
+        "[PatientSearch] bundle total:",
+        bundle.total,
+        "entries:",
+        bundle.entry?.length,
+      );
+      const results: Patient[] = (bundle.entry ?? []).map(
+        (e: { resource: Patient }) => e.resource,
+      );
       setFilteredPatients(results);
       setError(null);
     } catch (err) {

@@ -14,14 +14,29 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
 
+interface FhirName {
+  text?: string;
+  family?: string;
+  given?: string[];
+}
+interface FhirAddress {
+  line?: string[];
+  city?: string;
+  state?: string;
+  postalCode?: string;
+}
+interface FhirComm {
+  language?: { text?: string; coding?: { display?: string }[] };
+}
+
 interface Patient {
+  resourceType: "Patient";
   id: string;
-  name: string;
+  name?: FhirName[];
+  gender?: string;
   birthDate?: string;
-  address?: string;
-  language?: string;
-  filename: string;
-  resourceType: string;
+  address?: FhirAddress[];
+  communication?: FhirComm[];
 }
 
 interface SearchResultsProps {
@@ -47,14 +62,26 @@ export default function SearchResults({
     // console.log("View details for patient ID:", patientId);
   };
 
-  const getName = (patientId: string) => {
-    const parts = patientId.split("_");
-    if (parts.length < 2) return patientId;
+  const stripNums = (s: string) => s.replace(/\d+/g, "").trim();
 
-    const firstName = parts[0].replace(/\d+/g, "");
-    const lastName = parts[1].replace(/\d+/g, "");
+  const getName = (patient: Patient) => {
+    const n = patient.name?.[0];
+    const given = n?.given?.map(stripNums).join(" ") ?? "";
+    const family = stripNums(n?.family ?? "");
+    return [given, family].filter(Boolean).join(" ") || patient.id;
+  };
 
-    return `${firstName} ${lastName}`;
+  const getAddress = (patient: Patient) => {
+    const a = patient.address?.[0];
+    if (!a) return "—";
+    return [a.line?.join(" "), a.city, a.state, a.postalCode]
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const getLanguage = (patient: Patient) => {
+    const c = patient.communication?.[0];
+    return c?.language?.text ?? c?.language?.coding?.[0]?.display ?? "—";
   };
 
   if (patients.length === 0) {
@@ -96,10 +123,8 @@ export default function SearchResults({
                       gap: 1,
                     }}
                   >
-                    <Avatar size={80} name={patient.name} />
-                    <Typography variant="body2">
-                      {getName(patient.name)}
-                    </Typography>
+                    <Avatar size={80} name={getName(patient)} />
+                    <Typography variant="body2">{getName(patient)}</Typography>
                   </Box>
                 </TableCell>
                 <TableCell>
@@ -118,13 +143,13 @@ export default function SearchResults({
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {patient.birthDate || "—"}
+                    {patient.birthDate ?? "—"}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography
                     variant="body2"
-                    title={patient.address}
+                    title={getAddress(patient)}
                     sx={{
                       maxWidth: "220px",
                       overflow: "hidden",
@@ -132,12 +157,12 @@ export default function SearchResults({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {patient.address || "—"}
+                    {getAddress(patient)}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {patient.language || "—"}
+                    {getLanguage(patient)}
                   </Typography>
                 </TableCell>
                 <TableCell align="right">

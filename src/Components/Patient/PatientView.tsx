@@ -165,7 +165,7 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
         setLoading(true);
         setError(null);
         const res = await fetch(
-          `http://localhost:5000/api/patients/${patientId}`,
+          `http://localhost:5001/fhir/Patient/${patientId}`,
         );
         console.log("Fetch response:", res);
         if (!res.ok) {
