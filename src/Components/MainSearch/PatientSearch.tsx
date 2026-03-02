@@ -132,7 +132,7 @@ export default function PatientSearch() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box component="form" onSubmit={handleSearch} noValidate>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Patient Name"
@@ -143,7 +143,7 @@ export default function PatientSearch() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Family Name"
@@ -154,7 +154,7 @@ export default function PatientSearch() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Given Name"
@@ -165,7 +165,7 @@ export default function PatientSearch() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Gender"
@@ -176,7 +176,7 @@ export default function PatientSearch() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Birth Date"
@@ -189,7 +189,7 @@ export default function PatientSearch() {
               slotProps={{ inputLabel: { shrink: true } }}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Phone"
@@ -200,7 +200,7 @@ export default function PatientSearch() {
               variant="outlined"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Address"
@@ -212,9 +212,7 @@ export default function PatientSearch() {
             />
           </Grid>
           <Grid
-            item
-            xs={12}
-            sm={6}
+            size={{ xs: 12, sm: 6 }}
             sx={{ display: "flex", alignItems: "flex-end" }}
           >
             <Button

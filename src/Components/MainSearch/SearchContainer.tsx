@@ -7,7 +7,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { Container, MenuItem, Paper, Menu } from "@mui/material";
 import SearchBar from "./SearchBar";
 import { useState } from "react";
-import EncounterSearchBar from "./EncounterSearch";
+import EncounterSearch from "./EncounterSearch";
 import PatientSearch from "./PatientSearch";
 
 export default function SearchContainer() {
@@ -82,7 +82,7 @@ export default function SearchContainer() {
       <Container maxWidth="lg">
         <Paper elevation={0} sx={{ mt: 4, p: 3, backgroundColor: "#f5f5f5" }}>
           {displayPatientSearch && <PatientSearch />}
-          {displayEncounterSearch && <EncounterSearchBar />}
+          {displayEncounterSearch && <EncounterSearch />}
         </Paper>
       </Container>
     </>

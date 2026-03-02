@@ -24,9 +24,13 @@ app.use(express.json());
 // patientListCache    – flat summary objects used by GET /api/patients (+ filters)
 // patientBundleMap    – full transaction Bundles keyed by patient UUID
 // patientResourceMap  – lean FHIR Patient resources keyed by UUID (for /fhir/Patient)
+// encounterResourceMap – all Encounter resources keyed by encounter UUID
+// encountersByPatient  – encounter UUID[] keyed by patient UUID
 let patientListCache = null;
 const patientBundleMap = new Map();
 const patientResourceMap = new Map();
+const encounterResourceMap = new Map();
+const encountersByPatient = new Map();
 
 const loadPatients = async () => {
   const fhirDir = path.join(__dirname, "public/synthea/fhir");
@@ -55,6 +59,17 @@ const loadPatients = async () => {
         patientBundleMap.set(patientId, bundle);
         // Index the lean Patient resource for the FHIR /fhir/Patient routes
         patientResourceMap.set(patientId, patientResource);
+
+        // Index every Encounter resource from this bundle
+        const encounterIds = [];
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "Encounter" && r.id) {
+            encounterResourceMap.set(r.id, { ...r, _patientId: patientId });
+            encounterIds.push(r.id);
+          }
+        });
+        encountersByPatient.set(patientId, encounterIds);
 
         // Build the flat summary for the list/search route
         const phone =
@@ -143,6 +158,7 @@ const loadPatients = async () => {
 
   patientListCache = list;
   console.log(`Loaded ${patientListCache.length} patients into cache`);
+  console.log(`Loaded ${encounterResourceMap.size} encounters into cache`);
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -344,6 +360,141 @@ app.get("/fhir/Patient/:id", (req, res) => {
   res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
   res.json(resource);
 });
+
+// ─── FHIR Encounter Routes ────────────────────────────────────────────────────
+// GET /fhir/Encounter
+// Supported params: patient, status, date (prefix: eq/ge/le/gt/lt), type (text),
+//                   class (code), _id, _count, _offset
+app.get("/fhir/Encounter", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { patient, status, date, type, _id } = req.query;
+  const classCode = req.query["class"];
+  const count = parseInt(req.query._count ?? "20", 10);
+  const offset = parseInt(req.query._offset ?? "0", 10);
+
+  // If patient param given, restrict to that patient's encounters only
+  let results;
+  if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    const ids = encountersByPatient.get(patId) ?? [];
+    results = ids.map((id) => encounterResourceMap.get(id)).filter(Boolean);
+  } else {
+    results = [...encounterResourceMap.values()];
+  }
+
+  if (_id) results = results.filter((e) => e.id === String(_id));
+
+  if (status) {
+    const q = String(status).toLowerCase();
+    results = results.filter((e) => e.status?.toLowerCase() === q);
+  }
+
+  if (classCode) {
+    const q = String(classCode).toLowerCase();
+    results = results.filter((e) => e.class?.code?.toLowerCase() === q);
+  }
+
+  if (type) {
+    const q = String(type).toLowerCase();
+    results = results.filter((e) =>
+      e.type?.some(
+        (t) =>
+          t.text?.toLowerCase().includes(q) ||
+          t.coding?.some((c) => c.display?.toLowerCase().includes(q)),
+      ),
+    );
+  }
+
+  // date param – supports prefix (eq/ge/le/gt/lt) or bare YYYY-MM-DD (eq)
+  if (date) {
+    const dateStr = String(date);
+    const match = dateStr.match(/^(eq|ge|le|gt|lt)?(\d{4}-\d{2}-\d{2})/);
+    if (match) {
+      const prefix = match[1] ?? "eq";
+      const target = match[2];
+      results = results.filter((e) => {
+        const start = e.period?.start?.slice(0, 10);
+        if (!start) return false;
+        if (prefix === "eq") return start === target;
+        if (prefix === "ge") return start >= target;
+        if (prefix === "le") return start <= target;
+        if (prefix === "gt") return start > target;
+        if (prefix === "lt") return start < target;
+        return false;
+      });
+    }
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const selfUrl = `${BASE_URL}/fhir/Encounter?${new URLSearchParams(req.query).toString()}`;
+
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      { relation: "self", url: selfUrl },
+      ...(offset + count < total
+        ? [
+            {
+              relation: "next",
+              url: `${BASE_URL}/fhir/Encounter?_count=${count}&_offset=${offset + count}`,
+            },
+          ]
+        : []),
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/Encounter/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+// GET /fhir/Encounter/_types  – distinct encounter type strings from cached data
+app.get("/fhir/Encounter/_types", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const types = new Set();
+  for (const enc of encounterResourceMap.values()) {
+    const text = enc.type?.[0]?.text ?? enc.type?.[0]?.coding?.[0]?.display;
+    if (text) types.add(text);
+  }
+
+  res.json([...types].sort());
+});
+
+// GET /fhir/Encounter/_classes  – distinct class codes from cached data
+app.get("/fhir/Encounter/_classes", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const classes = new Set();
+  for (const enc of encounterResourceMap.values()) {
+    if (enc.class?.code) classes.add(enc.class.code);
+  }
+
+  res.json([...classes].sort());
+});
+
+// GET /fhir/Encounter/:id  – returns a single Encounter resource
+app.get("/fhir/Encounter/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const resource = encounterResourceMap.get(req.params.id);
+  if (!resource) return res.status(404).json({ error: "Encounter not found" });
+
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
 // ──────────────────────────────────────────────────────────────────────────────
 
 loadPatients().then(() => {
@@ -354,5 +505,9 @@ loadPatients().then(() => {
     console.log(`   GET /api/patients/:id - Get specific patient`);
     console.log(`   GET /api/patients-count - Get total patient count`);
     console.log(`   GET /api/health - Health check`);
+    console.log(
+      `   GET /fhir/Encounter - Search encounters (patient, status, date, type, class)`,
+    );
+    console.log(`   GET /fhir/Encounter/:id - Get specific encounter`);
   });
 });
