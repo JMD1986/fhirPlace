@@ -3,6 +3,11 @@ import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import SearchContainer from "./components/MainSearch/SearchContainer";
 import PatientView from "./components/Patient/PatientView";
 import EncounterView from "./components/Encounter/EncounterView";
+import DocumentReferenceView from "./components/AdditionalResources/DocumentReferenceView";
+import ConditionView from "./components/AdditionalResources/ConditionView";
+import DiagnosticReportView from "./components/AdditionalResources/DiagnosticReportView";
+import ClaimsView from "./components/AdditionalResources/ClaimsView";
+import EoBView from "./components/AdditionalResources/EoBView";
 import { AuthProvider } from "./context/AuthContext";
 import Box from "@mui/material/Box";
 
@@ -17,6 +22,14 @@ function App() {
             <Route path="/" element={<SearchContainer />} />
             <Route path="/patient/:id" element={<PatientViewWrapper />} />
             <Route path="/encounter/:id" element={<EncounterView />} />
+            <Route path="/document/:id" element={<DocumentReferenceView />} />
+            <Route path="/condition/:id" element={<ConditionView />} />
+            <Route
+              path="/diagnostic-report/:id"
+              element={<DiagnosticReportView />}
+            />
+            <Route path="/claim/:id" element={<ClaimsView />} />
+            <Route path="/explanation-of-benefit/:id" element={<EoBView />} />
           </Routes>
         </Box>
       </BrowserRouter>

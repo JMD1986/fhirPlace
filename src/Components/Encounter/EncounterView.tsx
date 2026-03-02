@@ -14,7 +14,9 @@ import {
   TableRow,
   Chip,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import DocumentReferencePanel from "./DocumentReferencePanel";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface FhirCoding {
@@ -233,123 +235,137 @@ export default function EncounterView() {
         {patientDisplay} &mdash; {encounter.period?.start?.slice(0, 10) ?? ""}
       </Typography>
 
-      {/* ── Main details ── */}
-      <TableContainer component={Paper} sx={{ mb: 3 }}>
-        <Table sx={{ minWidth: 500 }}>
-          <TableHead sx={{ backgroundColor: "primary.main" }}>
-            <TableRow>
-              <TableCell sx={{ color: "white", fontWeight: 600, width: "28%" }}>
-                Property
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Value
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mainRows.map((row, i) => (
-              <TableRow key={i} hover>
-                <TableCell sx={{ fontWeight: 500, color: "text.secondary" }}>
-                  {row.label}
-                </TableCell>
-                <TableCell>
-                  {typeof row.value === "string" ? (
-                    <Typography
-                      variant="body2"
-                      fontFamily={row.mono ? "monospace" : "inherit"}
+      <Grid container spacing={3} alignItems="flex-start">
+        {/* ── Left column: sidebar ── */}
+        <Grid size={{ xs: 12, md: 4 }}>
+          <DocumentReferencePanel encounterId={encounter.id} />
+        </Grid>
+
+        {/* ── Right column: main encounter detail ── */}
+        <Grid size={{ xs: 12, md: 8 }}>
+          {/* ── Main details ── */}
+          <TableContainer component={Paper} sx={{ mb: 3 }}>
+            <Table sx={{ minWidth: 500 }}>
+              <TableHead sx={{ backgroundColor: "primary.main" }}>
+                <TableRow>
+                  <TableCell
+                    sx={{ color: "white", fontWeight: 600, width: "28%" }}
+                  >
+                    Property
+                  </TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 600 }}>
+                    Value
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {mainRows.map((row, i) => (
+                  <TableRow key={i} hover>
+                    <TableCell
+                      sx={{ fontWeight: 500, color: "text.secondary" }}
                     >
-                      {row.value}
-                    </Typography>
-                  ) : (
-                    row.value
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* ── Practitioners ── */}
-      {practitioners.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Participants
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                <TableRow>
-                  {["Name", "Role", "Start", "End"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 600 }}>
-                      {h}
+                      {row.label}
                     </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {practitioners.map((p, i) => (
-                  <TableRow key={i} hover>
-                    <TableCell>{p.individual?.display ?? "—"}</TableCell>
-                    <TableCell>{p.type?.[0]?.text ?? "—"}</TableCell>
-                    <TableCell>{formatDateTime(p.period?.start)}</TableCell>
-                    <TableCell>{formatDateTime(p.period?.end)}</TableCell>
+                    <TableCell>
+                      {typeof row.value === "string" ? (
+                        <Typography
+                          variant="body2"
+                          fontFamily={row.mono ? "monospace" : "inherit"}
+                        >
+                          {row.value}
+                        </Typography>
+                      ) : (
+                        row.value
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
-        </Box>
-      )}
 
-      {/* ── Diagnoses ── */}
-      {diagnoses.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Diagnoses
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                <TableRow>
-                  {["Condition", "Role", "Rank"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 600 }}>
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {diagnoses.map((d, i) => (
-                  <TableRow key={i} hover>
-                    <TableCell>{d.condition?.display ?? "—"}</TableCell>
-                    <TableCell>{d.role?.text ?? "—"}</TableCell>
-                    <TableCell>{d.rank ?? "—"}</TableCell>
-                  </TableRow>
+          {/* ── Practitioners ── */}
+          {practitioners.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Participants
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
+                      {["Name", "Role", "Start", "End"].map((h) => (
+                        <TableCell key={h} sx={{ fontWeight: 600 }}>
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {practitioners.map((p, i) => (
+                      <TableRow key={i} hover>
+                        <TableCell>{p.individual?.display ?? "—"}</TableCell>
+                        <TableCell>{p.type?.[0]?.text ?? "—"}</TableCell>
+                        <TableCell>{formatDateTime(p.period?.start)}</TableCell>
+                        <TableCell>{formatDateTime(p.period?.end)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {/* ── Diagnoses ── */}
+          {diagnoses.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Diagnoses
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableRow>
+                      {["Condition", "Role", "Rank"].map((h) => (
+                        <TableCell key={h} sx={{ fontWeight: 600 }}>
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {diagnoses.map((d, i) => (
+                      <TableRow key={i} hover>
+                        <TableCell>{d.condition?.display ?? "—"}</TableCell>
+                        <TableCell>{d.role?.text ?? "—"}</TableCell>
+                        <TableCell>{d.rank ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {/* ── Reasons ── */}
+          {reasons.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Reasons
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                {reasons.map((r, i) => (
+                  <Chip
+                    key={i}
+                    label={r.text ?? r.coding?.[0]?.display ?? "—"}
+                    variant="outlined"
+                  />
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
-      )}
-
-      {/* ── Reasons ── */}
-      {reasons.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Reasons
-          </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-            {reasons.map((r, i) => (
-              <Chip
-                key={i}
-                label={r.text ?? r.coding?.[0]?.display ?? "—"}
-                variant="outlined"
-              />
-            ))}
-          </Box>
-        </Box>
-      )}
+              </Box>
+            </Box>
+          )}
+        </Grid>
+      </Grid>
     </Box>
   );
 }

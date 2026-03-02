@@ -21,16 +21,36 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
-// patientListCache    – flat summary objects used by GET /api/patients (+ filters)
-// patientBundleMap    – full transaction Bundles keyed by patient UUID
-// patientResourceMap  – lean FHIR Patient resources keyed by UUID (for /fhir/Patient)
-// encounterResourceMap – all Encounter resources keyed by encounter UUID
-// encountersByPatient  – encounter UUID[] keyed by patient UUID
+// patientListCache         – flat summary objects used by GET /api/patients (+ filters)
+// patientBundleMap         – full transaction Bundles keyed by patient UUID
+// patientResourceMap       – lean FHIR Patient resources keyed by UUID (for /fhir/Patient)
+// encounterResourceMap     – all Encounter resources keyed by encounter UUID
+// encountersByPatient      – encounter UUID[] keyed by patient UUID
+// docRefResourceMap        – all DocumentReference resources keyed by docRef UUID
+// docRefsByEncounter       – docRef UUID[] keyed by encounter UUID
+// conditionResourceMap     – all Condition resources keyed by UUID
+// conditionsByEncounter    – condition UUID[] keyed by encounter UUID
+// diagReportResourceMap    – all DiagnosticReport resources keyed by UUID
+// diagReportsByEncounter   – diagReport UUID[] keyed by encounter UUID
+// claimResourceMap         – all Claim resources keyed by UUID
+// claimsByEncounter        – claim UUID[] keyed by encounter UUID
+// eobResourceMap           – all ExplanationOfBenefit resources keyed by UUID
+// eobsByEncounter          – eob UUID[] keyed by encounter UUID (via claim link)
 let patientListCache = null;
 const patientBundleMap = new Map();
 const patientResourceMap = new Map();
 const encounterResourceMap = new Map();
 const encountersByPatient = new Map();
+const docRefResourceMap = new Map();
+const docRefsByEncounter = new Map();
+const conditionResourceMap = new Map();
+const conditionsByEncounter = new Map();
+const diagReportResourceMap = new Map();
+const diagReportsByEncounter = new Map();
+const claimResourceMap = new Map();
+const claimsByEncounter = new Map();
+const eobResourceMap = new Map();
+const eobsByEncounter = new Map();
 
 const loadPatients = async () => {
   const fhirDir = path.join(__dirname, "public/synthea/fhir");
@@ -70,6 +90,118 @@ const loadPatients = async () => {
           }
         });
         encountersByPatient.set(patientId, encounterIds);
+
+        // Index every DocumentReference resource from this bundle
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "DocumentReference" && r.id) {
+            docRefResourceMap.set(r.id, { ...r, _patientId: patientId });
+            // Associate with each encounter listed in context.encounter[]
+            const encRefs = r.context?.encounter ?? [];
+            encRefs.forEach((ref) => {
+              const encId = String(ref.reference ?? "").replace(
+                /^urn:uuid:/,
+                "",
+              );
+              if (encId) {
+                const existing = docRefsByEncounter.get(encId) ?? [];
+                existing.push(r.id);
+                docRefsByEncounter.set(encId, existing);
+              }
+            });
+          }
+        });
+
+        // Index every Condition (encounter ref in condition.encounter.reference)
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "Condition" && r.id) {
+            conditionResourceMap.set(r.id, { ...r, _patientId: patientId });
+            const encId = String(r.encounter?.reference ?? "").replace(
+              /^urn:uuid:/,
+              "",
+            );
+            if (encId) {
+              const existing = conditionsByEncounter.get(encId) ?? [];
+              existing.push(r.id);
+              conditionsByEncounter.set(encId, existing);
+            }
+          }
+        });
+
+        // Index every DiagnosticReport (encounter ref in report.encounter.reference)
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "DiagnosticReport" && r.id) {
+            diagReportResourceMap.set(r.id, { ...r, _patientId: patientId });
+            const encId = String(r.encounter?.reference ?? "").replace(
+              /^urn:uuid:/,
+              "",
+            );
+            if (encId) {
+              const existing = diagReportsByEncounter.get(encId) ?? [];
+              existing.push(r.id);
+              diagReportsByEncounter.set(encId, existing);
+            }
+          }
+        });
+
+        // Index every Claim (encounter ref buried in item[].encounter[].reference)
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "Claim" && r.id) {
+            claimResourceMap.set(r.id, { ...r, _patientId: patientId });
+            const encIds = new Set();
+            (r.item ?? []).forEach((item) => {
+              (item.encounter ?? []).forEach((ref) => {
+                const encId = String(ref.reference ?? "").replace(
+                  /^urn:uuid:/,
+                  "",
+                );
+                if (encId) encIds.add(encId);
+              });
+            });
+            encIds.forEach((encId) => {
+              const existing = claimsByEncounter.get(encId) ?? [];
+              existing.push(r.id);
+              claimsByEncounter.set(encId, existing);
+            });
+          }
+        });
+
+        // Index every ExplanationOfBenefit (links to encounter via EOB.claim → Claim → item[].encounter)
+        // We do a second pass after Claims are indexed for this bundle.
+        const bundleClaims = new Map();
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "Claim" && r.id) bundleClaims.set(r.id, r);
+        });
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "ExplanationOfBenefit" && r.id) {
+            eobResourceMap.set(r.id, { ...r, _patientId: patientId });
+            const claimId = String(r.claim?.reference ?? "").replace(
+              /^urn:uuid:/,
+              "",
+            );
+            const claim = bundleClaims.get(claimId);
+            const encIds = new Set();
+            (claim?.item ?? []).forEach((item) => {
+              (item.encounter ?? []).forEach((ref) => {
+                const encId = String(ref.reference ?? "").replace(
+                  /^urn:uuid:/,
+                  "",
+                );
+                if (encId) encIds.add(encId);
+              });
+            });
+            encIds.forEach((encId) => {
+              const existing = eobsByEncounter.get(encId) ?? [];
+              existing.push(r.id);
+              eobsByEncounter.set(encId, existing);
+            });
+          }
+        });
 
         // Build the flat summary for the list/search route
         const phone =
@@ -492,6 +624,302 @@ app.get("/fhir/Encounter/:id", (req, res) => {
   const resource = encounterResourceMap.get(req.params.id);
   if (!resource) return res.status(404).json({ error: "Encounter not found" });
 
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// GET /fhir/DocumentReference?encounter=<id>  – list docRefs for an encounter
+// GET /fhir/DocumentReference?patient=<id>    – list docRefs for a patient
+// GET /fhir/DocumentReference?_id=<id>        – specific docRef
+app.get("/fhir/DocumentReference", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = docRefsByEncounter.get(encId) ?? [];
+    results = ids.map((id) => docRefResourceMap.get(id)).filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...docRefResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = docRefResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...docRefResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const selfUrl = `${BASE_URL}/fhir/DocumentReference?${new URLSearchParams(req.query).toString()}`;
+
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [{ relation: "self", url: selfUrl }],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/DocumentReference/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+// GET /fhir/DocumentReference/:id  – single DocumentReference resource
+app.get("/fhir/DocumentReference/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const resource = docRefResourceMap.get(req.params.id);
+  if (!resource)
+    return res.status(404).json({ error: "DocumentReference not found" });
+
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// ── Condition ─────────────────────────────────────────────────────────────────
+// GET /fhir/Condition?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+app.get("/fhir/Condition", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = conditionsByEncounter.get(encId) ?? [];
+    results = ids.map((id) => conditionResourceMap.get(id)).filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...conditionResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = conditionResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...conditionResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      {
+        relation: "self",
+        url: `${BASE_URL}/fhir/Condition?${new URLSearchParams(req.query)}`,
+      },
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/Condition/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+app.get("/fhir/Condition/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+  const resource = conditionResourceMap.get(req.params.id);
+  if (!resource) return res.status(404).json({ error: "Condition not found" });
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// ── DiagnosticReport ──────────────────────────────────────────────────────────
+// GET /fhir/DiagnosticReport?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+app.get("/fhir/DiagnosticReport", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = diagReportsByEncounter.get(encId) ?? [];
+    results = ids.map((id) => diagReportResourceMap.get(id)).filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...diagReportResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = diagReportResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...diagReportResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      {
+        relation: "self",
+        url: `${BASE_URL}/fhir/DiagnosticReport?${new URLSearchParams(req.query)}`,
+      },
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/DiagnosticReport/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+app.get("/fhir/DiagnosticReport/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+  const resource = diagReportResourceMap.get(req.params.id);
+  if (!resource)
+    return res.status(404).json({ error: "DiagnosticReport not found" });
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// ── Claim ─────────────────────────────────────────────────────────────────────
+// GET /fhir/Claim?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+app.get("/fhir/Claim", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = claimsByEncounter.get(encId) ?? [];
+    results = ids.map((id) => claimResourceMap.get(id)).filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...claimResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = claimResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...claimResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      {
+        relation: "self",
+        url: `${BASE_URL}/fhir/Claim?${new URLSearchParams(req.query)}`,
+      },
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/Claim/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+app.get("/fhir/Claim/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+  const resource = claimResourceMap.get(req.params.id);
+  if (!resource) return res.status(404).json({ error: "Claim not found" });
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// ── ExplanationOfBenefit ──────────────────────────────────────────────────────
+// GET /fhir/ExplanationOfBenefit?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+app.get("/fhir/ExplanationOfBenefit", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = eobsByEncounter.get(encId) ?? [];
+    results = ids.map((id) => eobResourceMap.get(id)).filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...eobResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = eobResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...eobResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      {
+        relation: "self",
+        url: `${BASE_URL}/fhir/ExplanationOfBenefit?${new URLSearchParams(req.query)}`,
+      },
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/ExplanationOfBenefit/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+app.get("/fhir/ExplanationOfBenefit/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+  const resource = eobResourceMap.get(req.params.id);
+  if (!resource)
+    return res.status(404).json({ error: "ExplanationOfBenefit not found" });
   res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
   res.json(resource);
 });
