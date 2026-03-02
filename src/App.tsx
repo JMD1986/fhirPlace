@@ -8,6 +8,8 @@ import ConditionView from "./components/AdditionalResources/ConditionView";
 import DiagnosticReportView from "./components/AdditionalResources/DiagnosticReportView";
 import ClaimsView from "./components/AdditionalResources/ClaimsView";
 import EoBView from "./components/AdditionalResources/EoBView";
+import ImmunizationView from "./components/AdditionalResources/ImmunizationView";
+import ProcedureView from "./components/AdditionalResources/ProcedureView";
 import { AuthProvider } from "./context/AuthContext";
 import Box from "@mui/material/Box";
 
@@ -30,6 +32,8 @@ function App() {
             />
             <Route path="/claim/:id" element={<ClaimsView />} />
             <Route path="/explanation-of-benefit/:id" element={<EoBView />} />
+            <Route path="/immunization/:id" element={<ImmunizationView />} />
+            <Route path="/procedure/:id" element={<ProcedureView />} />
           </Routes>
         </Box>
       </BrowserRouter>
