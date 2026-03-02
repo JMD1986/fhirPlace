@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Select from "@mui/material/Select";
@@ -77,6 +78,7 @@ const statusColor = (
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function EncounterSearch() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useState({
     patient: "",
     status: "",
@@ -342,6 +344,7 @@ export default function EncounterSearch() {
                     "Date",
                     "Practitioner",
                     "Location",
+                    "",
                   ].map((h) => (
                     <TableCell key={h} sx={{ color: "white", fontWeight: 600 }}>
                       {h}
@@ -352,7 +355,7 @@ export default function EncounterSearch() {
               <TableBody>
                 {encounters.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                       {searched ? "No encounters found." : "Loading…"}
                     </TableCell>
                   </TableRow>
@@ -382,6 +385,15 @@ export default function EncounterSearch() {
                       <TableCell>{formatDate(enc.period?.start)}</TableCell>
                       <TableCell>{getPractitioner(enc)}</TableCell>
                       <TableCell>{getLocation(enc)}</TableCell>
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => navigate(`/encounter/${enc.id}`)}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

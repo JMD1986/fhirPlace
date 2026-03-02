@@ -2,6 +2,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import SearchContainer from "./components/MainSearch/SearchContainer";
 import PatientView from "./components/Patient/PatientView";
+import EncounterView from "./components/Encounter/EncounterView";
 import Box from "@mui/material/Box";
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
         <Routes>
           <Route path="/" element={<SearchContainer />} />
           <Route path="/patient/:id" element={<PatientViewWrapper />} />
+          <Route path="/encounter/:id" element={<EncounterView />} />
         </Routes>
       </Box>
     </BrowserRouter>
