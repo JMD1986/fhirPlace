@@ -13,7 +13,10 @@ import {
   TableHead,
   TableRow,
   Chip,
+  Skeleton,
+  Divider,
 } from "@mui/material";
+import ScienceIcon from "@mui/icons-material/Science";
 import {
   useParams,
   useNavigate,
@@ -25,6 +28,7 @@ import type {
   FhirCoding,
   DiagnosticReportResource,
 } from "./additionalResourceTypes";
+import { useNLMLoinc } from "../../hooks/useNLMClinicalTables";
 
 const fmt = (iso?: string) =>
   iso
@@ -62,6 +66,14 @@ export default function DiagnosticReportView({
   const [report, setReport] = useState<DiagnosticReportResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // NLM LOINC lookup — fires once report is loaded
+  const loincCode = report?.code?.coding?.find(
+    (c) => c.system === "http://loinc.org" || !c.system,
+  )?.code;
+  const reportFallbackName =
+    report?.code?.text ?? report?.code?.coding?.[0]?.display;
+  const nlmLoinc = useNLMLoinc(loincCode, reportFallbackName);
 
   useEffect(() => {
     if (!id) return;
@@ -245,6 +257,116 @@ export default function DiagnosticReportView({
           </Paper>
         </Box>
       )}
+
+      {/* ── NLM LOINC Panel ──────────────────────────────────────────────── */}
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <ScienceIcon color="primary" fontSize="small" />
+          <Typography variant="subtitle1" fontWeight={600}>
+            LOINC Panel Details
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            via NLM Clinical Tables
+          </Typography>
+        </Box>
+
+        {nlmLoinc.loading && (
+          <Box>
+            <Skeleton width="55%" sx={{ mb: 1 }} />
+            <Skeleton width="40%" sx={{ mb: 1 }} />
+            <Skeleton width="30%" />
+          </Box>
+        )}
+
+        {!nlmLoinc.loading && !nlmLoinc.component && (
+          <Typography variant="body2" color="text.secondary">
+            No LOINC details found for this report code.
+          </Typography>
+        )}
+
+        {!nlmLoinc.loading && nlmLoinc.component && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+            {/* LOINC number + full name */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "wrap",
+              }}
+            >
+              {nlmLoinc.loincNum && (
+                <Chip
+                  label={`LOINC ${nlmLoinc.loincNum}`}
+                  size="small"
+                  variant="outlined"
+                />
+              )}
+              <Typography variant="body1" fontWeight={500}>
+                {nlmLoinc.component}
+              </Typography>
+              {nlmLoinc.shortName &&
+                nlmLoinc.shortName !== nlmLoinc.component && (
+                  <Typography variant="body2" color="text.secondary">
+                    ({nlmLoinc.shortName})
+                  </Typography>
+                )}
+            </Box>
+
+            {/* Metadata chips row */}
+            {(nlmLoinc.orderObs ||
+              nlmLoinc.method ||
+              nlmLoinc.loincClass ||
+              nlmLoinc.exampleUnits) && (
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                {nlmLoinc.orderObs && (
+                  <Chip
+                    label={
+                      nlmLoinc.orderObs === "Both"
+                        ? "Order & Obs"
+                        : nlmLoinc.orderObs
+                    }
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+                {nlmLoinc.method && (
+                  <Chip
+                    label={`Method: ${nlmLoinc.method}`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+                {nlmLoinc.loincClass && (
+                  <Chip
+                    label={nlmLoinc.loincClass}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+                {nlmLoinc.exampleUnits && (
+                  <Chip
+                    label={`Units: ${nlmLoinc.exampleUnits}`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            )}
+
+            {/* Description */}
+            {nlmLoinc.description && (
+              <>
+                <Divider />
+                <Typography variant="body2" color="text.secondary">
+                  {nlmLoinc.description}
+                </Typography>
+              </>
+            )}
+          </Box>
+        )}
+      </Paper>
     </Box>
   );
 }

@@ -19,6 +19,9 @@ export interface NLMLoincInfo {
   shortName: string;       // e.g. "Heart rate"
   exampleUnits: string;    // e.g. "/min"
   description: string;     // long description (may be empty)
+  method: string;          // e.g. "Automated count"
+  orderObs: string;        // "Order" | "Observation" | "Both" | "Subset"
+  loincClass: string;      // e.g. "PANEL.HEMATOLOGY&COAGULATION"
   loading: boolean;
   error: string | null;
 }
@@ -136,6 +139,9 @@ export function useNLMLoinc(loincCode?: string, codeName?: string): NLMLoincInfo
     shortName: "",
     exampleUnits: "",
     description: "",
+    method: "",
+    orderObs: "",
+    loincClass: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +162,7 @@ export function useNLMLoinc(loincCode?: string, codeName?: string): NLMLoincInfo
         const url =
           `${BASE}/loinc_items/v3/search` +
           `?terms=${encodeURIComponent(searchTerm)}` +
-          `&df=LOINC_NUM,COMPONENT,SHORTNAME,EXAMPLE_UCUM_UNITS,DefinitionDescription` +
+          `&df=LOINC_NUM,COMPONENT,SHORTNAME,EXAMPLE_UCUM_UNITS,DefinitionDescription,METHOD_TYP,ORDER_OBS,CLASS` +
           `&maxList=1` +
           sfParam;
 
@@ -168,12 +174,12 @@ export function useNLMLoinc(loincCode?: string, codeName?: string): NLMLoincInfo
 
         if (!rows || rows.length === 0) {
           if (!cancelled) {
-            setData({ loincNum: "", component: "", shortName: "", exampleUnits: "", description: "" });
+            setData({ loincNum: "", component: "", shortName: "", exampleUnits: "", description: "", method: "", orderObs: "", loincClass: "" });
           }
           return;
         }
 
-        const [lNum = "", comp = "", short = "", units = "", def = ""] = rows[0];
+        const [lNum = "", comp = "", short = "", units = "", def = "", method = "", orderObs = "", loincClass = ""] = rows[0];
 
         if (!cancelled) {
           setData({
@@ -182,6 +188,9 @@ export function useNLMLoinc(loincCode?: string, codeName?: string): NLMLoincInfo
             shortName: short,
             exampleUnits: units,
             description: def,
+            method,
+            orderObs,
+            loincClass,
           });
         }
       } catch (e) {
