@@ -426,8 +426,10 @@ function ResourceListView({
   const [obsGroups, setObsGroups] = useState<Map<string, ObsGroup>>(new Map());
   const [chartTarget, setChartTarget] = useState<ObsGroup | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const isObservations = group.config.resourceType === "Observation";
+  const hasInlineView = group.config.resourceType in INLINE_VIEWS;
 
   // Fetch & build observation groups once when viewing the Observations list
   useEffect(() => {
@@ -566,7 +568,11 @@ function ResourceListView({
                         <Button
                           size="small"
                           variant="text"
-                          onClick={() => setSelectedItemId(item.id)}
+                          onClick={() =>
+                            hasInlineView
+                              ? setSelectedItemId(item.id)
+                              : navigate(`${group.config.viewPath}/${item.id}`)
+                          }
                         >
                           View
                         </Button>
