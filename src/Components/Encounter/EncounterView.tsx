@@ -12,14 +12,20 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Chip,
   Divider,
   Link as MuiLink,
+  TextField,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import BusinessIcon from "@mui/icons-material/Business";
 import BadgeIcon from "@mui/icons-material/Badge";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 import {
   useNPPESPractitioner,
   useNPPESOrg,
@@ -110,9 +116,13 @@ function NPPESResultCard({ result }: { result: NPPESResult }) {
       ]
         .filter(Boolean)
         .join(" ");
-  const credential = !isOrg && result.basic.credential ? `, ${result.basic.credential}` : "";
-  const primaryTax = result.taxonomies.find((t) => t.primary) ?? result.taxonomies[0];
-  const locAddr = result.addresses.find((a) => a.address_purpose === "LOCATION") ?? result.addresses[0];
+  const credential =
+    !isOrg && result.basic.credential ? `, ${result.basic.credential}` : "";
+  const primaryTax =
+    result.taxonomies.find((t) => t.primary) ?? result.taxonomies[0];
+  const locAddr =
+    result.addresses.find((a) => a.address_purpose === "LOCATION") ??
+    result.addresses[0];
   const npiUrl = `https://npiregistry.cms.hhs.gov/provider-view/${result.number}`;
 
   return (
@@ -130,14 +140,23 @@ function NPPESResultCard({ result }: { result: NPPESResult }) {
         {isOrg ? (
           <BusinessIcon fontSize="small" color="primary" sx={{ mt: 0.2 }} />
         ) : (
-          <LocalHospitalIcon fontSize="small" color="primary" sx={{ mt: 0.2 }} />
+          <LocalHospitalIcon
+            fontSize="small"
+            color="primary"
+            sx={{ mt: 0.2 }}
+          />
         )}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="body2" fontWeight={600}>
-            {name}{credential}
+            {name}
+            {credential}
           </Typography>
           {primaryTax && (
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              display="block"
+            >
               {primaryTax.desc}
             </Typography>
           )}
@@ -152,9 +171,15 @@ function NPPESResultCard({ result }: { result: NPPESResult }) {
       </Box>
 
       {locAddr && (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ pl: 3.5, mb: 0.5 }}>
-          {locAddr.address_1}{locAddr.address_2 ? `, ${locAddr.address_2}` : ""},{" "}
-          {locAddr.city}, {locAddr.state} {locAddr.postal_code}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          display="block"
+          sx={{ pl: 3.5, mb: 0.5 }}
+        >
+          {locAddr.address_1}
+          {locAddr.address_2 ? `, ${locAddr.address_2}` : ""}, {locAddr.city},{" "}
+          {locAddr.state} {locAddr.postal_code}
           {locAddr.telephone_number ? ` · ${locAddr.telephone_number}` : ""}
         </Typography>
       )}
@@ -191,7 +216,11 @@ function NPPESPanel({
   orgName,
   state,
 }: NPPESPanelProps) {
-  const practitioner = useNPPESPractitioner(practitionerNpi, practitionerDisplay, state);
+  const practitioner = useNPPESPractitioner(
+    practitionerNpi,
+    practitionerDisplay,
+    state,
+  );
   const org = useNPPESOrg(orgNpi, orgName, state);
 
   const hasAny =
@@ -217,22 +246,38 @@ function NPPESPanel({
       </Typography>
 
       {/* Practitioner section */}
-      {(practitioner.loading || practitioner.results.length > 0 || practitioner.error) && (
+      {(practitioner.loading ||
+        practitioner.results.length > 0 ||
+        practitioner.error) && (
         <Box sx={{ mb: org.results.length > 0 || org.loading ? 2 : 0 }}>
-          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.75 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            display="block"
+            sx={{ mb: 0.75 }}
+          >
             PRACTITIONER
             {practitioner.searchedBy === "name" && (
-              <Chip label="name search" size="small" sx={{ ml: 1, height: 16, fontSize: "0.6rem" }} />
+              <Chip
+                label="name search"
+                size="small"
+                sx={{ ml: 1, height: 16, fontSize: "0.6rem" }}
+              />
             )}
           </Typography>
           {practitioner.loading && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={14} />
-              <Typography variant="caption" color="text.secondary">Searching NPPES…</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Searching NPPES…
+              </Typography>
             </Box>
           )}
           {practitioner.error && (
-            <Typography variant="caption" color="error">{practitioner.error}</Typography>
+            <Typography variant="caption" color="error">
+              {practitioner.error}
+            </Typography>
           )}
           {practitioner.results.map((r) => (
             <NPPESResultCard key={r.number} result={r} />
@@ -242,27 +287,39 @@ function NPPESPanel({
 
       {/* Divider between sections when both have results */}
       {(practitioner.results.length > 0 || practitioner.loading) &&
-        (org.results.length > 0 || org.loading) && (
-          <Divider sx={{ my: 1.5 }} />
-        )}
+        (org.results.length > 0 || org.loading) && <Divider sx={{ my: 1.5 }} />}
 
       {/* Organization section */}
       {(org.loading || org.results.length > 0 || org.error) && (
         <Box>
-          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.75 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={600}
+            display="block"
+            sx={{ mb: 0.75 }}
+          >
             FACILITY / ORGANIZATION
             {org.searchedBy === "name" && (
-              <Chip label="name search" size="small" sx={{ ml: 1, height: 16, fontSize: "0.6rem" }} />
+              <Chip
+                label="name search"
+                size="small"
+                sx={{ ml: 1, height: 16, fontSize: "0.6rem" }}
+              />
             )}
           </Typography>
           {org.loading && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={14} />
-              <Typography variant="caption" color="text.secondary">Searching NPPES…</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Searching NPPES…
+              </Typography>
             </Box>
           )}
           {org.error && (
-            <Typography variant="caption" color="error">{org.error}</Typography>
+            <Typography variant="caption" color="error">
+              {org.error}
+            </Typography>
           )}
           {org.results.map((r) => (
             <NPPESResultCard key={r.number} result={r} />
@@ -296,7 +353,52 @@ function ResourceListView({
   patientId,
   onBack,
 }: ResourceListViewProps) {
+  const PAGE_SIZE = 15;
+  const [page, setPage] = useState(0);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const { config, items } = group;
+
+  // ── Client-side filtering ──────────────────────────────────────────────────
+  const filteredItems = items.filter((item) => {
+    const label = config.getLabel(item).toLowerCase();
+    const rawDate = config.getDate(item);
+    const itemDate = rawDate ? new Date(rawDate) : null;
+
+    if (search && !label.includes(search.toLowerCase())) return false;
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      if (!itemDate || itemDate < from) return false;
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      if (!itemDate || itemDate > to) return false;
+    }
+    return true;
+  });
+
+  const hasFilters = search !== "" || dateFrom !== "" || dateTo !== "";
+  const clearFilters = () => {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(0);
+  };
+
+  // Clamp page to valid range when filters shrink the result set
+  const safePage =
+    filteredItems.length === 0
+      ? 0
+      : Math.min(page, Math.floor((filteredItems.length - 1) / PAGE_SIZE));
+
+  const pageItems = filteredItems.slice(
+    safePage * PAGE_SIZE,
+    safePage * PAGE_SIZE + PAGE_SIZE,
+  );
+
   return (
     <Box>
       {/* Header */}
@@ -317,8 +419,77 @@ function ResourceListView({
             {config.label}
           </Typography>
           <Chip label={items.length} size="small" sx={{ ml: 0.5 }} />
+          {hasFilters && (
+            <Chip
+              label={`${filteredItems.length} shown`}
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ ml: 0.5 }}
+            />
+          )}
         </Box>
       </Box>
+
+      {/* ── Filter bar ── */}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1.5,
+          mb: 2,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 1.5,
+          alignItems: "center",
+        }}
+      >
+        <TextField
+          size="small"
+          placeholder="Search by name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ flex: "1 1 180px", minWidth: 160 }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: search ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearch("")}>
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            },
+          }}
+        />
+        <TextField
+          size="small"
+          label="From"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          sx={{ width: 155 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          size="small"
+          label="To"
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          sx={{ width: 155 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {hasFilters && (
+          <Button size="small" variant="text" onClick={clearFilters}>
+            Clear
+          </Button>
+        )}
+      </Paper>
 
       {/* List */}
       <TableContainer component={Paper} variant="outlined">
@@ -335,35 +506,55 @@ function ResourceListView({
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.map((item) => {
-              const label = config.getLabel(item);
-              const date = fmtDate(config.getDate(item));
-              const href = `${config.viewPath}/${item.id}?encounterId=${encounterId}${patientId ? `&patientId=${patientId}` : ""}`;
-              return (
-                <TableRow key={item.id} hover>
-                  <TableCell>
-                    <Typography variant="body2">{label}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {date}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      component={Link}
-                      to={href}
-                      size="small"
-                      variant="text"
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {filteredItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                  {hasFilters
+                    ? "No results match your filters."
+                    : `No ${config.label.toLowerCase()} found.`}
+                </TableCell>
+              </TableRow>
+            ) : (
+              pageItems.map((item) => {
+                const label = config.getLabel(item);
+                const date = fmtDate(config.getDate(item));
+                const href = `${config.viewPath}/${item.id}?encounterId=${encounterId}${patientId ? `&patientId=${patientId}` : ""}`;
+                return (
+                  <TableRow key={item.id} hover>
+                    <TableCell>
+                      <Typography variant="body2">{label}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {date}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        component={Link}
+                        to={href}
+                        size="small"
+                        variant="text"
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
+        {filteredItems.length > PAGE_SIZE && (
+          <TablePagination
+            component="div"
+            count={filteredItems.length}
+            page={safePage}
+            onPageChange={(_e, newPage) => setPage(newPage)}
+            rowsPerPage={PAGE_SIZE}
+            rowsPerPageOptions={[PAGE_SIZE]}
+          />
+        )}
       </TableContainer>
     </Box>
   );
@@ -443,7 +634,10 @@ export default function EncounterView() {
 
   // For org NPI, Synthea doesn't put NPI in the serviceProvider reference in a
   // standard us-npi format, so we pass null and rely on name search
-  const orgDisplay = encounter.serviceProvider?.display ?? encounter.location?.[0]?.location?.display ?? null;
+  const orgDisplay =
+    encounter.serviceProvider?.display ??
+    encounter.location?.[0]?.location?.display ??
+    null;
 
   const mainRows = [
     { label: "Encounter ID", value: encounter.id, mono: true },

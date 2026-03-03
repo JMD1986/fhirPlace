@@ -16,9 +16,14 @@ import {
   Chip,
   ToggleButton,
   ToggleButtonGroup,
+  TextField,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PersonIcon from "@mui/icons-material/Person";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
 import type { PatientResource, FhirExtension } from "./patientTypes";
@@ -426,6 +431,9 @@ function ResourceListView({
   const [obsGroups, setObsGroups] = useState<Map<string, ObsGroup>>(new Map());
   const [chartTarget, setChartTarget] = useState<ObsGroup | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const navigate = useNavigate();
 
   const isObservations = group.config.resourceType === "Observation";
@@ -462,7 +470,44 @@ function ResourceListView({
   }, [isObservations, patientId]);
 
   const { config, items } = group;
-  const pageItems = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  // ── Client-side filtering ──────────────────────────────────────────────────
+  const filteredItems = items.filter((item) => {
+    const label = config.getLabel(item).toLowerCase();
+    const rawDate = config.getDate(item);
+    const itemDate = rawDate ? new Date(rawDate) : null;
+
+    if (search && !label.includes(search.toLowerCase())) return false;
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      if (!itemDate || itemDate < from) return false;
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      if (!itemDate || itemDate > to) return false;
+    }
+    return true;
+  });
+
+  const hasFilters = search !== "" || dateFrom !== "" || dateTo !== "";
+  const clearFilters = () => {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(0);
+  };
+
+  // Clamp page to valid range when filters shrink the result set
+  const safePage =
+    filteredItems.length === 0
+      ? 0
+      : Math.min(page, Math.floor((filteredItems.length - 1) / PAGE_SIZE));
+
+  const pageItems = filteredItems.slice(
+    safePage * PAGE_SIZE,
+    safePage * PAGE_SIZE + PAGE_SIZE,
+  );
 
   // ── Inline detail panel ───────────────────────────────────────────────────
   const InlineView = selectedItemId ? INLINE_VIEWS[config.resourceType] : null;
@@ -496,8 +541,77 @@ function ResourceListView({
             {config.label}
           </Typography>
           <Chip label={items.length} size="small" sx={{ ml: 0.5 }} />
+          {hasFilters && (
+            <Chip
+              label={`${filteredItems.length} shown`}
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ ml: 0.5 }}
+            />
+          )}
         </Box>
       </Box>
+
+      {/* ── Filter bar ── */}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1.5,
+          mb: 2,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 1.5,
+          alignItems: "center",
+        }}
+      >
+        <TextField
+          size="small"
+          placeholder="Search by name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ flex: "1 1 180px", minWidth: 160 }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: search ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearch("")}>
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            },
+          }}
+        />
+        <TextField
+          size="small"
+          label="From"
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          sx={{ width: 155 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          size="small"
+          label="To"
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          sx={{ width: 155 }}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {hasFilters && (
+          <Button size="small" variant="text" onClick={clearFilters}>
+            Clear
+          </Button>
+        )}
+      </Paper>
 
       {/* List */}
       <TableContainer component={Paper} variant="outlined">
@@ -520,10 +634,12 @@ function ResourceListView({
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.length === 0 ? (
+            {filteredItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
-                  No {config.label.toLowerCase()} found.
+                  {hasFilters
+                    ? "No results match your filters."
+                    : `No ${config.label.toLowerCase()} found.`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -584,11 +700,11 @@ function ResourceListView({
             )}
           </TableBody>
         </Table>
-        {items.length > PAGE_SIZE && (
+        {filteredItems.length > PAGE_SIZE && (
           <TablePagination
             component="div"
-            count={items.length}
-            page={page}
+            count={filteredItems.length}
+            page={safePage}
             onPageChange={(_e, newPage) => setPage(newPage)}
             rowsPerPage={PAGE_SIZE}
             rowsPerPageOptions={[PAGE_SIZE]}
