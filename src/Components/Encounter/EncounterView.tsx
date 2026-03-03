@@ -13,13 +13,48 @@ import {
   TableHead,
   TableRow,
   Chip,
+  Divider,
+  Link as MuiLink,
 } from "@mui/material";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
+import BusinessIcon from "@mui/icons-material/Business";
+import BadgeIcon from "@mui/icons-material/Badge";
+import {
+  useNPPESPractitioner,
+  useNPPESOrg,
+  extractNPIFromReference,
+} from "../../hooks/useNPPES";
+import type { NPPESResult } from "../../hooks/useNPPES";
 import Grid from "@mui/material/Grid";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import AdditionalResourcesPanel from "../AdditionalResources/AdditionalResourcesPanel";
 import type { ResourceGroup } from "../AdditionalResources/AdditionalResourcesPanel";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+interface EncounterResource {
+  id: string;
+  status?: string;
+  class?: { code?: string };
+  type?: Array<{ text?: string; coding?: Array<{ display?: string }> }>;
+  subject?: { reference?: string; display?: string };
+  _patientId?: string;
+  period?: { start?: string; end?: string };
+  participant?: Array<{
+    type?: Array<{ text?: string }>;
+    period?: { start?: string; end?: string };
+    individual?: { reference?: string; display?: string };
+  }>;
+  serviceProvider?: { reference?: string; display?: string };
+  location?: Array<{ location?: { reference?: string; display?: string } }>;
+  diagnosis?: Array<{
+    condition?: { reference?: string; display?: string };
+    role?: { text?: string };
+    rank?: number;
+  }>;
+  reason?: Array<{ text?: string; coding?: Array<{ display?: string }> }>;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const stripNums = (s: string) => s.replace(/\d+/g, "").trim();
@@ -62,6 +97,181 @@ const cleanDisplay = (s?: string) =>
         .filter(Boolean)
         .join(" ")
     : "—";
+
+// ── NPPES Result Card ──────────────────────────────────────────────────────────
+function NPPESResultCard({ result }: { result: NPPESResult }) {
+  const isOrg = result.enumeration_type === "NPI-2";
+  const name = isOrg
+    ? (result.basic.organization_name ?? "—")
+    : [
+        result.basic.first_name,
+        result.basic.middle_name,
+        result.basic.last_name,
+      ]
+        .filter(Boolean)
+        .join(" ");
+  const credential = !isOrg && result.basic.credential ? `, ${result.basic.credential}` : "";
+  const primaryTax = result.taxonomies.find((t) => t.primary) ?? result.taxonomies[0];
+  const locAddr = result.addresses.find((a) => a.address_purpose === "LOCATION") ?? result.addresses[0];
+  const npiUrl = `https://npiregistry.cms.hhs.gov/provider-view/${result.number}`;
+
+  return (
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        p: 1.5,
+        mb: 1,
+        "&:last-child": { mb: 0 },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1, mb: 0.75 }}>
+        {isOrg ? (
+          <BusinessIcon fontSize="small" color="primary" sx={{ mt: 0.2 }} />
+        ) : (
+          <LocalHospitalIcon fontSize="small" color="primary" sx={{ mt: 0.2 }} />
+        )}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="body2" fontWeight={600}>
+            {name}{credential}
+          </Typography>
+          {primaryTax && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              {primaryTax.desc}
+            </Typography>
+          )}
+        </Box>
+        <Chip
+          icon={<BadgeIcon sx={{ fontSize: "0.75rem !important" }} />}
+          label={result.number}
+          size="small"
+          variant="outlined"
+          sx={{ fontFamily: "monospace", fontSize: "0.7rem", height: 20 }}
+        />
+      </Box>
+
+      {locAddr && (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ pl: 3.5, mb: 0.5 }}>
+          {locAddr.address_1}{locAddr.address_2 ? `, ${locAddr.address_2}` : ""},{" "}
+          {locAddr.city}, {locAddr.state} {locAddr.postal_code}
+          {locAddr.telephone_number ? ` · ${locAddr.telephone_number}` : ""}
+        </Typography>
+      )}
+
+      <Box sx={{ pl: 3.5 }}>
+        <MuiLink
+          href={npiUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="caption"
+          sx={{ display: "inline-flex", alignItems: "center", gap: 0.25 }}
+        >
+          View on NPPES
+          <OpenInNewIcon sx={{ fontSize: "0.7rem" }} />
+        </MuiLink>
+      </Box>
+    </Box>
+  );
+}
+
+// ── NPPES Panel ─────────────────────────────────────────────────────────────────
+interface NPPESPanelProps {
+  practitionerNpi?: string | null;
+  practitionerDisplay?: string | null;
+  orgNpi?: string | null;
+  orgName?: string | null;
+  state?: string | null;
+}
+
+function NPPESPanel({
+  practitionerNpi,
+  practitionerDisplay,
+  orgNpi,
+  orgName,
+  state,
+}: NPPESPanelProps) {
+  const practitioner = useNPPESPractitioner(practitionerNpi, practitionerDisplay, state);
+  const org = useNPPESOrg(orgNpi, orgName, state);
+
+  const hasAny =
+    practitioner.results.length > 0 ||
+    org.results.length > 0 ||
+    practitioner.loading ||
+    org.loading ||
+    practitioner.error ||
+    org.error;
+
+  if (!hasAny) return null;
+
+  return (
+    <Paper variant="outlined" sx={{ mb: 3, p: 2 }}>
+      <Typography
+        variant="subtitle2"
+        fontWeight={700}
+        gutterBottom
+        sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 1.5 }}
+      >
+        <BadgeIcon fontSize="small" color="primary" />
+        NPPES Provider Registry
+      </Typography>
+
+      {/* Practitioner section */}
+      {(practitioner.loading || practitioner.results.length > 0 || practitioner.error) && (
+        <Box sx={{ mb: org.results.length > 0 || org.loading ? 2 : 0 }}>
+          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.75 }}>
+            PRACTITIONER
+            {practitioner.searchedBy === "name" && (
+              <Chip label="name search" size="small" sx={{ ml: 1, height: 16, fontSize: "0.6rem" }} />
+            )}
+          </Typography>
+          {practitioner.loading && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CircularProgress size={14} />
+              <Typography variant="caption" color="text.secondary">Searching NPPES…</Typography>
+            </Box>
+          )}
+          {practitioner.error && (
+            <Typography variant="caption" color="error">{practitioner.error}</Typography>
+          )}
+          {practitioner.results.map((r) => (
+            <NPPESResultCard key={r.number} result={r} />
+          ))}
+        </Box>
+      )}
+
+      {/* Divider between sections when both have results */}
+      {(practitioner.results.length > 0 || practitioner.loading) &&
+        (org.results.length > 0 || org.loading) && (
+          <Divider sx={{ my: 1.5 }} />
+        )}
+
+      {/* Organization section */}
+      {(org.loading || org.results.length > 0 || org.error) && (
+        <Box>
+          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.75 }}>
+            FACILITY / ORGANIZATION
+            {org.searchedBy === "name" && (
+              <Chip label="name search" size="small" sx={{ ml: 1, height: 16, fontSize: "0.6rem" }} />
+            )}
+          </Typography>
+          {org.loading && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <CircularProgress size={14} />
+              <Typography variant="caption" color="text.secondary">Searching NPPES…</Typography>
+            </Box>
+          )}
+          {org.error && (
+            <Typography variant="caption" color="error">{org.error}</Typography>
+          )}
+          {org.results.map((r) => (
+            <NPPESResultCard key={r.number} result={r} />
+          ))}
+        </Box>
+      )}
+    </Paper>
+  );
+}
 
 // ── Resource List Sub-view ─────────────────────────────────────────────────────
 const fmtDate = (iso?: string | null) =>
@@ -224,6 +434,16 @@ export default function EncounterView() {
   const patientId =
     encounter._patientId ??
     encounter.subject?.reference?.replace(/^urn:uuid:/, "");
+
+  // ── NPPES data extraction ──
+  const primaryParticipant = encounter.participant?.[0];
+  const practitionerRef = primaryParticipant?.individual?.reference;
+  const practitionerDisplay = primaryParticipant?.individual?.display ?? null;
+  const practitionerNpi = extractNPIFromReference(practitionerRef);
+
+  // For org NPI, Synthea doesn't put NPI in the serviceProvider reference in a
+  // standard us-npi format, so we pass null and rely on name search
+  const orgDisplay = encounter.serviceProvider?.display ?? encounter.location?.[0]?.location?.display ?? null;
 
   const mainRows = [
     { label: "Encounter ID", value: encounter.id, mono: true },
@@ -453,8 +673,13 @@ export default function EncounterView() {
                 </Box>
               )}
 
-              {/* ── Reasons ── */}
-              {/* reason is shown in main details table */}
+              {/* ── NPPES Provider Registry ── */}
+              <NPPESPanel
+                practitionerNpi={practitionerNpi}
+                practitionerDisplay={practitionerDisplay}
+                orgNpi={null}
+                orgName={orgDisplay}
+              />
             </Box>
           )}
         </Grid>
