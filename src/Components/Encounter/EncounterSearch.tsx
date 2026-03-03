@@ -13,10 +13,15 @@ import SearchIcon from "@mui/icons-material/Search";
 import Autocomplete from "@mui/material/Autocomplete";
 import EncounterSearchResults from "./EncounterSearchResults";
 import type { FhirEncounter } from "./encounterTypes";
+import SavedSearchBar from "../MainSearch/SavedSearchBar";
+import { useSavedSearches } from "../../hooks/useSavedSearches";
+import type { EncounterSearchParams } from "../../hooks/useSavedSearches";
+import { useAuth } from "../../context/AuthContext";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function EncounterSearch() {
-  const [searchParams, setSearchParams] = useState({
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useState<EncounterSearchParams>({
     patient: "",
     status: "",
     classCode: "",
@@ -25,6 +30,11 @@ export default function EncounterSearch() {
     dateTo: "",
     reason: "",
   });
+
+  const { searches, save, remove, rename, MAX_SAVED } = useSavedSearches(
+    "encounter",
+    user?.email,
+  );
   const [encounters, setEncounters] = useState<FhirEncounter[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +162,7 @@ export default function EncounterSearch() {
       dateFrom: "",
       dateTo: "",
       reason: "",
-    });
+    } satisfies EncounterSearchParams);
     setSearched(false);
     setEncounters([]);
     setTotal(null);
@@ -162,6 +172,18 @@ export default function EncounterSearch() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {/* ── Saved searches ── */}
+      <SavedSearchBar
+        searches={searches}
+        maxSaved={MAX_SAVED}
+        currentParams={searchParams}
+        onLoad={(params) => {
+          setSearchParams(params as EncounterSearchParams);
+        }}
+        onSave={save}
+        onDelete={remove}
+        onRename={rename}
+      />
       {/* ── Search Form ── */}
       <Box component="form" onSubmit={handleSearch} noValidate>
         <Grid container spacing={2}>

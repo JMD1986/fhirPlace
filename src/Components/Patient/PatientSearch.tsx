@@ -8,9 +8,14 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import SearchResults from "./SearchResults";
 import type { Patient } from "./patientTypes";
+import SavedSearchBar from "../MainSearch/SavedSearchBar";
+import { useSavedSearches } from "../../hooks/useSavedSearches";
+import type { PatientSearchParams } from "../../hooks/useSavedSearches";
+import { useAuth } from "../../context/AuthContext";
 
 export default function PatientSearch() {
-  const [searchParams, setSearchParams] = useState({
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useState<PatientSearchParams>({
     name: "",
     familyName: "",
     givenName: "",
@@ -19,6 +24,11 @@ export default function PatientSearch() {
     phone: "",
     address: "",
   });
+
+  const { searches, save, remove, rename, MAX_SAVED } = useSavedSearches(
+    "patient",
+    user?.email,
+  );
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +102,7 @@ export default function PatientSearch() {
       birthDate: "",
       phone: "",
       address: "",
-    });
+    } satisfies PatientSearchParams);
     setFilteredPatients([]);
     setTotal(null);
     setSearched(false);
@@ -102,6 +112,16 @@ export default function PatientSearch() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {/* ── Saved searches ── */}
+      <SavedSearchBar
+        searches={searches}
+        maxSaved={MAX_SAVED}
+        currentParams={searchParams}
+        onLoad={(params) => setSearchParams(params as PatientSearchParams)}
+        onSave={save}
+        onDelete={remove}
+        onRename={rename}
+      />
       <Box component="form" onSubmit={handleSearch} noValidate>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}>
