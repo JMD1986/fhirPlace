@@ -5,19 +5,10 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import {
-  Container,
-  MenuItem,
-  Paper,
-  Menu,
-  Tooltip,
-  Box,
-  Chip,
-} from "@mui/material";
-import SearchBar from "./SearchBar"; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { MenuItem, Paper, Menu, Tooltip, Box, Chip } from "@mui/material";
 import { useState } from "react";
-import EncounterSearch from "./EncounterSearch";
-import PatientSearch from "./PatientSearch";
+import EncounterSearch from "../Encounter/EncounterSearch";
+import PatientSearch from "../Patient/PatientSearch";
 import LoginSignupDialog from "../Auth/LoginSignupDialog";
 import { useAuth } from "../../context/AuthContext";
 
@@ -134,26 +125,12 @@ export default function SearchContainer() {
         </Toolbar>
       </AppBar>
       <LoginSignupDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-      <Container maxWidth="lg">
-        <Paper elevation={0} sx={{ mt: 4, p: 3, backgroundColor: "#f5f5f5" }}>
+      <Box sx={{ width: "100%", mt: 4, px: 3 }}>
+        <Paper elevation={0} sx={{ p: 3, backgroundColor: "#f5f5f5" }}>
           {displayPatientSearch && <PatientSearch />}
           {displayEncounterSearch && <EncounterSearch />}
         </Paper>
-      </Container>
+      </Box>
     </>
   );
 }
-
-//   return (
-//     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-//       <Typography variant="h5" component="h2" sx={{ fontWeight: 600, mb: 1 }} onClick={() => setSearchType("patient")}>
-//         Search Patients
-//       </Typography>
-//       {searchType === "patient" && <PatientSearch />}
-//       <Typography variant="h5" component="h2" sx={{ fontWeight: 600, mb: 1 }} onClick={() => setSearchType("encounter")}>
-//         Search Encounters
-//       </Typography>
-//       {searchType === "encounter" && <EncounterSearchBar />}
-//     </Box>
-//   );
-// }

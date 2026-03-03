@@ -12,43 +12,16 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
+  Chip,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
-
-interface PatientResource {
-  id: string;
-  resourceType: string;
-  name?: Array<{
-    use?: string;
-    family?: string;
-    given?: string[];
-    prefix?: string[];
-    text?: string;
-  }>;
-  gender?: string;
-  birthDate?: string;
-  telecom?: Array<{ system?: string; value?: string; use?: string }>;
-  address?: Array<{
-    line?: string[];
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-  }>;
-  maritalStatus?: { text?: string };
-  identifier?: Array<{
-    type?: { text?: string };
-    value?: string;
-    system?: string;
-  }>;
-  extension?: any[];
-  communication?: Array<{
-    language?: { text?: string };
-  }>;
-  [key: string]: unknown;
-}
-
-import { useParams, useNavigate } from "react-router-dom";
+import type { PatientResource } from "./patientTypes";
+import PatientEncountersPanel, {
+  type ResourceGroup,
+} from "./PatientEncountersPanel";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
 interface PatientViewProps {
   /** identifier used to fetch the patient from the API */
@@ -62,6 +35,8 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   const [patient, setPatient] = useState<PatientResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedResource, setSelectedResource] =
+    useState<ResourceGroup | null>(null);
 
   // Helper function to extract Patient resource from FHIR Bundle
   const extractPatientFromBundle = (data: any): PatientResource | null => {
@@ -265,62 +240,191 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
       value: getIdentifier(patient.identifier, "Medical Record Number"),
     },
   ];
-  const getName = (patientName: string) => {
-    const parts = patientName.split("_");
-    if (parts.length < 2) return patientName;
-
-    const firstName = parts[0].replace(/\d+/g, "");
-    const lastName = parts[1].replace(/\d+/g, "");
-
-    return `${firstName} ${lastName}`;
-  };
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Avatar size={300} />
-
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        {displayName}
-      </Typography>
-
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }}>
-          <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 600, width: "25%" }}>
-                Property
-              </TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Value</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {tableRows.map((row, index) => (
-              <TableRow key={index} hover>
-                <TableCell sx={{ fontWeight: 500, color: "text.secondary" }}>
-                  {row.label}
-                </TableCell>
-                <TableCell>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily:
-                        row.label.includes("ID") ||
-                        row.label.includes("Number") ||
-                        row.label.includes("License")
-                          ? "monospace"
-                          : "inherit",
-                    }}
-                  >
-                    {row.value}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
       <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
         &larr; Back to search
       </Button>
+
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+        <Avatar size={80} name={displayName} />
+        <Typography variant="h4" fontWeight={600}>
+          {displayName}
+        </Typography>
+      </Box>
+
+      <Grid container spacing={3} alignItems="flex-start">
+        {/* ── Sidebar ── */}
+        <Grid size={{ xs: 12, md: 4 }}>
+          <PatientEncountersPanel
+            patientId={patientId}
+            onSelectResource={setSelectedResource}
+          />
+        </Grid>
+
+        {/* ── Main content: resource list or patient details ── */}
+        <Grid size={{ xs: 12, md: 8 }}>
+          {selectedResource ? (
+            <ResourceListView
+              key={selectedResource.config.resourceType}
+              group={selectedResource}
+              patientId={patientId}
+              onBack={() => setSelectedResource(null)}
+            />
+          ) : (
+            <TableContainer component={Paper}>
+              <Table sx={{ minWidth: 500 }}>
+                <TableHead sx={{ backgroundColor: "primary.main" }}>
+                  <TableRow>
+                    <TableCell
+                      sx={{ fontWeight: 600, width: "28%", color: "white" }}
+                    >
+                      Property
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "white" }}>
+                      Value
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tableRows.map((row, index) => (
+                    <TableRow key={index} hover>
+                      <TableCell
+                        sx={{ fontWeight: 500, color: "text.secondary" }}
+                      >
+                        {row.label}
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontFamily:
+                              row.label.includes("ID") ||
+                              row.label.includes("Number") ||
+                              row.label.includes("License")
+                                ? "monospace"
+                                : "inherit",
+                          }}
+                        >
+                          {row.value}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
+// ── Resource list sub-view (mirrors EncounterView's ResourceListView) ──────────
+const fmtDate = (iso?: string | null) =>
+  iso
+    ? new Date(iso).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
+
+function ResourceListView({
+  group,
+  patientId,
+  onBack,
+}: {
+  group: ResourceGroup;
+  patientId: string;
+  onBack: () => void;
+}) {
+  const PAGE_SIZE = 15;
+  const [page, setPage] = useState(0);
+
+  const { config, items } = group;
+  const pageItems = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+        <Button size="small" variant="outlined" onClick={onBack}>
+          ← Back to Patient
+        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, ml: 1 }}>
+          {config.icon}
+          <Typography variant="h6" fontWeight={600}>
+            {config.label}
+          </Typography>
+          <Chip label={items.length} size="small" sx={{ ml: 0.5 }} />
+        </Box>
+      </Box>
+
+      {/* List */}
+      <TableContainer component={Paper} variant="outlined">
+        <Table size="small">
+          <TableHead sx={{ backgroundColor: "primary.main" }}>
+            <TableRow>
+              <TableCell sx={{ color: "white", fontWeight: 600 }}>
+                Name
+              </TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 600, width: 140 }}>
+                Date
+              </TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 600, width: 80 }} />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                  No {config.label.toLowerCase()} found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              pageItems.map((item) => {
+                const label = config.getLabel(item);
+                const date = fmtDate(config.getDate(item));
+                const href = `${config.viewPath}/${item.id}?patientId=${patientId}`;
+                return (
+                  <TableRow key={item.id} hover>
+                    <TableCell>
+                      <Typography variant="body2">{label}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {date}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        component={Link}
+                        to={href}
+                        size="small"
+                        variant="text"
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+        {items.length > PAGE_SIZE && (
+          <TablePagination
+            component="div"
+            count={items.length}
+            page={page}
+            onPageChange={(_e, newPage) => setPage(newPage)}
+            rowsPerPage={PAGE_SIZE}
+            rowsPerPageOptions={[PAGE_SIZE]}
+          />
+        )}
+      </TableContainer>
     </Box>
   );
 }

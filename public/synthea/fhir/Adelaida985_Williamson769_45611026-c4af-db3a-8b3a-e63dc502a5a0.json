@@ -18877,7 +18877,7 @@
         "text": "Outpatient"
       } ],
       "medicationReference": {
-        "reference": "urn:uuid:3bed5d77-01a1-e093-8b66-04ad19294bf0"
+        "reference": "urn:uuid:zc"
       },
       "subject": {
         "reference": "urn:uuid:45611026-c4af-db3a-8b3a-e63dc502a5a0"

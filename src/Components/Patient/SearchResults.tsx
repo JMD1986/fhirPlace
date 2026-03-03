@@ -5,6 +5,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Paper,
   Typography,
   Box,
@@ -13,40 +14,29 @@ import {
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
-
-interface FhirName {
-  text?: string;
-  family?: string;
-  given?: string[];
-}
-interface FhirAddress {
-  line?: string[];
-  city?: string;
-  state?: string;
-  postalCode?: string;
-}
-interface FhirComm {
-  language?: { text?: string; coding?: { display?: string }[] };
-}
-
-interface Patient {
-  resourceType: "Patient";
-  id: string;
-  name?: FhirName[];
-  gender?: string;
-  birthDate?: string;
-  address?: FhirAddress[];
-  communication?: FhirComm[];
-}
+import type {
+  FhirName,
+  FhirAddress,
+  FhirCommunication,
+  Patient,
+} from "./patientTypes";
 
 interface SearchResultsProps {
   patients: Patient[];
+  total: number | null;
+  page: number;
+  pageSize: number;
+  onPageChange: (e: unknown, newPage: number) => void;
   /** called when the user wants to view details for a patient */
   onView?: (id: string) => void;
 }
 
 export default function SearchResults({
   patients,
+  total,
+  page,
+  pageSize,
+  onPageChange,
   onView,
 }: SearchResultsProps) {
   const navigate = useNavigate();
@@ -90,12 +80,10 @@ export default function SearchResults({
     );
   }
 
-  console.log("Rendering SearchResults with patients:", patients);
-
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-        Results ({patients.length} patients found)
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        {`${total ?? patients.length} patient(s) found`}
       </Typography>
       <TableContainer component={Paper}>
         <Table>
@@ -180,6 +168,16 @@ export default function SearchResults({
           </TableBody>
         </Table>
       </TableContainer>
+      {(total ?? 0) > pageSize && (
+        <TablePagination
+          component="div"
+          count={total ?? 0}
+          page={page}
+          onPageChange={onPageChange}
+          rowsPerPage={pageSize}
+          rowsPerPageOptions={[pageSize]}
+        />
+      )}
     </Box>
   );
 }

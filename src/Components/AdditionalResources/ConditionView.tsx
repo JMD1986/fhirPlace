@@ -21,25 +21,7 @@ import {
   Link,
 } from "react-router-dom";
 
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-interface ConditionResource {
-  resourceType: "Condition";
-  id: string;
-  clinicalStatus?: { coding?: FhirCoding[] };
-  verificationStatus?: { coding?: FhirCoding[] };
-  category?: { coding?: FhirCoding[] }[];
-  code?: { text?: string; coding?: FhirCoding[] };
-  subject?: { reference?: string; display?: string };
-  encounter?: { reference?: string; display?: string };
-  onsetDateTime?: string;
-  recordedDate?: string;
-  _patientId?: string;
-  _encounterId?: string;
-}
+import type { FhirCoding, ConditionResource } from "./additionalResourceTypes";
 
 const fmt = (iso?: string) =>
   iso

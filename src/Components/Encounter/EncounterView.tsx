@@ -17,41 +17,9 @@ import {
 import Grid from "@mui/material/Grid";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import AdditionalResourcesPanel from "../AdditionalResources/AdditionalResourcesPanel";
+import type { ResourceGroup } from "../AdditionalResources/AdditionalResourcesPanel";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-interface EncounterResource {
-  resourceType: "Encounter";
-  id: string;
-  status?: string;
-  class?: FhirCoding;
-  type?: { text?: string; coding?: FhirCoding[] }[];
-  subject?: { reference?: string; display?: string };
-  participant?: {
-    type?: { text?: string; coding?: FhirCoding[] }[];
-    period?: { start?: string; end?: string };
-    individual?: { display?: string };
-  }[];
-  period?: { start?: string; end?: string };
-  location?: { location?: { display?: string }; status?: string }[];
-  serviceProvider?: { display?: string };
-  reason?: { text?: string; coding?: FhirCoding[] }[];
-  diagnosis?: {
-    condition?: { display?: string };
-    role?: { text?: string };
-    rank?: number;
-  }[];
-  hospitalization?: {
-    admitSource?: { text?: string };
-    dischargeDisposition?: { text?: string };
-  };
-  identifier?: { system?: string; value?: string }[];
-  _patientId?: string;
-}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const stripNums = (s: string) => s.replace(/\d+/g, "").trim();
@@ -95,6 +63,102 @@ const cleanDisplay = (s?: string) =>
         .join(" ")
     : "—";
 
+// ── Resource List Sub-view ─────────────────────────────────────────────────────
+const fmtDate = (iso?: string | null) =>
+  iso
+    ? new Date(iso).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
+
+interface ResourceListViewProps {
+  group: ResourceGroup;
+  encounterId: string;
+  patientId?: string;
+  onBack: () => void;
+}
+
+function ResourceListView({
+  group,
+  encounterId,
+  patientId,
+  onBack,
+}: ResourceListViewProps) {
+  const { config, items } = group;
+  return (
+    <Box>
+      {/* Header */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          mb: 2,
+        }}
+      >
+        <Button size="small" variant="outlined" onClick={onBack}>
+          ← Back to Encounter
+        </Button>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, ml: 1 }}>
+          {config.icon}
+          <Typography variant="h6" fontWeight={600}>
+            {config.label}
+          </Typography>
+          <Chip label={items.length} size="small" sx={{ ml: 0.5 }} />
+        </Box>
+      </Box>
+
+      {/* List */}
+      <TableContainer component={Paper} variant="outlined">
+        <Table size="small">
+          <TableHead sx={{ backgroundColor: "primary.main" }}>
+            <TableRow>
+              <TableCell sx={{ color: "white", fontWeight: 600 }}>
+                Name
+              </TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 600, width: 140 }}>
+                Date
+              </TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 600, width: 80 }} />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.map((item) => {
+              const label = config.getLabel(item);
+              const date = fmtDate(config.getDate(item));
+              const href = `${config.viewPath}/${item.id}?encounterId=${encounterId}${patientId ? `&patientId=${patientId}` : ""}`;
+              return (
+                <TableRow key={item.id} hover>
+                  <TableCell>
+                    <Typography variant="body2">{label}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {date}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      component={Link}
+                      to={href}
+                      size="small"
+                      variant="text"
+                    >
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function EncounterView() {
   const { id } = useParams<{ id: string }>();
@@ -102,9 +166,13 @@ export default function EncounterView() {
   const [encounter, setEncounter] = useState<EncounterResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<ResourceGroup | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!id) return;
+    setSelectedGroup(null);
     const fetchEncounter = async () => {
       try {
         setLoading(true);
@@ -260,117 +328,135 @@ export default function EncounterView() {
           <AdditionalResourcesPanel
             encounterId={encounter.id}
             patientId={patientId}
+            onSelectGroup={setSelectedGroup}
           />
         </Grid>
 
-        {/* ── Right column: main encounter detail ── */}
+        {/* ── Right column: resource list or encounter detail ── */}
         <Grid size={{ xs: 12, md: 8 }}>
-          {/* ── Main details ── */}
-          <TableContainer component={Paper} sx={{ mb: 3 }}>
-            <Table sx={{ minWidth: 500 }}>
-              <TableHead sx={{ backgroundColor: "primary.main" }}>
-                <TableRow>
-                  <TableCell
-                    sx={{ color: "white", fontWeight: 600, width: "28%" }}
-                  >
-                    Property
-                  </TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                    Value
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {mainRows.map((row, i) => (
-                  <TableRow key={i} hover>
-                    <TableCell
-                      sx={{ fontWeight: 500, color: "text.secondary" }}
-                    >
-                      {row.label}
-                    </TableCell>
-                    <TableCell>
-                      {typeof row.value === "string" ? (
-                        <Typography
-                          variant="body2"
-                          fontFamily={row.mono ? "monospace" : "inherit"}
+          {selectedGroup ? (
+            <ResourceListView
+              group={selectedGroup}
+              encounterId={encounter.id}
+              patientId={patientId}
+              onBack={() => setSelectedGroup(null)}
+            />
+          ) : (
+            <Box>
+              {/* ── Main details ── */}
+              <TableContainer component={Paper} sx={{ mb: 3 }}>
+                <Table sx={{ minWidth: 500 }}>
+                  <TableHead sx={{ backgroundColor: "primary.main" }}>
+                    <TableRow>
+                      <TableCell
+                        sx={{ color: "white", fontWeight: 600, width: "28%" }}
+                      >
+                        Property
+                      </TableCell>
+                      <TableCell sx={{ color: "white", fontWeight: 600 }}>
+                        Value
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {mainRows.map((row, i) => (
+                      <TableRow key={i} hover>
+                        <TableCell
+                          sx={{ fontWeight: 500, color: "text.secondary" }}
                         >
-                          {row.value}
-                        </Typography>
-                      ) : (
-                        row.value
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {/* ── Practitioners ── */}
-          {practitioners.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Participants
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableRow>
-                      {["Name", "Role", "Start", "End"].map((h) => (
-                        <TableCell key={h} sx={{ fontWeight: 600 }}>
-                          {h}
+                          {row.label}
                         </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {practitioners.map((p, i) => (
-                      <TableRow key={i} hover>
-                        <TableCell>{p.individual?.display ?? "—"}</TableCell>
-                        <TableCell>{p.type?.[0]?.text ?? "—"}</TableCell>
-                        <TableCell>{formatDateTime(p.period?.start)}</TableCell>
-                        <TableCell>{formatDateTime(p.period?.end)}</TableCell>
+                        <TableCell>
+                          {typeof row.value === "string" ? (
+                            <Typography
+                              variant="body2"
+                              fontFamily={row.mono ? "monospace" : "inherit"}
+                            >
+                              {row.value}
+                            </Typography>
+                          ) : (
+                            row.value
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              {/* ── Practitioners ── */}
+              {practitioners.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Participants
+                  </Typography>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableRow>
+                          {["Name", "Role", "Start", "End"].map((h) => (
+                            <TableCell key={h} sx={{ fontWeight: 600 }}>
+                              {h}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {practitioners.map((p, i) => (
+                          <TableRow key={i} hover>
+                            <TableCell>
+                              {p.individual?.display ?? "—"}
+                            </TableCell>
+                            <TableCell>{p.type?.[0]?.text ?? "—"}</TableCell>
+                            <TableCell>
+                              {formatDateTime(p.period?.start)}
+                            </TableCell>
+                            <TableCell>
+                              {formatDateTime(p.period?.end)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+
+              {/* ── Diagnoses ── */}
+              {diagnoses.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Diagnoses
+                  </Typography>
+                  <TableContainer component={Paper}>
+                    <Table size="small">
+                      <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableRow>
+                          {["Condition", "Role", "Rank"].map((h) => (
+                            <TableCell key={h} sx={{ fontWeight: 600 }}>
+                              {h}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {diagnoses.map((d, i) => (
+                          <TableRow key={i} hover>
+                            <TableCell>{d.condition?.display ?? "—"}</TableCell>
+                            <TableCell>{d.role?.text ?? "—"}</TableCell>
+                            <TableCell>{d.rank ?? "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )}
+
+              {/* ── Reasons ── */}
+              {/* reason is shown in main details table */}
             </Box>
           )}
-
-          {/* ── Diagnoses ── */}
-          {diagnoses.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Diagnoses
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableRow>
-                      {["Condition", "Role", "Rank"].map((h) => (
-                        <TableCell key={h} sx={{ fontWeight: 600 }}>
-                          {h}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {diagnoses.map((d, i) => (
-                      <TableRow key={i} hover>
-                        <TableCell>{d.condition?.display ?? "—"}</TableCell>
-                        <TableCell>{d.role?.text ?? "—"}</TableCell>
-                        <TableCell>{d.rank ?? "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-
-          {/* ── Reasons ── */}
-          {/* reason is shown in main details table */}
         </Grid>
       </Grid>
     </Box>

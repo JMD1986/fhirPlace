@@ -21,34 +21,11 @@ import {
   Link,
 } from "react-router-dom";
 
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-interface ClaimItem {
-  sequence?: number;
-  productOrService?: { text?: string; coding?: FhirCoding[] };
-  net?: { value?: number; currency?: string };
-  quantity?: { value?: number };
-  unitPrice?: { value?: number; currency?: string };
-}
-interface ClaimResource {
-  resourceType: "Claim";
-  id: string;
-  status?: string;
-  use?: string;
-  type?: { text?: string; coding?: FhirCoding[] };
-  patient?: { reference?: string; display?: string };
-  billablePeriod?: { start?: string; end?: string };
-  created?: string;
-  provider?: { display?: string };
-  facility?: { display?: string };
-  insurance?: { coverage?: { display?: string } }[];
-  item?: ClaimItem[];
-  total?: { value?: number; currency?: string };
-  _patientId?: string;
-}
+import type {
+  FhirCoding,
+  ClaimItem,
+  ClaimResource,
+} from "./additionalResourceTypes";
 
 const fmt = (iso?: string) =>
   iso

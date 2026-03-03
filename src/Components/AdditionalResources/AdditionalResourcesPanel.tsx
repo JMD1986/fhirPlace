@@ -4,10 +4,7 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  List,
   ListItemButton,
-  ListItemText,
-  ListItemIcon,
   Divider,
 } from "@mui/material";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -17,56 +14,14 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import VaccinesIcon from "@mui/icons-material/Vaccines";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
-import { Link } from "react-router-dom";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-
-interface AnyResource {
-  resourceType: string;
-  id: string;
-  // DocumentReference
-  type?: { text?: string; coding?: FhirCoding[] };
-  date?: string;
-  // Condition
-  code?: { text?: string; coding?: FhirCoding[] };
-  onsetDateTime?: string;
-  recordedDate?: string;
-  // DiagnosticReport
-  effectiveDateTime?: string;
-  status?: string;
-  // Claim / EOB
-  created?: string;
-  billablePeriod?: { start?: string; end?: string };
-  use?: string;
-  // Immunization
-  vaccineCode?: { text?: string; coding?: FhirCoding[] };
-  occurrenceDateTime?: string;
-  // Procedure
-  performedPeriod?: { start?: string; end?: string };
-  performedDateTime?: string;
-}
-
-interface FhirBundle {
-  resourceType: "Bundle";
-  total: number;
-  entry?: { resource: AnyResource }[];
-}
-
-// ── Config: one entry per resource type ───────────────────────────────────────
-interface ResourceTypeConfig {
-  resourceType: string;
-  label: string;
-  route: string;
-  viewPath: string;
-  icon: React.ReactNode;
-  getLabel: (r: AnyResource) => string;
-  getDate: (r: AnyResource) => string | null | undefined;
-}
+import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
+import MedicationIcon from "@mui/icons-material/Medication";
+import type {
+  FhirCoding,
+  AnyResource,
+  FhirBundle,
+  ResourceTypeConfig,
+} from "./additionalResourceTypes";
 
 const RESOURCE_TYPES: ResourceTypeConfig[] = [
   {
@@ -142,32 +97,46 @@ const RESOURCE_TYPES: ResourceTypeConfig[] = [
       r.code?.text ?? r.code?.coding?.[0]?.display ?? "Procedure",
     getDate: (r) => r.performedPeriod?.start ?? r.performedDateTime ?? r.date,
   },
+  {
+    resourceType: "Observation",
+    label: "Observations",
+    route: "Observation",
+    viewPath: "/observation",
+    icon: <MonitorHeartIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.code?.text ?? r.code?.coding?.[0]?.display ?? "Observation",
+    getDate: (r) => r.effectiveDateTime ?? r.date,
+  },
+  {
+    resourceType: "MedicationRequest",
+    label: "Medications",
+    route: "MedicationRequest",
+    viewPath: "/medication-request",
+    icon: <MedicationIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.medicationCodeableConcept?.text ??
+      r.medicationCodeableConcept?.coding?.[0]?.display ??
+      "Medication",
+    getDate: (r) => r.authoredOn ?? r.date,
+  },
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-const formatDate = (iso?: string | null) => {
-  if (!iso) return null;
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
-
 // ── Props ──────────────────────────────────────────────────────────────────────
+export interface ResourceGroup {
+  config: ResourceTypeConfig;
+  items: AnyResource[];
+}
+
 interface Props {
   encounterId: string;
   patientId?: string;
-}
-
-interface ResourceGroup {
-  config: ResourceTypeConfig;
-  items: AnyResource[];
+  onSelectGroup?: (group: ResourceGroup) => void;
 }
 
 export default function AdditionalResourcesPanel({
   encounterId,
   patientId,
+  onSelectGroup,
 }: Props) {
   const [groups, setGroups] = useState<ResourceGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -268,29 +237,35 @@ export default function AdditionalResourcesPanel({
         )}
 
         {!loading && !error && groups.length > 0 && (
-          <List disablePadding>
+          <Box>
             {groups.map((group, gi) => (
               <Box key={group.config.resourceType}>
                 {gi > 0 && <Divider />}
 
-                {/* Section header */}
-                <Box
+                {/* Section header – clicking opens the list view */}
+                <ListItemButton
+                  onClick={
+                    onSelectGroup ? () => onSelectGroup(group) : undefined
+                  }
+                  disableRipple={!onSelectGroup}
                   sx={{
                     px: 2,
-                    py: 0.75,
+                    py: 1,
                     backgroundColor: "grey.50",
-                    borderBottom: 1,
-                    borderColor: "divider",
                     display: "flex",
                     alignItems: "center",
                     gap: 1,
+                    cursor: onSelectGroup ? "pointer" : "default",
+                    "&:hover": onSelectGroup
+                      ? { backgroundColor: "grey.200" }
+                      : { backgroundColor: "grey.50" },
                   }}
                 >
                   {group.config.icon}
                   <Typography
-                    variant="caption"
-                    fontWeight={700}
-                    color="text.secondary"
+                    variant="body2"
+                    fontWeight={600}
+                    color={onSelectGroup ? "primary.main" : "text.secondary"}
                   >
                     {group.config.label}
                   </Typography>
@@ -301,50 +276,10 @@ export default function AdditionalResourcesPanel({
                   >
                     {group.items.length}
                   </Typography>
-                </Box>
-
-                {/* Items */}
-                {group.items.map((item, ii) => {
-                  const label = group.config.getLabel(item);
-                  const dateStr = formatDate(group.config.getDate(item));
-
-                  return (
-                    <Box key={item.id}>
-                      {ii > 0 && (
-                        <Divider
-                          variant="inset"
-                          component="li"
-                          sx={{ ml: 5 }}
-                        />
-                      )}
-                      <ListItemButton
-                        component={Link}
-                        to={`${group.config.viewPath}/${item.id}?encounterId=${encounterId}${patientId ? `&patientId=${patientId}` : ""}`}
-                        sx={{ py: 0.75 }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          {group.config.icon}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "primary.main", fontWeight: 400 }}
-                              noWrap
-                            >
-                              {label}
-                            </Typography>
-                          }
-                          secondary={dateStr}
-                          secondaryTypographyProps={{ variant: "caption" }}
-                        />
-                      </ListItemButton>
-                    </Box>
-                  );
-                })}
+                </ListItemButton>
               </Box>
             ))}
-          </List>
+          </Box>
         )}
       </Box>
     </Box>

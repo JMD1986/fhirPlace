@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -7,32 +7,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import SearchResults from "./SearchResults";
-
-// Lean FHIR STU3 Patient resource (subset of fields we use in the UI)
-interface FhirName {
-  text?: string;
-  family?: string;
-  given?: string[];
-}
-interface FhirAddress {
-  line?: string[];
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
-}
-interface FhirCommunication {
-  language?: { text?: string; coding?: { display?: string }[] };
-}
-interface Patient {
-  resourceType: "Patient";
-  id: string;
-  name?: FhirName[];
-  gender?: string;
-  birthDate?: string;
-  address?: FhirAddress[];
-  communication?: FhirCommunication[];
-}
+import type { Patient } from "./patientTypes";
 
 export default function PatientSearch() {
   const [searchParams, setSearchParams] = useState({
@@ -44,37 +19,53 @@ export default function PatientSearch() {
     phone: "",
     address: "",
   });
-  // we'll only keep filteredPatients since search is performed server-side
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const [page, setPage] = useState(0);
+  const [serverOffset, setServerOffset] = useState(0);
+  const [total, setTotal] = useState<number | null>(null);
+  const FETCH_SIZE = 50;
+  const DISPLAY_SIZE = 25;
 
-  // Load first page of patients on mount
-  useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(
-          "http://localhost:5001/fhir/Patient?_count=20",
-        );
-        if (!response.ok) throw new Error("Failed to fetch patients");
-        const bundle = await response.json();
-        const patients: Patient[] = (bundle.entry ?? []).map(
-          (e: { resource: Patient }) => e.resource,
-        );
-        setFilteredPatients(patients);
-        setError(null);
-      } catch (err) {
-        setError("Failed to load patients from server");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const buildPatientParams = (offset: number) => {
+    const params = new URLSearchParams();
+    params.append("_count", String(FETCH_SIZE));
+    params.append("_offset", String(offset));
+    if (searchParams.name) params.append("name", searchParams.name);
+    if (searchParams.familyName)
+      params.append("family", searchParams.familyName);
+    if (searchParams.givenName) params.append("given", searchParams.givenName);
+    if (searchParams.gender) params.append("gender", searchParams.gender);
+    if (searchParams.birthDate)
+      params.append("birthdate", searchParams.birthDate);
+    if (searchParams.phone) params.append("phone", searchParams.phone);
+    if (searchParams.address) params.append("address", searchParams.address);
+    return params;
+  };
 
-    fetchPatients();
-  }, []);
+  const fetchPatientPage = async (offset: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:5001/fhir/Patient?${buildPatientParams(offset).toString()}`,
+      );
+      if (!response.ok) throw new Error("Search request failed");
+      const bundle = await response.json();
+      const results: Patient[] = (bundle.entry ?? []).map(
+        (e: { resource: Patient }) => e.resource,
+      );
+      setFilteredPatients(results);
+      setTotal(bundle.total ?? results.length);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to search patients");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -87,45 +78,26 @@ export default function PatientSearch() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setSearched(true);
-    setLoading(true);
+    setPage(0);
+    setServerOffset(0);
+    await fetchPatientPage(0);
+  };
 
-    try {
-      const params = new URLSearchParams();
-      // always request all matches — pagination can be added later
-      params.append("_count", "1000");
-      if (searchParams.name) params.append("name", searchParams.name);
-      if (searchParams.familyName)
-        params.append("family", searchParams.familyName);
-      if (searchParams.givenName)
-        params.append("given", searchParams.givenName);
-      if (searchParams.gender) params.append("gender", searchParams.gender);
-      if (searchParams.birthDate)
-        params.append("birthdate", searchParams.birthDate);
-      if (searchParams.phone) params.append("phone", searchParams.phone);
-      if (searchParams.address) params.append("address", searchParams.address);
-
-      const url = `http://localhost:5001/fhir/Patient?${params.toString()}`;
-      console.log("[PatientSearch] fetching:", url);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Search request failed");
-      const bundle = await response.json();
-      console.log(
-        "[PatientSearch] bundle total:",
-        bundle.total,
-        "entries:",
-        bundle.entry?.length,
-      );
-      const results: Patient[] = (bundle.entry ?? []).map(
-        (e: { resource: Patient }) => e.resource,
-      );
-      setFilteredPatients(results);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to search patients");
-    } finally {
-      setLoading(false);
-    }
+  const handleClear = () => {
+    setSearchParams({
+      name: "",
+      familyName: "",
+      givenName: "",
+      gender: "",
+      birthDate: "",
+      phone: "",
+      address: "",
+    });
+    setFilteredPatients([]);
+    setTotal(null);
+    setSearched(false);
+    setPage(0);
+    setServerOffset(0);
   };
 
   return (
@@ -213,7 +185,7 @@ export default function PatientSearch() {
           </Grid>
           <Grid
             size={{ xs: 12, sm: 6 }}
-            sx={{ display: "flex", alignItems: "flex-end" }}
+            sx={{ display: "flex", alignItems: "flex-end", gap: 2 }}
           >
             <Button
               fullWidth
@@ -225,6 +197,15 @@ export default function PatientSearch() {
               disabled={loading}
             >
               {loading ? <CircularProgress size={24} /> : "Search Patients"}
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              sx={{ height: "56px" }}
+              disabled={loading}
+              onClick={handleClear}
+            >
+              Clear
             </Button>
           </Grid>
         </Grid>
@@ -240,7 +221,26 @@ export default function PatientSearch() {
 
       {searched && !loading && (
         <Box>
-          <SearchResults patients={filteredPatients} />
+          <SearchResults
+            patients={filteredPatients.slice(
+              page * DISPLAY_SIZE - serverOffset,
+              page * DISPLAY_SIZE - serverOffset + DISPLAY_SIZE,
+            )}
+            total={total}
+            page={page}
+            pageSize={DISPLAY_SIZE}
+            onPageChange={async (_e: unknown, newPage: number) => {
+              setPage(newPage);
+              const nextServerOffset = serverOffset + FETCH_SIZE;
+              const firstPageOfNextBatch = Math.floor(
+                nextServerOffset / DISPLAY_SIZE,
+              );
+              if (newPage === firstPageOfNextBatch) {
+                setServerOffset(nextServerOffset);
+                await fetchPatientPage(nextServerOffset);
+              }
+            }}
+          />
         </Box>
       )}
     </Box>

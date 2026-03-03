@@ -18,47 +18,6 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { Link } from "react-router-dom";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-
-interface AnyResource {
-  resourceType: string;
-  id: string;
-  // DocumentReference
-  type?: { text?: string; coding?: FhirCoding[] };
-  date?: string;
-  // Condition
-  code?: { text?: string; coding?: FhirCoding[] };
-  onsetDateTime?: string;
-  recordedDate?: string;
-  // DiagnosticReport
-  effectiveDateTime?: string;
-  status?: string;
-  // Claim / EOB
-  created?: string;
-  billablePeriod?: { start?: string; end?: string };
-  use?: string;
-}
-
-interface FhirBundle {
-  resourceType: "Bundle";
-  total: number;
-  entry?: { resource: AnyResource }[];
-}
-
-// ── Config: one entry per resource type ───────────────────────────────────────
-interface ResourceTypeConfig {
-  resourceType: string;
-  label: string;
-  route: string;
-  viewPath: string;
-  icon: React.ReactNode;
-  getLabel: (r: AnyResource) => string;
-  getDate: (r: AnyResource) => string | null | undefined;
-}
 
 const RESOURCE_TYPES: ResourceTypeConfig[] = [
   {

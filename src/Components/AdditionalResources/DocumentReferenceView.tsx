@@ -21,28 +21,7 @@ import {
   Link,
 } from "react-router-dom";
 
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-interface DocRefResource {
-  resourceType: "DocumentReference";
-  id: string;
-  status?: string;
-  type?: { text?: string; coding?: FhirCoding[] };
-  category?: { text?: string; coding?: FhirCoding[] }[];
-  date?: string;
-  author?: { display?: string }[];
-  custodian?: { display?: string };
-  subject?: { reference?: string };
-  context?: {
-    encounter?: { reference?: string }[];
-    period?: { start?: string; end?: string };
-  };
-  content?: { attachment?: { contentType?: string; data?: string } }[];
-  _patientId?: string;
-}
+import type { FhirCoding, DocRefResource } from "./additionalResourceTypes";
 
 const fmt = (iso?: string) =>
   iso

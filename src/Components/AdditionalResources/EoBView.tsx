@@ -22,45 +22,13 @@ import {
   Link,
 } from "react-router-dom";
 
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-interface AdjudicationItem {
-  category?: { coding?: FhirCoding[] };
-  amount?: { value?: number; currency?: string };
-  reason?: { coding?: FhirCoding[] };
-}
-interface EoBItem {
-  sequence?: number;
-  productOrService?: { text?: string; coding?: FhirCoding[] };
-  net?: { value?: number; currency?: string };
-  quantity?: { value?: number };
-  adjudication?: AdjudicationItem[];
-}
-interface EoBTotal {
-  category?: { coding?: FhirCoding[] };
-  amount?: { value?: number; currency?: string };
-}
-interface EoBResource {
-  resourceType: "ExplanationOfBenefit";
-  id: string;
-  status?: string;
-  outcome?: string;
-  use?: string;
-  type?: { text?: string; coding?: FhirCoding[] };
-  patient?: { reference?: string; display?: string };
-  billablePeriod?: { start?: string; end?: string };
-  created?: string;
-  insurer?: { display?: string };
-  facility?: { display?: string };
-  claim?: { reference?: string };
-  total?: EoBTotal[];
-  payment?: { amount?: { value?: number; currency?: string } };
-  item?: EoBItem[];
-  _patientId?: string;
-}
+import type {
+  FhirCoding,
+  AdjudicationItem,
+  EoBItem,
+  EoBTotal,
+  EoBResource,
+} from "./additionalResourceTypes";
 
 const fmt = (iso?: string) =>
   iso

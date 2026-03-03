@@ -21,26 +21,10 @@ import {
   Link,
 } from "react-router-dom";
 
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-interface DiagnosticReportResource {
-  resourceType: "DiagnosticReport";
-  id: string;
-  status?: string;
-  category?: { coding?: FhirCoding[] }[];
-  code?: { text?: string; coding?: FhirCoding[] };
-  subject?: { reference?: string; display?: string };
-  encounter?: { reference?: string };
-  effectiveDateTime?: string;
-  issued?: string;
-  performer?: { display?: string; reference?: string }[];
-  presentedForm?: { contentType?: string; data?: string; title?: string }[];
-  _patientId?: string;
-  _encounterId?: string;
-}
+import type {
+  FhirCoding,
+  DiagnosticReportResource,
+} from "./additionalResourceTypes";
 
 const fmt = (iso?: string) =>
   iso

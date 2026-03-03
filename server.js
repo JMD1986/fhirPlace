@@ -55,6 +55,10 @@ const immunizationResourceMap = new Map();
 const immunizationsByEncounter = new Map();
 const procedureResourceMap = new Map();
 const proceduresByEncounter = new Map();
+const observationResourceMap = new Map();
+const observationsByEncounter = new Map();
+const medicationRequestResourceMap = new Map();
+const medicationRequestsByEncounter = new Map();
 
 const loadPatients = async () => {
   const fhirDir = path.join(__dirname, "public/synthea/fhir");
@@ -203,6 +207,43 @@ const loadPatients = async () => {
               const existing = proceduresByEncounter.get(encId) ?? [];
               existing.push(r.id);
               proceduresByEncounter.set(encId, existing);
+            }
+          }
+        });
+
+        // Index every Observation (encounter ref in observation.encounter.reference)
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "Observation" && r.id) {
+            observationResourceMap.set(r.id, { ...r, _patientId: patientId });
+            const encId = String(r.encounter?.reference ?? "").replace(
+              /^urn:uuid:/,
+              "",
+            );
+            if (encId) {
+              const existing = observationsByEncounter.get(encId) ?? [];
+              existing.push(r.id);
+              observationsByEncounter.set(encId, existing);
+            }
+          }
+        });
+
+        // Index every MedicationRequest
+        bundle.entry?.forEach((e) => {
+          const r = e.resource;
+          if (r?.resourceType === "MedicationRequest" && r.id) {
+            medicationRequestResourceMap.set(r.id, {
+              ...r,
+              _patientId: patientId,
+            });
+            const encId = String(r.encounter?.reference ?? "").replace(
+              /^urn:uuid:/,
+              "",
+            );
+            if (encId) {
+              const existing = medicationRequestsByEncounter.get(encId) ?? [];
+              existing.push(r.id);
+              medicationRequestsByEncounter.set(encId, existing);
             }
           }
         });
@@ -971,6 +1012,125 @@ app.get("/fhir/Procedure/:id", (req, res) => {
     return res.status(503).json({ error: "Cache not ready" });
   const resource = procedureResourceMap.get(req.params.id);
   if (!resource) return res.status(404).json({ error: "Procedure not found" });
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// ── Observation ───────────────────────────────────────────────────────────────
+// GET /fhir/Observation?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+app.get("/fhir/Observation", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = observationsByEncounter.get(encId) ?? [];
+    results = ids.map((id) => observationResourceMap.get(id)).filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...observationResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = observationResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...observationResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      {
+        relation: "self",
+        url: `${BASE_URL}/fhir/Observation?${new URLSearchParams(req.query)}`,
+      },
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/Observation/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+app.get("/fhir/Observation/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+  const resource = observationResourceMap.get(req.params.id);
+  if (!resource)
+    return res.status(404).json({ error: "Observation not found" });
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(resource);
+});
+
+// GET /fhir/MedicationRequest?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+app.get("/fhir/MedicationRequest", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+
+  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const offset = parseInt(_offset, 10) || 0;
+  let results;
+
+  if (encounter) {
+    const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
+    const ids = medicationRequestsByEncounter.get(encId) ?? [];
+    results = ids
+      .map((id) => medicationRequestResourceMap.get(id))
+      .filter(Boolean);
+  } else if (patient) {
+    const patId = String(patient).replace(/^(Patient\/|urn:uuid:)/, "");
+    results = [...medicationRequestResourceMap.values()].filter(
+      (r) => r._patientId === patId,
+    );
+  } else if (_id) {
+    const r = medicationRequestResourceMap.get(String(_id));
+    results = r ? [r] : [];
+  } else {
+    results = [...medicationRequestResourceMap.values()];
+  }
+
+  const total = results.length;
+  const page = results.slice(offset, offset + count);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "searchset",
+    total,
+    link: [
+      {
+        relation: "self",
+        url: `${BASE_URL}/fhir/MedicationRequest?${new URLSearchParams(req.query)}`,
+      },
+    ],
+    entry: page.map((resource) => ({
+      fullUrl: `${BASE_URL}/fhir/MedicationRequest/${resource.id}`,
+      resource,
+      search: { mode: "match" },
+    })),
+  };
+  res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
+  res.json(bundle);
+});
+
+app.get("/fhir/MedicationRequest/:id", (req, res) => {
+  if (!patientListCache)
+    return res.status(503).json({ error: "Cache not ready" });
+  const resource = medicationRequestResourceMap.get(req.params.id);
+  if (!resource)
+    return res.status(404).json({ error: "MedicationRequest not found" });
   res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
   res.json(resource);
 });

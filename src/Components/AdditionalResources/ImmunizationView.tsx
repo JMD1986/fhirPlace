@@ -21,24 +21,10 @@ import {
   Link,
 } from "react-router-dom";
 
-interface FhirCoding {
-  system?: string;
-  code?: string;
-  display?: string;
-}
-
-interface ImmunizationResource {
-  resourceType: "Immunization";
-  id: string;
-  status?: string;
-  vaccineCode?: { text?: string; coding?: FhirCoding[] };
-  patient?: { reference?: string; display?: string };
-  encounter?: { reference?: string };
-  occurrenceDateTime?: string;
-  primarySource?: boolean;
-  location?: { display?: string };
-  _patientId?: string;
-}
+import type {
+  FhirCoding,
+  ImmunizationResource,
+} from "./additionalResourceTypes";
 
 const fmt = (iso?: string) =>
   iso
