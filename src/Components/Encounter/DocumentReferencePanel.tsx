@@ -15,7 +15,16 @@ import MedicalInformationIcon from "@mui/icons-material/MedicalInformation";
 import ScienceIcon from "@mui/icons-material/Science";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import VaccinesIcon from "@mui/icons-material/Vaccines";
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
+import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
+import MedicationIcon from "@mui/icons-material/Medication";
 import { Link } from "react-router-dom";
+import type {
+  ResourceTypeConfig,
+  AnyResource,
+  FhirBundle,
+} from "../AdditionalResources/additionalResourceTypes";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -70,6 +79,50 @@ const RESOURCE_TYPES: ResourceTypeConfig[] = [
     icon: <AccountBalanceIcon fontSize="small" color="action" />,
     getLabel: (r) => `EOB (${r.use ?? r.status ?? "—"})`,
     getDate: (r) => r.created ?? r.billablePeriod?.start,
+  },
+  {
+    resourceType: "Immunization",
+    label: "Immunizations",
+    route: "Immunization",
+    viewPath: "/immunization",
+    icon: <VaccinesIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.vaccineCode?.text ??
+      r.vaccineCode?.coding?.[0]?.display ??
+      "Immunization",
+    getDate: (r) => r.occurrenceDateTime ?? r.date,
+  },
+  {
+    resourceType: "Procedure",
+    label: "Procedures",
+    route: "Procedure",
+    viewPath: "/procedure",
+    icon: <MedicalServicesIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.code?.text ?? r.code?.coding?.[0]?.display ?? "Procedure",
+    getDate: (r) => r.performedDateTime ?? r.performedPeriod?.start,
+  },
+  {
+    resourceType: "Observation",
+    label: "Observations",
+    route: "Observation",
+    viewPath: "/observation",
+    icon: <MonitorHeartIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.code?.text ?? r.code?.coding?.[0]?.display ?? "Observation",
+    getDate: (r) => r.effectiveDateTime ?? r.date,
+  },
+  {
+    resourceType: "MedicationRequest",
+    label: "Medications",
+    route: "MedicationRequest",
+    viewPath: "/medication-request",
+    icon: <MedicationIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.medicationCodeableConcept?.text ??
+      r.medicationCodeableConcept?.coding?.[0]?.display ??
+      "Medication",
+    getDate: (r) => r.authoredOn ?? r.date,
   },
 ];
 

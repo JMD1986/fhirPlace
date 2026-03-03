@@ -11,6 +11,12 @@ import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import ScienceIcon from "@mui/icons-material/Science";
 import EventIcon from "@mui/icons-material/Event";
+import MedicationIcon from "@mui/icons-material/Medication";
+import MedicalInformationIcon from "@mui/icons-material/MedicalInformation";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import VaccinesIcon from "@mui/icons-material/Vaccines";
+import DescriptionIcon from "@mui/icons-material/Description";
 import type {
   AnyResource,
   ResourceTypeConfig,
@@ -73,6 +79,67 @@ const SUMMARY_RESOURCES: ResourceTypeConfig[] = [
       return t?.text ?? t?.coding?.[0]?.display ?? r.class?.code ?? "Encounter";
     },
     getDate: (r) => r.period?.start ?? null,
+  },
+  {
+    resourceType: "MedicationRequest",
+    label: "Medications",
+    route: "MedicationRequest",
+    viewPath: "/medication-request",
+    icon: <MedicationIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.medicationCodeableConcept?.text ??
+      r.medicationCodeableConcept?.coding?.[0]?.display ??
+      "Medication",
+    getDate: (r) => r.authoredOn ?? null,
+  },
+  {
+    resourceType: "Condition",
+    label: "Conditions",
+    route: "Condition",
+    viewPath: "/condition",
+    icon: <MedicalInformationIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.code?.text ?? r.code?.coding?.[0]?.display ?? "Condition",
+    getDate: (r) => r.onsetDateTime ?? r.recordedDate ?? null,
+  },
+  {
+    resourceType: "Immunization",
+    label: "Immunizations",
+    route: "Immunization",
+    viewPath: "/immunization",
+    icon: <VaccinesIcon fontSize="small" color="action" />,
+    getLabel: (r) =>
+      r.vaccineCode?.text ??
+      r.vaccineCode?.coding?.[0]?.display ??
+      "Immunization",
+    getDate: (r) => r.occurrenceDateTime ?? r.date ?? null,
+  },
+  {
+    resourceType: "Claim",
+    label: "Claims",
+    route: "Claim",
+    viewPath: "/claim",
+    icon: <ReceiptIcon fontSize="small" color="action" />,
+    getLabel: (r) => `Claim (${r.use ?? r.status ?? "—"})`,
+    getDate: (r) => r.created ?? r.billablePeriod?.start ?? null,
+  },
+  {
+    resourceType: "ExplanationOfBenefit",
+    label: "Explanations of Benefit",
+    route: "ExplanationOfBenefit",
+    viewPath: "/explanation-of-benefit",
+    icon: <AccountBalanceIcon fontSize="small" color="action" />,
+    getLabel: (r) => `EOB (${r.use ?? r.status ?? "—"})`,
+    getDate: (r) => r.created ?? r.billablePeriod?.start ?? null,
+  },
+  {
+    resourceType: "DocumentReference",
+    label: "Documents",
+    route: "DocumentReference",
+    viewPath: "/document",
+    icon: <DescriptionIcon fontSize="small" color="action" />,
+    getLabel: (r) => r.type?.text ?? r.type?.coding?.[0]?.display ?? "Document",
+    getDate: (r) => r.date ?? null,
   },
 ];
 
