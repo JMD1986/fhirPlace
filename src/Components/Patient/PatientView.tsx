@@ -17,11 +17,25 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
-import type { PatientResource } from "./patientTypes";
+import type { PatientResource, FhirExtension } from "./patientTypes";
 import PatientEncountersPanel, {
   type ResourceGroup,
 } from "./PatientEncountersPanel";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  buildGroups,
+  type ObsGroup,
+} from "../AdditionalResources/observationGroupUtils";
+import { ObservationChartDialog } from "../AdditionalResources/ObservationCharts";
+import DocumentReferenceView from "../AdditionalResources/DocumentReferenceView";
+import ConditionView from "../AdditionalResources/ConditionView";
+import DiagnosticReportView from "../AdditionalResources/DiagnosticReportView";
+import ClaimsView from "../AdditionalResources/ClaimsView";
+import EoBView from "../AdditionalResources/EoBView";
+import ImmunizationView from "../AdditionalResources/ImmunizationView";
+import ProcedureView from "../AdditionalResources/ProcedureView";
+import ObservationView from "../AdditionalResources/ObservationView";
+import MedicationRequestView from "../AdditionalResources/MedicationRequestView";
+import { useParams, useNavigate } from "react-router-dom";
 
 interface PatientViewProps {
   /** identifier used to fetch the patient from the API */
@@ -39,53 +53,57 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     useState<ResourceGroup | null>(null);
 
   // Helper function to extract Patient resource from FHIR Bundle
-  const extractPatientFromBundle = (data: any): PatientResource | null => {
+  const extractPatientFromBundle = (
+    data: Record<string, unknown>,
+  ): PatientResource | null => {
     // If data already has resourceType: "Patient", return it directly
     if (data?.resourceType === "Patient") {
-      return data as PatientResource;
+      return data as unknown as PatientResource;
     }
 
     // If it's a Bundle, drill into the entry array
     if (data?.resourceType === "Bundle" && Array.isArray(data.entry)) {
-      const patientEntry = data.entry.find(
-        (entry: any) => entry?.resource?.resourceType === "Patient",
+      const patientEntry = (data.entry as Record<string, unknown>[]).find(
+        (entry) =>
+          (entry?.resource as Record<string, unknown>)?.resourceType ===
+          "Patient",
       );
-      return patientEntry?.resource || null;
+      return (patientEntry?.resource as PatientResource) || null;
     }
 
     return null;
   };
 
   // Helper to extract race from extensions
-  const getRace = (extensions: any[]): string => {
+  const getRace = (extensions: FhirExtension[] | undefined): string => {
     const raceExt = extensions?.find(
-      (ext: any) =>
+      (ext) =>
         ext.url ===
         "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
     );
     return (
-      raceExt?.extension?.find((ext: any) => ext.url === "text")?.valueString ||
+      raceExt?.extension?.find((ext) => ext.url === "text")?.valueString ??
       "Not provided"
     );
   };
 
   // Helper to extract ethnicity from extensions
-  const getEthnicity = (extensions: any[]): string => {
+  const getEthnicity = (extensions: FhirExtension[] | undefined): string => {
     const ethnExt = extensions?.find(
-      (ext: any) =>
+      (ext) =>
         ext.url ===
         "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
     );
     return (
-      ethnExt?.extension?.find((ext: any) => ext.url === "text")?.valueString ||
+      ethnExt?.extension?.find((ext) => ext.url === "text")?.valueString ??
       "Not provided"
     );
   };
 
   // Helper to extract birth place from extensions
-  const getBirthPlace = (extensions: any[]): string => {
+  const getBirthPlace = (extensions: FhirExtension[] | undefined): string => {
     const birthPlaceExt = extensions?.find(
-      (ext: any) =>
+      (ext) =>
         ext.url ===
         "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
     );
@@ -94,8 +112,10 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     return `${addr.city}, ${addr.state} ${addr.country}`;
   };
 
+  type FhirNameEntry = NonNullable<PatientResource["name"]>[number];
+
   // Helper to format name
-  const formatName = (nameObj: any): string => {
+  const formatName = (nameObj: FhirNameEntry | undefined): string => {
     if (!nameObj) return "Not provided";
     const prefix = nameObj.prefix?.join(" ") || "";
     const given = nameObj.given?.join(" ") || "";
@@ -103,20 +123,24 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     return `${prefix} ${given} ${family}`.trim();
   };
 
+  type FhirTelecomEntry = NonNullable<PatientResource["telecom"]>[number];
+
   // Helper to get phone number
-  const getPhone = (telecom: any[]): string => {
-    const phone = telecom?.find((t: any) => t.system === "phone");
+  const getPhone = (telecom: FhirTelecomEntry[] | undefined): string => {
+    const phone = telecom?.find((t) => t.system === "phone");
     return phone?.value || "Not provided";
   };
 
+  type FhirAddressEntry = NonNullable<PatientResource["address"]>[number];
+
   // Helper to format address
-  const formatAddress = (address: any[]): string => {
+  const formatAddress = (address: FhirAddressEntry[] | undefined): string => {
     if (!address || address.length === 0) return "Not provided";
     const addr = address[0];
     const lines = [
       addr.line?.join(", ") || "",
       addr.city || "",
-      `${addr.state} ${addr.postalCode}` || "",
+      [addr.state, addr.postalCode].filter(Boolean).join(" "),
       addr.country || "",
     ]
       .filter(Boolean)
@@ -124,11 +148,15 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     return lines || "Not provided";
   };
 
+  type FhirIdentifierEntry = NonNullable<PatientResource["identifier"]>[number];
+
   // Helper to get identifier by type
-  const getIdentifier = (identifiers: any[], type: string): string => {
+  const getIdentifier = (
+    identifiers: FhirIdentifierEntry[] | undefined,
+    type: string,
+  ): string => {
     const id = identifiers?.find(
-      (i: any) =>
-        i.type?.text === type || i.system?.includes(type.toLowerCase()),
+      (i) => i.type?.text === type || i.system?.includes(type.toLowerCase()),
     );
     return id?.value || "Not provided";
   };
@@ -321,6 +349,22 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   );
 }
 
+// ── Map from FHIR resourceType → embeddable view component ───────────────────
+const INLINE_VIEWS: Record<
+  string,
+  React.ComponentType<{ resourceId?: string; patientId?: string }>
+> = {
+  DocumentReference: DocumentReferenceView,
+  Condition: ConditionView,
+  DiagnosticReport: DiagnosticReportView,
+  Claim: ClaimsView,
+  ExplanationOfBenefit: EoBView,
+  Immunization: ImmunizationView,
+  Procedure: ProcedureView,
+  Observation: ObservationView,
+  MedicationRequest: MedicationRequestView,
+};
+
 // ── Resource list sub-view (mirrors EncounterView's ResourceListView) ──────────
 const fmtDate = (iso?: string | null) =>
   iso
@@ -342,9 +386,63 @@ function ResourceListView({
 }) {
   const PAGE_SIZE = 15;
   const [page, setPage] = useState(0);
+  const [obsGroups, setObsGroups] = useState<Map<string, ObsGroup>>(new Map());
+  const [chartTarget, setChartTarget] = useState<ObsGroup | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  const isObservations = group.config.resourceType === "Observation";
+
+  // Fetch & build observation groups once when viewing the Observations list
+  useEffect(() => {
+    if (!isObservations || !patientId) return;
+    fetch(
+      `http://localhost:5001/fhir/Observation?patient=${patientId}&_count=2000`,
+    )
+      .then((r) => r.json())
+      .then((bundle) => {
+        const obs =
+          bundle.entry?.map(
+            (e: {
+              resource: {
+                code?: { coding?: { code?: string }[]; text?: string };
+                [key: string]: unknown;
+              };
+            }) => e.resource,
+          ) ?? [];
+        const groups = buildGroups(obs);
+        // Key by LOINC code OR code.text to match against list items
+        const map = new Map<string, ObsGroup>();
+        for (const g of groups) {
+          map.set(g.key, g);
+        }
+        setObsGroups(map);
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+  }, [isObservations, patientId]);
 
   const { config, items } = group;
   const pageItems = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  // ── Inline detail panel ───────────────────────────────────────────────────
+  const InlineView = selectedItemId ? INLINE_VIEWS[config.resourceType] : null;
+
+  if (InlineView && selectedItemId) {
+    return (
+      <Box>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => setSelectedItemId(null)}
+          sx={{ mb: 2 }}
+        >
+          ← Back to {config.label}
+        </Button>
+        <InlineView resourceId={selectedItemId} patientId={patientId} />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -373,7 +471,13 @@ function ResourceListView({
               <TableCell sx={{ color: "white", fontWeight: 600, width: 140 }}>
                 Date
               </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600, width: 80 }} />
+              <TableCell
+                sx={{
+                  color: "white",
+                  fontWeight: 600,
+                  width: isObservations ? 160 : 80,
+                }}
+              />
             </TableRow>
           </TableHead>
           <TableBody>
@@ -387,7 +491,13 @@ function ResourceListView({
               pageItems.map((item) => {
                 const label = config.getLabel(item);
                 const date = fmtDate(config.getDate(item));
-                const href = `${config.viewPath}/${item.id}?patientId=${patientId}`;
+                // Match this row to a chart group by LOINC code or text
+                const loincCode =
+                  item.code?.coding?.[0]?.code ?? item.code?.text;
+                const chartGroup = loincCode
+                  ? obsGroups.get(loincCode)
+                  : undefined;
+                const hasChart = chartGroup && chartGroup.points.length > 0;
                 return (
                   <TableRow key={item.id} hover>
                     <TableCell>
@@ -399,14 +509,31 @@ function ResourceListView({
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        component={Link}
-                        to={href}
-                        size="small"
-                        variant="text"
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 0.5,
+                          justifyContent: "flex-end",
+                        }}
                       >
-                        View
-                      </Button>
+                        {hasChart && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            onClick={() => setChartTarget(chartGroup)}
+                          >
+                            View Chart
+                          </Button>
+                        )}
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setSelectedItemId(item.id)}
+                        >
+                          View
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 );
@@ -425,6 +552,11 @@ function ResourceListView({
           />
         )}
       </TableContainer>
+
+      <ObservationChartDialog
+        group={chartTarget}
+        onClose={() => setChartTarget(null)}
+      />
     </Box>
   );
 }

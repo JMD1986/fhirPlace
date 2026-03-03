@@ -42,12 +42,18 @@ const statusColor = (
   return "default";
 };
 
-export default function MedicationRequestView() {
-  const { id } = useParams<{ id: string }>();
+export default function MedicationRequestView({
+  resourceId: propId,
+  patientId: propPatientId,
+}: { resourceId?: string; patientId?: string } = {}) {
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = propId ?? paramId;
+  const embedded = propId !== undefined;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
-  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
+  const patientIdFromQuery =
+    propPatientId ?? searchParams.get("patientId") ?? undefined;
 
   const [med, setMed] = useState<MedicationRequestResource | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,31 +117,33 @@ export default function MedicationRequestView() {
   return (
     <Box sx={{ p: 3, maxWidth: 900, mx: "auto" }}>
       {/* Back nav */}
-      <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
-        <Button variant="outlined" size="small" onClick={() => navigate(-1)}>
-          ← Back
-        </Button>
-        {encounterId && (
-          <Button
-            variant="outlined"
-            size="small"
-            component={Link}
-            to={`/encounter/${encounterId}`}
-          >
-            View Encounter
+      {!embedded && (
+        <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
+          <Button variant="outlined" size="small" onClick={() => navigate(-1)}>
+            ← Back
           </Button>
-        )}
-        {patientId && (
-          <Button
-            variant="outlined"
-            size="small"
-            component={Link}
-            to={`/patient/${patientId}`}
-          >
-            View Patient
-          </Button>
-        )}
-      </Box>
+          {encounterId && (
+            <Button
+              variant="outlined"
+              size="small"
+              component={Link}
+              to={`/encounter/${encounterId}`}
+            >
+              View Encounter
+            </Button>
+          )}
+          {patientId && (
+            <Button
+              variant="outlined"
+              size="small"
+              component={Link}
+              to={`/patient/${patientId}`}
+            >
+              View Patient
+            </Button>
+          )}
+        </Box>
+      )}
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         {/* Header */}

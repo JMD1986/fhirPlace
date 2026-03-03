@@ -43,12 +43,18 @@ const clinicalColor = (
   return "default";
 };
 
-export default function ConditionView() {
-  const { id } = useParams<{ id: string }>();
+export default function ConditionView({
+  resourceId: propId,
+  patientId: propPatientId,
+}: { resourceId?: string; patientId?: string } = {}) {
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = propId ?? paramId;
+  const embedded = propId !== undefined;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
-  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
+  const patientIdFromQuery =
+    propPatientId ?? searchParams.get("patientId") ?? undefined;
   const [condition, setCondition] = useState<ConditionResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,14 +163,16 @@ export default function ConditionView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button
-        onClick={() =>
-          navigate(encounterId ? `/encounter/${encounterId}` : "/")
-        }
-        sx={{ mb: 2 }}
-      >
-        &larr; Back to Encounter
-      </Button>
+      {!embedded && (
+        <Button
+          onClick={() =>
+            navigate(encounterId ? `/encounter/${encounterId}` : "/")
+          }
+          sx={{ mb: 2 }}
+        >
+          &larr; Back to Encounter
+        </Button>
+      )}
       <Typography variant="h5" fontWeight={600} gutterBottom>
         Condition
       </Typography>

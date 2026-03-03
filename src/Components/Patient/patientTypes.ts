@@ -1,9 +1,17 @@
 // ── Shared types for Patient components ───────────────────────────────────────
 
+export interface FhirExtension {
+  url: string;
+  valueString?: string;
+  valueAddress?: { city?: string; state?: string; country?: string };
+  extension?: FhirExtension[];
+}
+
 export interface FhirName {
   text?: string;
   family?: string;
   given?: string[];
+  prefix?: string[];
 }
 
 export interface FhirAddress {
@@ -54,7 +62,7 @@ export interface PatientResource {
     value?: string;
     system?: string;
   }>;
-  extension?: any[];
+  extension?: FhirExtension[];
   communication?: Array<{
     language?: { text?: string };
   }>;

@@ -1017,13 +1017,20 @@ app.get("/fhir/Procedure/:id", (req, res) => {
 });
 
 // ── Observation ───────────────────────────────────────────────────────────────
-// GET /fhir/Observation?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>
+// GET /fhir/Observation?encounter=<id>  |  ?patient=<id>  |  ?_id=<id>  |  ?patient=<id>&code=<loinc>
 app.get("/fhir/Observation", (req, res) => {
   if (!patientListCache)
     return res.status(503).json({ error: "Cache not ready" });
 
-  const { encounter, patient, _id, _count = 50, _offset = 0 } = req.query;
-  const count = Math.min(parseInt(_count, 10) || 50, 500);
+  const {
+    encounter,
+    patient,
+    _id,
+    code,
+    _count = 500,
+    _offset = 0,
+  } = req.query;
+  const count = Math.min(parseInt(_count, 10) || 500, 2000);
   const offset = parseInt(_offset, 10) || 0;
   let results;
 
@@ -1036,6 +1043,15 @@ app.get("/fhir/Observation", (req, res) => {
     results = [...observationResourceMap.values()].filter(
       (r) => r._patientId === patId,
     );
+    // Optional code filter: ?code=<loinc-code>
+    if (code) {
+      const codeStr = String(code);
+      results = results.filter(
+        (r) =>
+          r.code?.coding?.some((c) => c.code === codeStr) ||
+          r.code?.text === codeStr,
+      );
+    }
   } else if (_id) {
     const r = observationResourceMap.get(String(_id));
     results = r ? [r] : [];

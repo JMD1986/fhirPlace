@@ -53,12 +53,18 @@ const outcomeColor = (
   return "default";
 };
 
-export default function EoBView() {
-  const { id } = useParams<{ id: string }>();
+export default function EoBView({
+  resourceId: propId,
+  patientId: propPatientId,
+}: { resourceId?: string; patientId?: string } = {}) {
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = propId ?? paramId;
+  const embedded = propId !== undefined;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
-  const patientIdFromQuery = searchParams.get("patientId") ?? undefined;
+  const patientIdFromQuery =
+    propPatientId ?? searchParams.get("patientId") ?? undefined;
   const [eob, setEob] = useState<EoBResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -183,20 +189,22 @@ export default function EoBView() {
 
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button
-        onClick={() =>
-          navigate(
-            encounterIdFromQuery
-              ? `/encounter/${encounterIdFromQuery}`
-              : patientId
-                ? `/patient/${patientId}`
-                : "/",
-          )
-        }
-        sx={{ mb: 2 }}
-      >
-        &larr; Back to {encounterIdFromQuery ? "Encounter" : "Patient"}
-      </Button>
+      {!embedded && (
+        <Button
+          onClick={() =>
+            navigate(
+              encounterIdFromQuery
+                ? `/encounter/${encounterIdFromQuery}`
+                : patientId
+                  ? `/patient/${patientId}`
+                  : "/",
+            )
+          }
+          sx={{ mb: 2 }}
+        >
+          &larr; Back to {encounterIdFromQuery ? "Encounter" : "Patient"}
+        </Button>
+      )}
       <Typography variant="h5" fontWeight={600} gutterBottom>
         Explanation of Benefit
       </Typography>
