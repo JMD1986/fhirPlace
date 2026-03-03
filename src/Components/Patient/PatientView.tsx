@@ -14,7 +14,11 @@ import {
   TableRow,
   TablePagination,
   Chip,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import PersonIcon from "@mui/icons-material/Person";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
 import type { PatientResource, FhirExtension } from "./patientTypes";
@@ -35,6 +39,7 @@ import ImmunizationView from "../AdditionalResources/ImmunizationView";
 import ProcedureView from "../AdditionalResources/ProcedureView";
 import ObservationView from "../AdditionalResources/ObservationView";
 import MedicationRequestView from "../AdditionalResources/MedicationRequestView";
+import BillingDashboard from "./BillingDashboard";
 import { useParams, useNavigate } from "react-router-dom";
 
 interface PatientViewProps {
@@ -51,6 +56,7 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] =
     useState<ResourceGroup | null>(null);
+  const [mainTab, setMainTab] = useState<"overview" | "billing">("overview");
 
   // Helper function to extract Patient resource from FHIR Bundle
   const extractPatientFromBundle = (
@@ -274,77 +280,108 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
         &larr; Back to search
       </Button>
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
         <Avatar size={80} name={displayName} />
-        <Typography variant="h4" fontWeight={600}>
-          {displayName}
-        </Typography>
+        <Box>
+          <Typography variant="h4" fontWeight={600}>
+            {displayName}
+          </Typography>
+        </Box>
       </Box>
 
-      <Grid container spacing={3} alignItems="flex-start">
-        {/* ── Sidebar ── */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <PatientEncountersPanel
-            patientId={patientId}
-            onSelectResource={setSelectedResource}
-          />
-        </Grid>
+      {/* ── Main tab toggle ── */}
+      <ToggleButtonGroup
+        value={mainTab}
+        exclusive
+        onChange={(_e, val) => {
+          if (val) {
+            setMainTab(val);
+            setSelectedResource(null);
+          }
+        }}
+        size="small"
+        sx={{ mb: 3 }}
+      >
+        <ToggleButton value="overview">
+          <PersonIcon fontSize="small" sx={{ mr: 0.75 }} />
+          Overview
+        </ToggleButton>
+        <ToggleButton value="billing">
+          <AttachMoneyIcon fontSize="small" sx={{ mr: 0.75 }} />
+          Billing
+        </ToggleButton>
+      </ToggleButtonGroup>
 
-        {/* ── Main content: resource list or patient details ── */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          {selectedResource ? (
-            <ResourceListView
-              key={selectedResource.config.resourceType}
-              group={selectedResource}
+      {/* ── Billing dashboard (full-width) ── */}
+      {mainTab === "billing" && <BillingDashboard patientId={patientId} />}
+
+      {/* ── Overview: sidebar + main content ── */}
+      {mainTab === "overview" && (
+        <Grid container spacing={3} alignItems="flex-start">
+          {/* ── Sidebar ── */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <PatientEncountersPanel
               patientId={patientId}
-              onBack={() => setSelectedResource(null)}
+              onSelectResource={setSelectedResource}
             />
-          ) : (
-            <TableContainer component={Paper}>
-              <Table sx={{ minWidth: 500 }}>
-                <TableHead sx={{ backgroundColor: "primary.main" }}>
-                  <TableRow>
-                    <TableCell
-                      sx={{ fontWeight: 600, width: "28%", color: "white" }}
-                    >
-                      Property
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: "white" }}>
-                      Value
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tableRows.map((row, index) => (
-                    <TableRow key={index} hover>
+          </Grid>
+
+          {/* ── Main content: resource list or patient details ── */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            {selectedResource ? (
+              <ResourceListView
+                key={selectedResource.config.resourceType}
+                group={selectedResource}
+                patientId={patientId}
+                onBack={() => setSelectedResource(null)}
+              />
+            ) : (
+              <TableContainer component={Paper}>
+                <Table sx={{ minWidth: 500 }}>
+                  <TableHead sx={{ backgroundColor: "primary.main" }}>
+                    <TableRow>
                       <TableCell
-                        sx={{ fontWeight: 500, color: "text.secondary" }}
+                        sx={{ fontWeight: 600, width: "28%", color: "white" }}
                       >
-                        {row.label}
+                        Property
                       </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontFamily:
-                              row.label.includes("ID") ||
-                              row.label.includes("Number") ||
-                              row.label.includes("License")
-                                ? "monospace"
-                                : "inherit",
-                          }}
-                        >
-                          {row.value}
-                        </Typography>
+                      <TableCell sx={{ fontWeight: 600, color: "white" }}>
+                        Value
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+                  </TableHead>
+                  <TableBody>
+                    {tableRows.map((row, index) => (
+                      <TableRow key={index} hover>
+                        <TableCell
+                          sx={{ fontWeight: 500, color: "text.secondary" }}
+                        >
+                          {row.label}
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontFamily:
+                                row.label.includes("ID") ||
+                                row.label.includes("Number") ||
+                                row.label.includes("License")
+                                  ? "monospace"
+                                  : "inherit",
+                            }}
+                          >
+                            {row.value}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Grid>
         </Grid>
-      </Grid>
+      )}
     </Box>
   );
 }

@@ -41,14 +41,18 @@ const fmt = (iso?: string) =>
 const currency = (val?: number, cur?: string) =>
   val !== undefined ? `${cur ?? "USD"} ${val.toFixed(2)}` : "—";
 
-export default function ClaimsView({ resourceId: propId, patientId: propPatientId }: { resourceId?: string; patientId?: string } = {}) {
+export default function ClaimsView({
+  resourceId: propId,
+  patientId: propPatientId,
+}: { resourceId?: string; patientId?: string } = {}) {
   const { id: paramId } = useParams<{ id: string }>();
   const id = propId ?? paramId;
   const embedded = propId !== undefined;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
-  const patientIdFromQuery = propPatientId ?? searchParams.get("patientId") ?? undefined;
+  const patientIdFromQuery =
+    propPatientId ?? searchParams.get("patientId") ?? undefined;
   const [claim, setClaim] = useState<ClaimResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
