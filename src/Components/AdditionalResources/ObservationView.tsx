@@ -13,7 +13,10 @@ import {
   TableHead,
   TableRow,
   Chip,
+  Divider,
+  Skeleton,
 } from "@mui/material";
+import ScienceIcon from "@mui/icons-material/Science";
 import {
   useParams,
   useNavigate,
@@ -21,6 +24,7 @@ import {
   Link,
 } from "react-router-dom";
 import type { ObservationResource } from "./additionalResourceTypes";
+import { useNLMLoinc } from "../../hooks/useNLMClinicalTables";
 
 const fmt = (iso?: string) =>
   iso
@@ -81,6 +85,14 @@ export default function ObservationView({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // NLM LOINC lookup — fires once observation is loaded
+  const loincCode = observation?.code?.coding?.find(
+    (c) => c.system === "http://loinc.org",
+  )?.code;
+  const obsFallbackName =
+    observation?.code?.text ?? observation?.code?.coding?.[0]?.display;
+  const nlmLoinc = useNLMLoinc(loincCode, obsFallbackName);
 
   useEffect(() => {
     if (!id) return;
@@ -269,6 +281,69 @@ export default function ObservationView({
                 </TableBody>
               </Table>
             </TableContainer>
+          </Box>
+        )}
+      </Paper>
+
+      {/* ── NLM LOINC Info Panel ──────────────────────────────────────────── */}
+      <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <ScienceIcon color="primary" fontSize="small" />
+          <Typography variant="subtitle1" fontWeight={600}>
+            LOINC Details
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            via NLM Clinical Tables
+          </Typography>
+        </Box>
+
+        {nlmLoinc.loading && (
+          <Box>
+            <Skeleton width="55%" sx={{ mb: 1 }} />
+            <Skeleton width="35%" />
+          </Box>
+        )}
+
+        {!nlmLoinc.loading && !nlmLoinc.component && (
+          <Typography variant="body2" color="text.secondary">
+            No LOINC details found for this observation code.
+          </Typography>
+        )}
+
+        {!nlmLoinc.loading && nlmLoinc.component && (
+          <Box>
+            {nlmLoinc.loincNum && (
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>LOINC #:</strong>{" "}
+                <Chip
+                  label={nlmLoinc.loincNum}
+                  size="small"
+                  variant="outlined"
+                />
+              </Typography>
+            )}
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>Component:</strong> {nlmLoinc.component}
+            </Typography>
+            {nlmLoinc.shortName &&
+              nlmLoinc.shortName !== nlmLoinc.component && (
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Short Name:</strong> {nlmLoinc.shortName}
+                </Typography>
+              )}
+            {nlmLoinc.exampleUnits && (
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Example Units:</strong> {nlmLoinc.exampleUnits}
+              </Typography>
+            )}
+            {nlmLoinc.description && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="body2" color="text.secondary">
+                  {nlmLoinc.description}
+                </Typography>
+              </>
+            )}
           </Box>
         )}
       </Paper>

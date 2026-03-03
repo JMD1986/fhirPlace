@@ -13,7 +13,11 @@ import {
   TableHead,
   TableRow,
   Chip,
+  Divider,
+  Skeleton,
 } from "@mui/material";
+import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   useParams,
   useNavigate,
@@ -22,6 +26,7 @@ import {
 } from "react-router-dom";
 
 import type { FhirCoding, ConditionResource } from "./additionalResourceTypes";
+import { useNLMCondition } from "../../hooks/useNLMClinicalTables";
 
 const fmt = (iso?: string) =>
   iso
@@ -58,6 +63,11 @@ export default function ConditionView({
   const [condition, setCondition] = useState<ConditionResource | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // NLM Clinical Tables — fires once condition is loaded
+  const conditionDisplayName =
+    condition?.code?.text ?? condition?.code?.coding?.[0]?.display;
+  const nlm = useNLMCondition(conditionDisplayName);
 
   useEffect(() => {
     if (!id) return;
@@ -215,6 +225,65 @@ export default function ConditionView({
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* ── NLM MedlinePlus Panel ─────────────────────────────────────────── */}
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <LocalHospitalIcon color="primary" fontSize="small" />
+          <Typography variant="subtitle1" fontWeight={600}>
+            MedlinePlus / ICD-10 Info
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            via NLM Clinical Tables
+          </Typography>
+        </Box>
+
+        {nlm.loading && (
+          <Box>
+            <Skeleton width="60%" sx={{ mb: 1 }} />
+            <Skeleton width="40%" />
+          </Box>
+        )}
+
+        {!nlm.loading && !nlm.consumerName && (
+          <Typography variant="body2" color="text.secondary">
+            No MedlinePlus entry found for this condition.
+          </Typography>
+        )}
+
+        {!nlm.loading && nlm.consumerName && (
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>Consumer Name:</strong> {nlm.consumerName}
+            </Typography>
+
+            {nlm.icd10Code && (
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>ICD-10 Code:</strong>{" "}
+                <Chip label={nlm.icd10Code} size="small" variant="outlined" />
+              </Typography>
+            )}
+
+            {nlm.medlinePlusUrl && (
+              <Box sx={{ mt: 1.5 }}>
+                <Divider sx={{ mb: 1.5 }} />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<OpenInNewIcon />}
+                  href={nlm.medlinePlusUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {nlm.medlinePlusLabel
+                    ? `Read more: ${nlm.medlinePlusLabel}`
+                    : "View on MedlinePlus"}
+                </Button>
+              </Box>
+            )}
+          </Box>
+        )}
+      </Paper>
     </Box>
   );
 }
