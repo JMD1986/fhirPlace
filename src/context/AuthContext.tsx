@@ -1,10 +1,15 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+export type UserRole = "patient" | "provider";
+
 export interface AppUser {
   username: string;
   email: string;
   createdAt: string;
+  role: UserRole;
+  /** FHIR Patient UUID linked to this account (patient role only) */
+  linkedPatientId?: string;
 }
 
 interface StoredUser extends AppUser {
@@ -13,8 +18,17 @@ interface StoredUser extends AppUser {
 
 interface AuthContextValue {
   user: AppUser | null;
-  login: (email: string, password: string) => string | null; // returns error msg or null
-  signup: (username: string, email: string, password: string) => string | null;
+  login: (email: string, password: string) => string | null;
+  signup: (
+    username: string,
+    email: string,
+    password: string,
+    role: UserRole,
+    linkedPatientId?: string,
+  ) => string | null;
+  updateUser: (
+    updates: Partial<Pick<AppUser, "linkedPatientId" | "role">>,
+  ) => void;
   logout: () => void;
 }
 
@@ -66,6 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     username: string,
     email: string,
     password: string,
+    role: UserRole = "provider",
+    linkedPatientId?: string,
   ): string | null => {
     if (!username.trim()) return "Username is required.";
     if (!email.includes("@")) return "Enter a valid email address.";
@@ -81,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: email.toLowerCase().trim(),
       passwordHash: hashPassword(password),
       createdAt: new Date().toISOString(),
+      role,
+      linkedPatientId,
     };
 
     saveStoredUsers([...users, newUser]);
@@ -89,6 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: newUser.username,
       email: newUser.email,
       createdAt: newUser.createdAt,
+      role: newUser.role,
+      linkedPatientId: newUser.linkedPatientId,
     };
     setUser(session);
     return null;
@@ -107,15 +127,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: match.username,
       email: match.email,
       createdAt: match.createdAt,
+      role: match.role ?? "provider",
+      linkedPatientId: match.linkedPatientId,
     };
     setUser(session);
     return null;
   };
 
+  const updateUser = (
+    updates: Partial<Pick<AppUser, "linkedPatientId" | "role">>,
+  ) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      // also persist into the stored users list
+      const users = getStoredUsers();
+      const idx = users.findIndex(
+        (u) => u.email.toLowerCase() === prev.email.toLowerCase(),
+      );
+      if (idx !== -1) {
+        users[idx] = { ...users[idx], ...updates };
+        saveStoredUsers(users);
+      }
+      return updated;
+    });
+  };
+
   const logout = () => setUser(null);
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

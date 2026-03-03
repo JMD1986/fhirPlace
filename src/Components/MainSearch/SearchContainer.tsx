@@ -7,6 +7,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { MenuItem, Paper, Menu, Tooltip, Box, Chip } from "@mui/material";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import EncounterSearch from "../Encounter/EncounterSearch";
 import PatientSearch from "../Patient/PatientSearch";
 import LoginSignupDialog from "../Auth/LoginSignupDialog";
@@ -17,6 +18,7 @@ type SearchType = "patient" | "encounter";
 
 export default function SearchContainer() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -100,15 +102,18 @@ export default function SearchContainer() {
           </Typography>
           {user ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Tooltip title={user.email}>
+              <Tooltip title={`${user.email} · Click to view profile`}>
                 <Chip
                   icon={<AccountCircleIcon />}
                   label={user.username}
                   color="default"
+                  onClick={() => navigate("/profile")}
                   sx={{
                     color: "white",
                     borderColor: "rgba(255,255,255,0.5)",
                     "& .MuiChip-icon": { color: "white" },
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
                   }}
                   variant="outlined"
                 />

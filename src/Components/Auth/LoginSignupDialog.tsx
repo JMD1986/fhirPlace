@@ -11,8 +11,20 @@ import {
   Alert,
   Box,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
+  Autocomplete,
+  CircularProgress,
 } from "@mui/material";
+import PersonIcon from "@mui/icons-material/Person";
+import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import { useAuth } from "../../context/AuthContext";
+import type { UserRole } from "../../context/AuthContext";
+
+interface PatientOption {
+  id: string;
+  label: string;
+}
 
 interface Props {
   open: boolean;
@@ -32,6 +44,15 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupRole, setSignupRole] = useState<UserRole>("provider");
+
+  // Patient linking
+  const [patientOptions, setPatientOptions] = useState<PatientOption[]>([]);
+  const [patientLoading, setPatientLoading] = useState(false);
+  const [patientQuery, setPatientQuery] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState<PatientOption | null>(
+    null,
+  );
 
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +63,10 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
     setSignupEmail("");
     setSignupPassword("");
     setSignupConfirm("");
+    setSignupRole("provider");
+    setPatientQuery("");
+    setSelectedPatient(null);
+    setPatientOptions([]);
     setError(null);
   };
 
@@ -72,11 +97,57 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
       setError("Passwords do not match.");
       return;
     }
-    const err = signup(signupUsername, signupEmail, signupPassword);
+    if (signupRole === "patient" && !selectedPatient) {
+      setError("Please search for and select your patient record.");
+      return;
+    }
+    const err = signup(
+      signupUsername,
+      signupEmail,
+      signupPassword,
+      signupRole,
+      selectedPatient?.id,
+    );
     if (err) {
       setError(err);
     } else {
       handleClose();
+    }
+  };
+
+  // Live patient search for linking
+  const handlePatientInputChange = async (_: unknown, value: string) => {
+    setPatientQuery(value);
+    setSelectedPatient(null);
+    if (value.trim().length < 2) {
+      setPatientOptions([]);
+      return;
+    }
+    setPatientLoading(true);
+    try {
+      const res = await fetch(
+        `http://localhost:5001/api/patients?name=${encodeURIComponent(value)}&_count=10`,
+      );
+      const data = await res.json();
+      const patients: PatientOption[] = (data.patients ?? data ?? []).map(
+        (p: {
+          id: string;
+          name?: string;
+          given?: string;
+          family?: string;
+          birthDate?: string;
+        }) => {
+          const displayName =
+            p.name ?? [p.given, p.family].filter(Boolean).join(" ") ?? p.id;
+          const dob = p.birthDate ? ` (DOB: ${p.birthDate})` : "";
+          return { id: p.id, label: `${displayName}${dob}` };
+        },
+      );
+      setPatientOptions(patients);
+    } catch {
+      setPatientOptions([]);
+    } finally {
+      setPatientLoading(false);
     }
   };
 
@@ -136,6 +207,32 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
             sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
             {error && <Alert severity="error">{error}</Alert>}
+
+            {/* Role selector */}
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                I am a…
+              </Typography>
+              <ToggleButtonGroup
+                value={signupRole}
+                exclusive
+                onChange={(_e, val) => {
+                  if (val) setSignupRole(val);
+                }}
+                fullWidth
+                size="small"
+              >
+                <ToggleButton value="patient">
+                  <PersonIcon fontSize="small" sx={{ mr: 0.75 }} />
+                  Patient
+                </ToggleButton>
+                <ToggleButton value="provider">
+                  <MedicalServicesIcon fontSize="small" sx={{ mr: 0.75 }} />
+                  Provider
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
             <TextField
               label="Username"
               fullWidth
@@ -169,6 +266,46 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
               value={signupConfirm}
               onChange={(e) => setSignupConfirm(e.target.value)}
             />
+
+            {/* Patient record linking (patient role only) */}
+            {signupRole === "patient" && (
+              <Autocomplete
+                options={patientOptions}
+                getOptionLabel={(o) => o.label}
+                loading={patientLoading}
+                inputValue={patientQuery}
+                value={selectedPatient}
+                onInputChange={handlePatientInputChange}
+                onChange={(_e, val) => setSelectedPatient(val)}
+                filterOptions={(x) => x}
+                noOptionsText={
+                  patientQuery.length < 2
+                    ? "Type at least 2 characters…"
+                    : "No patients found"
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Link your patient record"
+                    placeholder="Search by name…"
+                    helperText="Find your name in the patient database"
+                    slotProps={{
+                      input: {
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {patientLoading && (
+                              <CircularProgress color="inherit" size={16} />
+                            )}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      },
+                    }}
+                  />
+                )}
+              />
+            )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <Button onClick={handleClose}>Cancel</Button>

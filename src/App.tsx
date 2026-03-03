@@ -12,6 +12,7 @@ import ImmunizationView from "./components/AdditionalResources/ImmunizationView"
 import ProcedureView from "./components/AdditionalResources/ProcedureView";
 import ObservationView from "./components/AdditionalResources/ObservationView";
 import MedicationRequestView from "./components/AdditionalResources/MedicationRequestView";
+import UserProfilePage from "./components/Auth/UserProfilePage";
 import { AuthProvider } from "./context/AuthContext";
 import Box from "@mui/material/Box";
 
@@ -41,6 +42,7 @@ function App() {
               path="/medication-request/:id"
               element={<MedicationRequestView />}
             />
+            <Route path="/profile" element={<UserProfilePage />} />
           </Routes>
         </Box>
       </BrowserRouter>
