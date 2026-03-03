@@ -28,6 +28,7 @@ import {
 } from "react-router-dom";
 import type { MedicationRequestResource } from "./additionalResourceTypes";
 import { useOpenFDA } from "../../hooks/useOpenFDA";
+import { useRxNorm } from "../../hooks/useRxNorm";
 
 const fmt = (iso?: string) =>
   iso
@@ -73,6 +74,9 @@ export default function MedicationRequestView({
     med?.medicationCodeableConcept?.text ??
     med?.medicationCodeableConcept?.coding?.[0]?.display;
   const fda = useOpenFDA(rxcui, medNameForFDA);
+
+  // RxNorm data — brand names, ingredient, drug class
+  const rxnorm = useRxNorm(rxcui);
 
   useEffect(() => {
     if (!id) return;
@@ -232,9 +236,203 @@ export default function MedicationRequestView({
         </TableContainer>
       </Paper>
 
+      {/* ── RxNorm Section ──────────────────────────────────────────── */}
+      <RxNormPanel rxnorm={rxnorm} rxcui={rxcui} />
+
       {/* ── OpenFDA Section ─────────────────────────────────────────── */}
       <FDAPanel drugName={medNameForFDA} rxcui={rxcui} fda={fda} />
     </Box>
+  );
+}
+
+// ─── RxNorm Panel sub-component ───────────────────────────────────────────────
+
+import type { RxNormData } from "../../hooks/useRxNorm";
+
+const CLASS_TYPE_LABEL: Record<string, string> = {
+  EPC: "Pharmacologic Class",
+  MOA: "Mechanism of Action",
+  "ATC1-4": "ATC Class",
+  CHEM: "Chemical Class",
+};
+
+function RxNormPanel({
+  rxnorm,
+  rxcui,
+}: {
+  rxnorm: RxNormData;
+  rxcui?: string;
+}) {
+  if (!rxcui) return null;
+
+  const rxNavUrl = rxcui
+    ? `https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=${rxcui}`
+    : undefined;
+
+  return (
+    <Paper variant="outlined" sx={{ p: 3, mt: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+          flexWrap: "wrap",
+          gap: 1,
+        }}
+      >
+        <Typography variant="h6" fontWeight={600}>
+          RxNorm Drug Info
+        </Typography>
+        {rxNavUrl && (
+          <Tooltip title="View in RxNav">
+            <Chip
+              icon={<OpenInNewIcon />}
+              label="RxNav"
+              component="a"
+              href={rxNavUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              clickable
+              size="small"
+              variant="outlined"
+            />
+          </Tooltip>
+        )}
+      </Box>
+
+      {rxnorm.loading && (
+        <Box sx={{ py: 1 }}>
+          <Skeleton width="50%" sx={{ mb: 1 }} />
+          <Skeleton width="70%" sx={{ mb: 1 }} />
+          <Skeleton width="40%" />
+        </Box>
+      )}
+
+      {rxnorm.error && (
+        <Alert severity="warning" sx={{ mb: 1 }}>
+          Could not load RxNorm data: {rxnorm.error}
+        </Alert>
+      )}
+
+      {!rxnorm.loading && !rxnorm.error && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {/* Ingredient */}
+          {rxnorm.ingredientName && (
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={600}
+                sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}
+              >
+                Generic Ingredient
+              </Typography>
+              <Typography variant="body1" sx={{ mt: 0.25 }}>
+                {rxnorm.ingredientName}
+                {rxnorm.ingredientRxcui && (
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ ml: 1 }}
+                  >
+                    RxCUI {rxnorm.ingredientRxcui}
+                  </Typography>
+                )}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Drug Classes */}
+          {rxnorm.drugClasses.length > 0 && (
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={600}
+                sx={{
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  display: "block",
+                  mb: 0.75,
+                }}
+              >
+                Drug Classification
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                {rxnorm.drugClasses.map((dc) => (
+                  <Box
+                    key={dc.classId}
+                    sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}
+                  >
+                    <Chip
+                      label={CLASS_TYPE_LABEL[dc.classType] ?? dc.classType}
+                      size="small"
+                      variant="outlined"
+                      sx={{ minWidth: 160, justifyContent: "flex-start" }}
+                    />
+                    <Typography variant="body2" sx={{ pt: 0.25 }}>
+                      {dc.className}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {/* Brand Names */}
+          {rxnorm.brandNames.length > 0 && (
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={600}
+                sx={{
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  display: "block",
+                  mb: 0.75,
+                }}
+              >
+                Brand Names
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                {rxnorm.brandNames.map((name) => (
+                  <Chip key={name} label={name} size="small" />
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {/* Branded Clinical Products */}
+          {rxnorm.brandedProducts.length > 0 && (
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={600}
+                sx={{
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  display: "block",
+                  mb: 0.75,
+                }}
+              >
+                Branded Products (same dose form)
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                {rxnorm.brandedProducts.map((name) => (
+                  <Typography key={name} variant="body2">
+                    • {name}
+                  </Typography>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      )}
+    </Paper>
   );
 }
 
