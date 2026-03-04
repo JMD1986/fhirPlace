@@ -21,7 +21,8 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { FhirCoding, ProcedureResource } from "./additionalResourceTypes";
+import type { ProcedureResource } from "../../types/fhir";
+import { procedureApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>
   iso
@@ -76,12 +77,7 @@ export default function ProcedureView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`http://localhost:5001/fhir/Procedure/${id}`);
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "Procedure not found" : "Failed to fetch",
-          );
-        setProcedure(await r.json());
+        setProcedure(await procedureApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

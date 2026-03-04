@@ -17,11 +17,11 @@ import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import MedicationIcon from "@mui/icons-material/Medication";
 import type {
-  FhirCoding,
   AnyResource,
   FhirBundle,
   ResourceTypeConfig,
-} from "./additionalResourceTypes";
+} from "../../types/fhir";
+import { fhirSearch } from "../../api/fhirApi";
 
 const RESOURCE_TYPES: ResourceTypeConfig[] = [
   {
@@ -122,10 +122,7 @@ const RESOURCE_TYPES: ResourceTypeConfig[] = [
 ];
 
 // ── Props ──────────────────────────────────────────────────────────────────────
-export interface ResourceGroup {
-  config: ResourceTypeConfig;
-  items: AnyResource[];
-}
+export type { ResourceGroup } from "../../types/fhir";
 
 interface Props {
   encounterId: string;
@@ -153,15 +150,18 @@ export default function AdditionalResourcesPanel({
 
         const results = await Promise.all(
           RESOURCE_TYPES.map(async (cfg) => {
-            const res = await fetch(
-              `http://localhost:5001/fhir/${cfg.route}?encounter=${encounterId}`,
-            );
-            if (!res.ok) return { config: cfg, items: [] };
-            const bundle: FhirBundle = await res.json();
-            return {
-              config: cfg,
-              items: bundle.entry?.map((e) => e.resource) ?? [],
-            };
+            try {
+              const bundle: FhirBundle = await fhirSearch(
+                cfg.route,
+                new URLSearchParams({ encounter: encounterId }),
+              );
+              return {
+                config: cfg,
+                items: bundle.entry?.map((e) => e.resource) ?? [],
+              };
+            } catch {
+              return { config: cfg, items: [] };
+            }
           }),
         );
 

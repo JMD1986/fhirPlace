@@ -20,12 +20,11 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import type {
   AnyResource,
   ResourceTypeConfig,
-} from "../AdditionalResources/additionalResourceTypes";
+  ResourceGroup,
+} from "../../types/fhir";
+import { fhirSearch } from "../../api/fhirApi";
 
-export interface ResourceGroup {
-  config: ResourceTypeConfig;
-  items: AnyResource[];
-}
+export type { ResourceGroup };
 
 interface Props {
   patientId: string;
@@ -206,13 +205,9 @@ export default function PatientEncountersPanel({
     if (!onSelectResource) return;
     setFetchingRoute(cfg.route);
     try {
-      const res = await fetch(
-        `http://localhost:5001/fhir/${cfg.route}?patient=${patientId}&_count=500`,
-      );
-      const bundle = await res.json();
-      const items: AnyResource[] = (bundle.entry ?? []).map(
-        (e: { resource: AnyResource }) => e.resource,
-      );
+      const params = new URLSearchParams({ patient: patientId, _count: "500" });
+      const bundle = await fhirSearch<AnyResource>(cfg.route, params);
+      const items: AnyResource[] = (bundle.entry ?? []).map((e) => e.resource);
       onSelectResource({ config: cfg, items });
     } catch {
       // silently ignore — user stays on current view
@@ -232,9 +227,10 @@ export default function PatientEncountersPanel({
         // Fetch resource totals in parallel — _count=1 to only get bundle.total.
         const totalBundles = await Promise.all(
           SUMMARY_RESOURCES.map((r) =>
-            fetch(
-              `http://localhost:5001/fhir/${r.route}?patient=${patientId}&_count=1`,
-            ).then((res) => res.json()),
+            fhirSearch(
+              r.route,
+              new URLSearchParams({ patient: patientId, _count: "1" }),
+            ),
           ),
         );
 

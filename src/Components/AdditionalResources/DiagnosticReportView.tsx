@@ -24,10 +24,8 @@ import {
   Link,
 } from "react-router-dom";
 
-import type {
-  FhirCoding,
-  DiagnosticReportResource,
-} from "./additionalResourceTypes";
+import type { DiagnosticReportResource } from "../../types/fhir";
+import { diagReportApi } from "../../api/fhirApi";
 import { useNLMLoinc } from "../../hooks/useNLMClinicalTables";
 
 const fmt = (iso?: string) =>
@@ -81,16 +79,7 @@ export default function DiagnosticReportView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(
-          `http://localhost:5001/fhir/DiagnosticReport/${id}`,
-        );
-        if (!r.ok)
-          throw new Error(
-            r.status === 404
-              ? "Diagnostic report not found"
-              : "Failed to fetch",
-          );
-        setReport(await r.json());
+        setReport(await diagReportApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

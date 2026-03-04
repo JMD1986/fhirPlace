@@ -23,7 +23,8 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import type { ObservationResource } from "./additionalResourceTypes";
+import type { ObservationResource } from "../../types/fhir";
+import { observationApi } from "../../api/fhirApi";
 import { buildGroups, fmtObsDate } from "./observationGroupUtils";
 import type { ObsGroup } from "./observationGroupUtils";
 
@@ -237,15 +238,12 @@ export default function ObservationCharts({ patientId }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(
-          `http://localhost:5001/fhir/Observation?patient=${patientId}&_count=2000`,
+        const bundle = await observationApi.search(
+          new URLSearchParams({ patient: patientId, _count: "2000" }),
         );
-        if (!res.ok) throw new Error("Failed to fetch observations");
-        const bundle = await res.json();
-        const obs: ObservationResource[] =
-          bundle.entry?.map(
-            (e: { resource: ObservationResource }) => e.resource,
-          ) ?? [];
+        const obs: ObservationResource[] = (bundle.entry ?? []).map(
+          (e) => e.resource as ObservationResource,
+        );
         setObservations(obs);
       } catch (e) {
         setError((e as Error).message);

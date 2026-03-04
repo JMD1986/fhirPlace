@@ -15,6 +15,7 @@ import EncounterSearchResults from "./EncounterSearchResults";
 import type { FhirEncounter } from "./encounterTypes";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
+import { encounterApi } from "../../api/fhirApi";
 import type { EncounterSearchParams } from "../../hooks/useSavedSearches";
 import { useAuth } from "../../context/AuthContext";
 
@@ -90,11 +91,7 @@ export default function EncounterSearch() {
   const fetchPage = async (offset: number) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:5001/fhir/Encounter?${buildParams(offset).toString()}`,
-      );
-      if (!response.ok) throw new Error("Search request failed");
-      const bundle = await response.json();
+      const bundle = await encounterApi.search(buildParams(offset));
       const results: FhirEncounter[] = (bundle.entry ?? []).map(
         (e: { resource: FhirEncounter }) => e.resource,
       );
@@ -112,12 +109,8 @@ export default function EncounterSearch() {
   // Fetch dropdown options + SNOMED reasons on mount
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5001/fhir/Encounter/_types").then((r) =>
-        r.json(),
-      ),
-      fetch("http://localhost:5001/fhir/Encounter/_classes").then((r) =>
-        r.json(),
-      ),
+      encounterApi.getTypes(),
+      encounterApi.getClasses(),
       fetch("/resources/snomed.json").then((r) => r.json()),
     ])
       .then(([types, classes, snomed]) => {

@@ -26,7 +26,8 @@ import {
   useSearchParams,
   Link,
 } from "react-router-dom";
-import type { MedicationRequestResource } from "./additionalResourceTypes";
+import type { MedicationRequestResource } from "../../types/fhir";
+import { medicationRequestApi } from "../../api/fhirApi";
 import { useOpenFDA } from "../../hooks/useOpenFDA";
 import { useRxNorm } from "../../hooks/useRxNorm";
 
@@ -84,16 +85,7 @@ export default function MedicationRequestView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(
-          `http://localhost:5001/fhir/MedicationRequest/${id}`,
-        );
-        if (!r.ok)
-          throw new Error(
-            r.status === 404
-              ? "Medication request not found"
-              : "Failed to fetch",
-          );
-        setMed(await r.json());
+        setMed(await medicationRequestApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

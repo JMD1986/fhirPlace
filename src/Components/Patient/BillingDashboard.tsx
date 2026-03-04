@@ -34,10 +34,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import type {
-  ClaimResource,
-  EoBResource,
-} from "../AdditionalResources/additionalResourceTypes";
+import type { ClaimResource, EoBResource } from "../../types/fhir";
+import { claimApi, eobApi } from "../../api/fhirApi";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface BillingDashboardProps {
@@ -175,18 +173,13 @@ export default function BillingDashboard({ patientId }: BillingDashboardProps) {
 
     const fetchAll = async () => {
       try {
-        const [claimRes, eobRes] = await Promise.all([
-          fetch(
-            `http://localhost:5001/fhir/Claim?patient=${patientId}&_count=500`,
-          ),
-          fetch(
-            `http://localhost:5001/fhir/ExplanationOfBenefit?patient=${patientId}&_count=500`,
-          ),
-        ]);
-
         const [claimBundle, eobBundle] = await Promise.all([
-          claimRes.json(),
-          eobRes.json(),
+          claimApi.search(
+            new URLSearchParams({ patient: patientId, _count: "500" }),
+          ),
+          eobApi.search(
+            new URLSearchParams({ patient: patientId, _count: "500" }),
+          ),
         ]);
 
         setClaims(

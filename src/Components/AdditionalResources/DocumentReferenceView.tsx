@@ -21,7 +21,8 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { FhirCoding, DocRefResource } from "./additionalResourceTypes";
+import type { DocRefResource } from "../../types/fhir";
+import { documentReferenceApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>
   iso
@@ -65,14 +66,7 @@ export default function DocumentReferenceView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(
-          `http://localhost:5001/fhir/DocumentReference/${id}`,
-        );
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "Document not found" : "Failed to fetch",
-          );
-        setDoc(await r.json());
+        setDoc(await documentReferenceApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

@@ -19,6 +19,7 @@ import {
 import PersonIcon from "@mui/icons-material/Person";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import { useAuth } from "../../context/AuthContext";
+import { patientApi } from "../../api/fhirApi";
 import type { UserRole } from "../../context/AuthContext";
 
 interface PatientOption {
@@ -125,24 +126,22 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
     }
     setPatientLoading(true);
     try {
-      const res = await fetch(
-        `http://localhost:5001/api/patients?name=${encodeURIComponent(value)}&_count=10`,
-      );
-      const data = await res.json();
-      const patients: PatientOption[] = (data.patients ?? data ?? []).map(
-        (p: {
-          id: string;
-          name?: string;
-          given?: string;
-          family?: string;
-          birthDate?: string;
-        }) => {
-          const displayName =
-            p.name ?? [p.given, p.family].filter(Boolean).join(" ") ?? p.id;
-          const dob = p.birthDate ? ` (DOB: ${p.birthDate})` : "";
-          return { id: p.id, label: `${displayName}${dob}` };
-        },
-      );
+      const rawData = await patientApi.searchSummary(value, 10);
+      const list: {
+        id: string;
+        name?: string;
+        given?: string;
+        family?: string;
+        birthDate?: string;
+      }[] = ((rawData as unknown as { patients?: unknown[] }).patients ??
+        rawData ??
+        []) as typeof list;
+      const patients: PatientOption[] = list.map((p) => {
+        const displayName =
+          p.name ?? [p.given, p.family].filter(Boolean).join(" ") ?? p.id;
+        const dob = p.birthDate ? ` (DOB: ${p.birthDate})` : "";
+        return { id: p.id, label: `${displayName}${dob}` };
+      });
       setPatientOptions(patients);
     } catch {
       setPatientOptions([]);

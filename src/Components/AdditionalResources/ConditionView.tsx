@@ -25,7 +25,8 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { FhirCoding, ConditionResource } from "./additionalResourceTypes";
+import type { ConditionResource } from "../../types/fhir";
+import { conditionApi } from "../../api/fhirApi";
 import { useNLMCondition } from "../../hooks/useNLMClinicalTables";
 
 const fmt = (iso?: string) =>
@@ -75,12 +76,7 @@ export default function ConditionView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`http://localhost:5001/fhir/Condition/${id}`);
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "Condition not found" : "Failed to fetch",
-          );
-        setCondition(await r.json());
+        setCondition(await conditionApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

@@ -34,6 +34,7 @@ import {
 import type { NPPESResult } from "../../hooks/useNPPES";
 import Grid from "@mui/material/Grid";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { encounterApi } from "../../api/fhirApi";
 import AdditionalResourcesPanel from "../AdditionalResources/AdditionalResourcesPanel";
 import type { ResourceGroup } from "../AdditionalResources/AdditionalResourcesPanel";
 
@@ -578,15 +579,7 @@ export default function EncounterView() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`http://localhost:5001/fhir/Encounter/${id}`);
-        if (!res.ok) {
-          throw new Error(
-            res.status === 404
-              ? "Encounter not found"
-              : "Failed to fetch encounter",
-          );
-        }
-        const data: EncounterResource = await res.json();
+        const data: EncounterResource = await encounterApi.getById(id);
         setEncounter(data);
       } catch (err: unknown) {
         setError(

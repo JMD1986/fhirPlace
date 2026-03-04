@@ -24,7 +24,8 @@ import type {
   ResourceTypeConfig,
   AnyResource,
   FhirBundle,
-} from "../AdditionalResources/additionalResourceTypes";
+} from "../../types/fhir";
+import { fhirSearch } from "../../api/fhirApi";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -142,10 +143,8 @@ interface Props {
   patientId?: string;
 }
 
-interface ResourceGroup {
-  config: ResourceTypeConfig;
-  items: AnyResource[];
-}
+import type { ResourceGroup } from "../../types/fhir";
+// ResourceGroup imported from central types above
 
 export default function DocumentReferencePanel({
   encounterId,
@@ -166,15 +165,18 @@ export default function DocumentReferencePanel({
 
         const results = await Promise.all(
           RESOURCE_TYPES.map(async (cfg) => {
-            const res = await fetch(
-              `http://localhost:5001/fhir/${cfg.route}?encounter=${encounterId}`,
-            );
-            if (!res.ok) return { config: cfg, items: [] };
-            const bundle: FhirBundle = await res.json();
-            return {
-              config: cfg,
-              items: bundle.entry?.map((e) => e.resource) ?? [],
-            };
+            try {
+              const bundle: FhirBundle = await fhirSearch(
+                cfg.route,
+                new URLSearchParams({ encounter: encounterId }),
+              );
+              return {
+                config: cfg,
+                items: bundle.entry?.map((e) => e.resource) ?? [],
+              };
+            } catch {
+              return { config: cfg, items: [] };
+            }
           }),
         );
 

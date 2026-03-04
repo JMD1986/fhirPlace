@@ -26,7 +26,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
-import type { PatientResource, FhirExtension } from "./patientTypes";
+import type { PatientResource, FhirExtension } from "../../types/fhir";
 import PatientEncountersPanel, {
   type ResourceGroup,
 } from "./PatientEncountersPanel";
@@ -46,6 +46,7 @@ import ObservationView from "../AdditionalResources/ObservationView";
 import MedicationRequestView from "../AdditionalResources/MedicationRequestView";
 import BillingDashboard from "./BillingDashboard";
 import { useParams, useNavigate } from "react-router-dom";
+import { patientApi, observationApi } from "../../api/fhirApi";
 
 interface PatientViewProps {
   /** identifier used to fetch the patient from the API */
@@ -173,26 +174,12 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   };
 
   useEffect(() => {
-    console.log("Fetching patient with ID:", patientId);
     const fetchPatient = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(
-          `http://localhost:5001/fhir/Patient/${patientId}`,
-        );
-        console.log("Fetch response:", res);
-        if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error("Patient not found");
-          }
-          throw new Error("Failed to fetch patient");
-        }
-        const data: PatientResource = await res.json();
-        console.log("Fetched raw data:", data);
-
+        const data: PatientResource = await patientApi.getById(patientId);
         const extractedPatient = extractPatientFromBundle(data);
-        console.log("Extracted patient:", extractedPatient);
 
         if (!extractedPatient) {
           throw new Error("Could not extract patient resource from response");
@@ -442,10 +429,8 @@ function ResourceListView({
   // Fetch & build observation groups once when viewing the Observations list
   useEffect(() => {
     if (!isObservations || !patientId) return;
-    fetch(
-      `http://localhost:5001/fhir/Observation?patient=${patientId}&_count=2000`,
-    )
-      .then((r) => r.json())
+    observationApi
+      .search(new URLSearchParams({ patient: patientId, _count: "2000" }))
       .then((bundle) => {
         const obs =
           bundle.entry?.map(

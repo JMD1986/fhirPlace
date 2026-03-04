@@ -23,7 +23,8 @@ import {
   useSearchParams,
   Link,
 } from "react-router-dom";
-import type { ObservationResource } from "./additionalResourceTypes";
+import type { ObservationResource } from "../../types/fhir";
+import { observationApi } from "../../api/fhirApi";
 import { useNLMLoinc } from "../../hooks/useNLMClinicalTables";
 
 const fmt = (iso?: string) =>
@@ -100,12 +101,7 @@ export default function ObservationView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`http://localhost:5001/fhir/Observation/${id}`);
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "Observation not found" : "Failed to fetch",
-          );
-        setObservation(await r.json());
+        setObservation(await observationApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

@@ -21,11 +21,8 @@ import {
   Link,
 } from "react-router-dom";
 
-import type {
-  FhirCoding,
-  ClaimItem,
-  ClaimResource,
-} from "./additionalResourceTypes";
+import type { ClaimResource, ClaimItem } from "../../types/fhir";
+import { claimApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>
   iso
@@ -63,12 +60,7 @@ export default function ClaimsView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`http://localhost:5001/fhir/Claim/${id}`);
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "Claim not found" : "Failed to fetch",
-          );
-        setClaim(await r.json());
+        setClaim(await claimApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

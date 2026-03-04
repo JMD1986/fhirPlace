@@ -21,10 +21,8 @@ import {
   Link,
 } from "react-router-dom";
 
-import type {
-  FhirCoding,
-  ImmunizationResource,
-} from "./additionalResourceTypes";
+import type { ImmunizationResource } from "../../types/fhir";
+import { immunizationApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>
   iso
@@ -62,12 +60,7 @@ export default function ImmunizationView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`http://localhost:5001/fhir/Immunization/${id}`);
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "Immunization not found" : "Failed to fetch",
-          );
-        setImmunization(await r.json());
+        setImmunization(await immunizationApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

@@ -23,6 +23,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { patientApi } from "../../api/fhirApi";
 import PatientView from "../Patient/PatientView";
 
 interface PatientOption {
@@ -110,16 +111,7 @@ export default function UserProfilePage() {
     }
     setPatientLoading(true);
     try {
-      const res = await fetch(
-        `http://localhost:5001/api/patients?name=${encodeURIComponent(value)}&_count=10`,
-      );
-      const data: {
-        id: string;
-        name?: string;
-        given?: string;
-        family?: string;
-        birthDate?: string;
-      }[] = await res.json();
+      const data = await patientApi.searchSummary(value, 10);
       setPatientOptions(
         data.map((p) => {
           const displayName =

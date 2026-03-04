@@ -23,12 +23,12 @@ import {
 } from "react-router-dom";
 
 import type {
-  FhirCoding,
-  AdjudicationItem,
+  EoBResource,
   EoBItem,
   EoBTotal,
-  EoBResource,
-} from "./additionalResourceTypes";
+  AdjudicationItem,
+} from "../../types/fhir";
+import { eobApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>
   iso
@@ -75,14 +75,7 @@ export default function EoBView({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(
-          `http://localhost:5001/fhir/ExplanationOfBenefit/${id}`,
-        );
-        if (!r.ok)
-          throw new Error(
-            r.status === 404 ? "EOB not found" : "Failed to fetch",
-          );
-        setEob(await r.json());
+        setEob(await eobApi.getById(id));
       } catch (e) {
         setError((e as Error).message);
       } finally {

@@ -7,9 +7,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import SearchResults from "./SearchResults";
-import type { Patient } from "./patientTypes";
+import type { Patient } from "../../types/fhir";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
+import { patientApi } from "../../api/fhirApi";
 import type { PatientSearchParams } from "../../hooks/useSavedSearches";
 import { useAuth } from "../../context/AuthContext";
 
@@ -58,11 +59,7 @@ export default function PatientSearch() {
   const fetchPatientPage = async (offset: number) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:5001/fhir/Patient?${buildPatientParams(offset).toString()}`,
-      );
-      if (!response.ok) throw new Error("Search request failed");
-      const bundle = await response.json();
+      const bundle = await patientApi.search(buildPatientParams(offset));
       const results: Patient[] = (bundle.entry ?? []).map(
         (e: { resource: Patient }) => e.resource,
       );
