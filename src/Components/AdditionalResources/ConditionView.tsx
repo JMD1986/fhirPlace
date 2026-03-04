@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -61,30 +61,16 @@ export default function ConditionView({
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
-  const [condition, setCondition] = useState<ConditionResource | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: condition,
+    loading,
+    error,
+  } = useFHIRResource(id, conditionApi.getById);
 
   // NLM Clinical Tables — fires once condition is loaded
   const conditionDisplayName =
     condition?.code?.text ?? condition?.code?.coding?.[0]?.display;
   const nlm = useNLMCondition(conditionDisplayName);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setCondition(await conditionApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
 
   if (loading)
     return (

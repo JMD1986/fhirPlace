@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -65,9 +65,11 @@ export default function MedicationRequestView({
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
 
-  const [med, setMed] = useState<MedicationRequestResource | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: med,
+    loading,
+    error,
+  } = useFHIRResource(id, medicationRequestApi.getById);
 
   // OpenFDA data — populated once med is loaded
   const rxcui = med?.medicationCodeableConcept?.coding?.[0]?.code;
@@ -78,22 +80,6 @@ export default function MedicationRequestView({
 
   // RxNorm data — brand names, ingredient, drug class
   const rxnorm = useRxNorm(rxcui);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setMed(await medicationRequestApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
 
   if (loading)
     return (

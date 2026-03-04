@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -48,27 +48,11 @@ export default function ImmunizationView({
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
 
-  const [immunization, setImmunization] = useState<ImmunizationResource | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setImmunization(await immunizationApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
+  const {
+    data: immunization,
+    loading,
+    error,
+  } = useFHIRResource(id, immunizationApi.getById);
 
   if (loading)
     return (

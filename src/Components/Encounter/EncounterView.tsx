@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -565,32 +566,14 @@ function ResourceListView({
 export default function EncounterView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [encounter, setEncounter] = useState<EncounterResource | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: encounter,
+    loading,
+    error,
+  } = useFHIRResource(id, encounterApi.getById);
   const [selectedGroup, setSelectedGroup] = useState<ResourceGroup | null>(
     null,
   );
-
-  useEffect(() => {
-    if (!id) return;
-    setSelectedGroup(null);
-    const fetchEncounter = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data: EncounterResource = await encounterApi.getById(id);
-        setEncounter(data);
-      } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEncounter();
-  }, [id]);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -65,25 +65,7 @@ export default function EoBView({
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
-  const [eob, setEob] = useState<EoBResource | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setEob(await eobApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
+  const { data: eob, loading, error } = useFHIRResource(id, eobApi.getById);
 
   if (loading)
     return (

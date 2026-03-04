@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -67,25 +67,11 @@ export default function ProcedureView({
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
 
-  const [procedure, setProcedure] = useState<ProcedureResource | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setProcedure(await procedureApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
+  const {
+    data: procedure,
+    loading,
+    error,
+  } = useFHIRResource(id, procedureApi.getById);
 
   if (loading)
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -61,9 +61,11 @@ export default function DiagnosticReportView({
   const encounterIdFromQuery = searchParams.get("encounterId") ?? undefined;
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
-  const [report, setReport] = useState<DiagnosticReportResource | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: report,
+    loading,
+    error,
+  } = useFHIRResource(id, diagReportApi.getById);
 
   // NLM LOINC lookup — fires once report is loaded
   const loincCode = report?.code?.coding?.find(
@@ -72,22 +74,6 @@ export default function DiagnosticReportView({
   const reportFallbackName =
     report?.code?.text ?? report?.code?.coding?.[0]?.display;
   const nlmLoinc = useNLMLoinc(loincCode, reportFallbackName);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setReport(await diagReportApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
 
   if (loading)
     return (

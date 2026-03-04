@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useFHIRResource } from "../../hooks/useFHIRResource";
 import {
   Box,
   Paper,
@@ -81,11 +81,11 @@ export default function ObservationView({
   const patientIdFromQuery =
     propPatientId ?? searchParams.get("patientId") ?? undefined;
 
-  const [observation, setObservation] = useState<ObservationResource | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: observation,
+    loading,
+    error,
+  } = useFHIRResource(id, observationApi.getById);
 
   // NLM LOINC lookup — fires once observation is loaded
   const loincCode = observation?.code?.coding?.find(
@@ -94,22 +94,6 @@ export default function ObservationView({
   const obsFallbackName =
     observation?.code?.text ?? observation?.code?.coding?.[0]?.display;
   const nlmLoinc = useNLMLoinc(loincCode, obsFallbackName);
-
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setObservation(await observationApi.getById(id));
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id]);
 
   if (loading)
     return (
