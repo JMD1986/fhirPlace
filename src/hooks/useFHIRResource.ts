@@ -24,13 +24,23 @@ export function useFHIRResource<T>(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      // Reset all state when id is cleared so stale results don't linger
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    // Reset immediately so the previous resource's data/error doesn't flash
+    // while the new fetch is in flight
+    setData(null);
+    setError(null);
+    setLoading(true);
 
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
-      setError(null);
       try {
         const result = await fetcher(id);
         if (!cancelled) setData(result);

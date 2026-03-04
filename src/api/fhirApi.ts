@@ -36,11 +36,24 @@ export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5001"
  * Wraps fetch with base URL prepending and standard error handling.
  * Throws an Error with the HTTP status message on non-2xx responses.
  */
+const HTTP_STATUS_TEXT: Record<number, string> = {
+  400: "Bad Request",
+  401: "Unauthorized",
+  403: "Forbidden",
+  404: "Not Found",
+  409: "Conflict",
+  422: "Unprocessable Entity",
+  500: "Internal Server Error",
+  502: "Bad Gateway",
+  503: "Service Unavailable",
+};
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
   const res = await fetch(url, init);
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const text = res.statusText || HTTP_STATUS_TEXT[res.status] || "Error";
+    throw new Error(`HTTP ${res.status}: ${text}`);
   }
   return res.json() as Promise<T>;
 }

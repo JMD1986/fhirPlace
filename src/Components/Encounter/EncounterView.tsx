@@ -38,6 +38,15 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { encounterApi } from "../../api/fhirApi";
 import AdditionalResourcesPanel from "../AdditionalResources/AdditionalResourcesPanel";
 import type { ResourceGroup } from "../AdditionalResources/AdditionalResourcesPanel";
+import DocumentReferenceView from "../AdditionalResources/DocumentReferenceView";
+import ConditionView from "../AdditionalResources/ConditionView";
+import DiagnosticReportView from "../AdditionalResources/DiagnosticReportView";
+import ClaimsView from "../AdditionalResources/ClaimsView";
+import EoBView from "../AdditionalResources/EoBView";
+import ImmunizationView from "../AdditionalResources/ImmunizationView";
+import ProcedureView from "../AdditionalResources/ProcedureView";
+import ObservationView from "../AdditionalResources/ObservationView";
+import MedicationRequestView from "../AdditionalResources/MedicationRequestView";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -342,6 +351,21 @@ const fmtDate = (iso?: string | null) =>
       })
     : "—";
 
+const INLINE_VIEWS: Record<
+  string,
+  React.ComponentType<{ resourceId?: string; patientId?: string }>
+> = {
+  DocumentReference: DocumentReferenceView,
+  Condition: ConditionView,
+  DiagnosticReport: DiagnosticReportView,
+  Claim: ClaimsView,
+  ExplanationOfBenefit: EoBView,
+  Immunization: ImmunizationView,
+  Procedure: ProcedureView,
+  Observation: ObservationView,
+  MedicationRequest: MedicationRequestView,
+};
+
 interface ResourceListViewProps {
   group: ResourceGroup;
   encounterId: string;
@@ -360,6 +384,7 @@ function ResourceListView({
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const { config, items } = group;
 
@@ -400,6 +425,25 @@ function ResourceListView({
     safePage * PAGE_SIZE,
     safePage * PAGE_SIZE + PAGE_SIZE,
   );
+
+  // ── Inline detail panel ───────────────────────────────────────────────────
+  const InlineView = selectedItemId ? INLINE_VIEWS[config.resourceType] : null;
+
+  if (InlineView && selectedItemId) {
+    return (
+      <Box>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => setSelectedItemId(null)}
+          sx={{ mb: 2 }}
+        >
+          ← Back to {config.label}
+        </Button>
+        <InlineView resourceId={selectedItemId} patientId={patientId} />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -520,7 +564,7 @@ function ResourceListView({
               pageItems.map((item) => {
                 const label = config.getLabel(item);
                 const date = fmtDate(config.getDate(item));
-                const href = `${config.viewPath}/${item.id}?encounterId=${encounterId}${patientId ? `&patientId=${patientId}` : ""}`;
+                const hasInlineView = config.resourceType in INLINE_VIEWS;
                 return (
                   <TableRow key={item.id} hover>
                     <TableCell>
@@ -532,14 +576,15 @@ function ResourceListView({
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Button
-                        component={Link}
-                        to={href}
-                        size="small"
-                        variant="text"
-                      >
-                        View
-                      </Button>
+                      {hasInlineView && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setSelectedItemId(item.id)}
+                        >
+                          View
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

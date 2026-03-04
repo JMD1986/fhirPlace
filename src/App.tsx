@@ -1,20 +1,94 @@
 import "./App.css";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
-import SearchContainer from "./components/MainSearch/SearchContainer";
-import PatientView from "./components/Patient/PatientView";
-import EncounterView from "./components/Encounter/EncounterView";
-import DocumentReferenceView from "./components/AdditionalResources/DocumentReferenceView";
-import ConditionView from "./components/AdditionalResources/ConditionView";
-import DiagnosticReportView from "./components/AdditionalResources/DiagnosticReportView";
-import ClaimsView from "./components/AdditionalResources/ClaimsView";
-import EoBView from "./components/AdditionalResources/EoBView";
-import ImmunizationView from "./components/AdditionalResources/ImmunizationView";
-import ProcedureView from "./components/AdditionalResources/ProcedureView";
-import ObservationView from "./components/AdditionalResources/ObservationView";
-import MedicationRequestView from "./components/AdditionalResources/MedicationRequestView";
-import UserProfilePage from "./components/Auth/UserProfilePage";
 import { AuthProvider } from "./context/AuthContext";
+import { ErrorBoundary } from "react-error-boundary";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+
+// ── Lazy-loaded route components ──────────────────────────────────────────────
+// Each route is split into its own JS chunk. The browser only downloads a
+// chunk when the user first navigates to that route, keeping the initial
+// bundle small and improving Time-to-Interactive on the home/search page.
+const SearchContainer = lazy(
+  () => import("./components/MainSearch/SearchContainer"),
+);
+const PatientView = lazy(() => import("./components/Patient/PatientView"));
+const EncounterView = lazy(
+  () => import("./components/Encounter/EncounterView"),
+);
+const DocumentReferenceView = lazy(
+  () => import("./components/AdditionalResources/DocumentReferenceView"),
+);
+const ConditionView = lazy(
+  () => import("./components/AdditionalResources/ConditionView"),
+);
+const DiagnosticReportView = lazy(
+  () => import("./components/AdditionalResources/DiagnosticReportView"),
+);
+const ClaimsView = lazy(
+  () => import("./components/AdditionalResources/ClaimsView"),
+);
+const EoBView = lazy(() => import("./components/AdditionalResources/EoBView"));
+const ImmunizationView = lazy(
+  () => import("./components/AdditionalResources/ImmunizationView"),
+);
+const ProcedureView = lazy(
+  () => import("./components/AdditionalResources/ProcedureView"),
+);
+const ObservationView = lazy(
+  () => import("./components/AdditionalResources/ObservationView"),
+);
+const MedicationRequestView = lazy(
+  () => import("./components/AdditionalResources/MedicationRequestView"),
+);
+const UserProfilePage = lazy(() => import("./components/Auth/UserProfilePage"));
+
+function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error;
+  resetErrorBoundary: () => void;
+}) {
+  return (
+    <Box sx={{ p: 4, maxWidth: 600, mx: "auto", mt: 6 }}>
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={resetErrorBoundary}>
+            Try again
+          </Button>
+        }
+      >
+        <AlertTitle>Something went wrong</AlertTitle>
+        {error.message}
+      </Alert>
+    </Box>
+  );
+}
+
+// Shown while the lazy chunk is downloading
+function RouteLoader() {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "center", pt: 10 }}>
+      <CircularProgress />
+    </Box>
+  );
+}
+
+// Wraps a route element in both an ErrorBoundary and a Suspense boundary so
+// lazy-load failures are caught and chunk-download spinners are shown.
+function RouteWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Suspense fallback={<RouteLoader />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
+}
 
 function App() {
   return (
@@ -24,25 +98,110 @@ function App() {
           sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
         >
           <Routes>
-            <Route path="/" element={<SearchContainer />} />
-            <Route path="/patient/:id" element={<PatientViewWrapper />} />
-            <Route path="/encounter/:id" element={<EncounterView />} />
-            <Route path="/document/:id" element={<DocumentReferenceView />} />
-            <Route path="/condition/:id" element={<ConditionView />} />
+            <Route
+              path="/"
+              element={
+                <RouteWrapper>
+                  <SearchContainer />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/patient/:id"
+              element={
+                <RouteWrapper>
+                  <PatientViewWrapper />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/encounter/:id"
+              element={
+                <RouteWrapper>
+                  <EncounterView />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/document/:id"
+              element={
+                <RouteWrapper>
+                  <DocumentReferenceView />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/condition/:id"
+              element={
+                <RouteWrapper>
+                  <ConditionView />
+                </RouteWrapper>
+              }
+            />
             <Route
               path="/diagnostic-report/:id"
-              element={<DiagnosticReportView />}
+              element={
+                <RouteWrapper>
+                  <DiagnosticReportView />
+                </RouteWrapper>
+              }
             />
-            <Route path="/claim/:id" element={<ClaimsView />} />
-            <Route path="/explanation-of-benefit/:id" element={<EoBView />} />
-            <Route path="/immunization/:id" element={<ImmunizationView />} />
-            <Route path="/procedure/:id" element={<ProcedureView />} />
-            <Route path="/observation/:id" element={<ObservationView />} />
+            <Route
+              path="/claim/:id"
+              element={
+                <RouteWrapper>
+                  <ClaimsView />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/explanation-of-benefit/:id"
+              element={
+                <RouteWrapper>
+                  <EoBView />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/immunization/:id"
+              element={
+                <RouteWrapper>
+                  <ImmunizationView />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/procedure/:id"
+              element={
+                <RouteWrapper>
+                  <ProcedureView />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/observation/:id"
+              element={
+                <RouteWrapper>
+                  <ObservationView />
+                </RouteWrapper>
+              }
+            />
             <Route
               path="/medication-request/:id"
-              element={<MedicationRequestView />}
+              element={
+                <RouteWrapper>
+                  <MedicationRequestView />
+                </RouteWrapper>
+              }
             />
-            <Route path="/profile" element={<UserProfilePage />} />
+            <Route
+              path="/profile"
+              element={
+                <RouteWrapper>
+                  <UserProfilePage />
+                </RouteWrapper>
+              }
+            />
           </Routes>
         </Box>
       </BrowserRouter>
