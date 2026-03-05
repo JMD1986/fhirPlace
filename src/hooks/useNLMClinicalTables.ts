@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { set } from "supertest/lib/cookies";
 
 const BASE = "https://clinicaltables.nlm.nih.gov/api";
 
@@ -114,9 +115,11 @@ export function useNLMCondition(conditionName?: string): NLMConditionInfo {
         if (!cancelled) setLoading(false);
       }
     };
-
-    fetchData();
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 300);
     return () => {
+      clearTimeout(timer);
       cancelled = true;
     };
   }, [conditionName]);
@@ -200,8 +203,11 @@ export function useNLMLoinc(loincCode?: string, codeName?: string): NLMLoincInfo
       }
     };
 
-    fetchData();
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 300);
     return () => {
+      clearTimeout(timer);
       cancelled = true;
     };
   }, [loincCode, codeName]);

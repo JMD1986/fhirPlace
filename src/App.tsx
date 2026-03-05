@@ -14,44 +14,44 @@ import CircularProgress from "@mui/material/CircularProgress";
 // chunk when the user first navigates to that route, keeping the initial
 // bundle small and improving Time-to-Interactive on the home/search page.
 const SearchContainer = lazy(
-  () => import("./components/MainSearch/SearchContainer"),
+  () => import("./Components/MainSearch/SearchContainer"),
 );
-const PatientView = lazy(() => import("./components/Patient/PatientView"));
+const PatientView = lazy(() => import("./Components/Patient/PatientView"));
 const EncounterView = lazy(
-  () => import("./components/Encounter/EncounterView"),
+  () => import("./Components/Encounter/EncounterView"),
 );
 const DocumentReferenceView = lazy(
-  () => import("./components/AdditionalResources/DocumentReferenceView"),
+  () => import("./Components/AdditionalResources/DocumentReferenceView"),
 );
 const ConditionView = lazy(
-  () => import("./components/AdditionalResources/ConditionView"),
+  () => import("./Components/AdditionalResources/ConditionView"),
 );
 const DiagnosticReportView = lazy(
-  () => import("./components/AdditionalResources/DiagnosticReportView"),
+  () => import("./Components/AdditionalResources/DiagnosticReportView"),
 );
 const ClaimsView = lazy(
-  () => import("./components/AdditionalResources/ClaimsView"),
+  () => import("./Components/AdditionalResources/ClaimsView"),
 );
-const EoBView = lazy(() => import("./components/AdditionalResources/EoBView"));
+const EoBView = lazy(() => import("./Components/AdditionalResources/EoBView"));
 const ImmunizationView = lazy(
-  () => import("./components/AdditionalResources/ImmunizationView"),
+  () => import("./Components/AdditionalResources/ImmunizationView"),
 );
 const ProcedureView = lazy(
-  () => import("./components/AdditionalResources/ProcedureView"),
+  () => import("./Components/AdditionalResources/ProcedureView"),
 );
 const ObservationView = lazy(
-  () => import("./components/AdditionalResources/ObservationView"),
+  () => import("./Components/AdditionalResources/ObservationView"),
 );
 const MedicationRequestView = lazy(
-  () => import("./components/AdditionalResources/MedicationRequestView"),
+  () => import("./Components/AdditionalResources/MedicationRequestView"),
 );
-const UserProfilePage = lazy(() => import("./components/Auth/UserProfilePage"));
+const UserProfilePage = lazy(() => import("./Components/Auth/UserProfilePage"));
 
 function ErrorFallback({
   error,
   resetErrorBoundary,
 }: {
-  error: Error;
+  error: unknown;
   resetErrorBoundary: () => void;
 }) {
   return (
@@ -65,7 +65,7 @@ function ErrorFallback({
         }
       >
         <AlertTitle>Something went wrong</AlertTitle>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
       </Alert>
     </Box>
   );

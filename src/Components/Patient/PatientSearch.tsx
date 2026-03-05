@@ -1,5 +1,8 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+
+export const PATIENT_SEARCH_KEY = "fhirPlace_patientSearch_lastParams";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
@@ -16,14 +19,22 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function PatientSearch() {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useState<PatientSearchParams>({
-    name: "",
-    familyName: "",
-    givenName: "",
-    gender: "",
-    birthDate: "",
-    phone: "",
-    address: "",
+  const [searchParams, setSearchParams] = useState<PatientSearchParams>(() => {
+    try {
+      const stored = sessionStorage.getItem(PATIENT_SEARCH_KEY);
+      if (stored) return JSON.parse(stored) as PatientSearchParams;
+    } catch {
+      // ignore
+    }
+    return {
+      name: "",
+      familyName: "",
+      givenName: "",
+      gender: "",
+      birthDate: "",
+      phone: "",
+      address: "",
+    };
   });
 
   const { searches, save, remove, rename, MAX_SAVED } = useSavedSearches(
@@ -84,6 +95,7 @@ export default function PatientSearch() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    sessionStorage.setItem(PATIENT_SEARCH_KEY, JSON.stringify(searchParams));
     setSearched(true);
     setPage(0);
     setServerOffset(0);
@@ -91,6 +103,7 @@ export default function PatientSearch() {
   };
 
   const handleClear = () => {
+    sessionStorage.removeItem(PATIENT_SEARCH_KEY);
     setSearchParams({
       name: "",
       familyName: "",
@@ -236,7 +249,19 @@ export default function PatientSearch() {
         </Box>
       )}
 
-      {searched && !loading && (
+      {!searched && !loading && (
+        <Typography color="text.secondary" sx={{ textAlign: "center", py: 4 }}>
+          Search to get started
+        </Typography>
+      )}
+
+      {searched && !loading && filteredPatients.length === 0 && (
+        <Typography color="text.secondary" sx={{ textAlign: "center", py: 4 }}>
+          No patients found
+        </Typography>
+      )}
+
+      {searched && !loading && filteredPatients.length > 0 && (
         <Box>
           <SearchResults
             patients={filteredPatients.slice(

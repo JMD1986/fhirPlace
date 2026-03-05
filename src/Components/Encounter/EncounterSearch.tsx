@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+
+export const ENCOUNTER_SEARCH_KEY = "fhirPlace_encounterSearch_lastParams";
 import TextField from "@mui/material/TextField";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
@@ -22,15 +25,25 @@ import { useAuth } from "../../context/AuthContext";
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function EncounterSearch() {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useState<EncounterSearchParams>({
-    patient: "",
-    status: "",
-    classCode: "",
-    type: "",
-    dateFrom: "",
-    dateTo: "",
-    reason: "",
-  });
+  const [searchParams, setSearchParams] = useState<EncounterSearchParams>(
+    () => {
+      try {
+        const stored = sessionStorage.getItem(ENCOUNTER_SEARCH_KEY);
+        if (stored) return JSON.parse(stored) as EncounterSearchParams;
+      } catch {
+        // ignore
+      }
+      return {
+        patient: "",
+        status: "",
+        classCode: "",
+        type: "",
+        dateFrom: "",
+        dateTo: "",
+        reason: "",
+      };
+    },
+  );
 
   const { searches, save, remove, rename, MAX_SAVED } = useSavedSearches(
     "encounter",
@@ -128,6 +141,7 @@ export default function EncounterSearch() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    sessionStorage.setItem(ENCOUNTER_SEARCH_KEY, JSON.stringify(searchParams));
     setSearched(true);
     setPage(0);
     setServerOffset(0);
@@ -147,6 +161,7 @@ export default function EncounterSearch() {
   };
 
   const handleReset = () => {
+    sessionStorage.removeItem(ENCOUNTER_SEARCH_KEY);
     setSearchParams({
       patient: "",
       status: "",
@@ -352,7 +367,19 @@ export default function EncounterSearch() {
       {error && <Alert severity="error">{error}</Alert>}
 
       {/* ── Results ── */}
-      {searched && !loading && (
+      {!searched && !loading && (
+        <Typography color="text.secondary" sx={{ textAlign: "center", py: 4 }}>
+          Search to get started
+        </Typography>
+      )}
+
+      {searched && !loading && encounters.length === 0 && (
+        <Typography color="text.secondary" sx={{ textAlign: "center", py: 4 }}>
+          No encounters found
+        </Typography>
+      )}
+
+      {searched && !loading && encounters.length > 0 && (
         <EncounterSearchResults
           encounters={encounters.slice(
             page * DISPLAY_SIZE - serverOffset,
