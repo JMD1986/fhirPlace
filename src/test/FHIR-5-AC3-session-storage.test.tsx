@@ -76,7 +76,11 @@ describe("PatientSearch - in-memory persistence (FHIR-5 AC3)", () => {
   it("persists form values after unmount + remount (in-app navigation)", async () => {
     const { default: PatientSearch } =
       await import("../Components/Patient/PatientSearch");
-    const wrap = (<MemoryRouter><PatientSearch /></MemoryRouter>);
+    const wrap = (
+      <MemoryRouter>
+        <PatientSearch />
+      </MemoryRouter>
+    );
     const { unmount } = render(wrap);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/patient name/i), "Alice");
@@ -92,7 +96,11 @@ describe("PatientSearch - in-memory persistence (FHIR-5 AC3)", () => {
   it("clears form values when the Clear button is clicked", async () => {
     const { default: PatientSearch } =
       await import("../Components/Patient/PatientSearch");
-    const wrap = (<MemoryRouter><PatientSearch /></MemoryRouter>);
+    const wrap = (
+      <MemoryRouter>
+        <PatientSearch />
+      </MemoryRouter>
+    );
     const { unmount } = render(wrap);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/patient name/i), "Alice");
@@ -128,7 +136,9 @@ describe("EncounterSearch - in-memory persistence (FHIR-5 AC3)", () => {
     await renderEncounterSearch();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/patient/i), "pat-001");
-    await user.click(screen.getByRole("button", { name: /search/i }));
+    await user.click(
+      screen.getByRole("button", { name: /search encounters/i }),
+    );
     const hasSensitiveKey = Object.keys(sessionStorage).some(
       (k) => k.includes("encounterSearch") || k.includes("lastParams"),
     );
