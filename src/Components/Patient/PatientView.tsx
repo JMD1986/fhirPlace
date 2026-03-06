@@ -503,10 +503,11 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
 }
 
 // ── Map from FHIR resourceType → embeddable view component ───────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const INLINE_VIEWS: Record<
   string,
-  React.LazyExoticComponent<React.ComponentType<any>>
+  React.LazyExoticComponent<
+    React.ComponentType<{ resourceId?: string; patientId?: string }>
+  >
 > = {
   DocumentReference: DocumentReferenceView,
   Condition: ConditionView,
