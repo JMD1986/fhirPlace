@@ -7,7 +7,10 @@ import react from '@vitejs/plugin-react'
 const securityHeaders = {
   'Content-Security-Policy':
     "default-src 'self'; " +
-    "script-src 'self'; " +
+    // @vitejs/plugin-react injects an inline HMR preamble script in dev mode;
+    // 'unsafe-inline' is required here. This header only applies to the Vite
+    // dev server — production CSP is set by helmet in server.js and stays strict.
+    "script-src 'self' 'unsafe-inline'; " +
     "style-src 'self' 'unsafe-inline'; " + // MUI/Emotion injects inline styles
     "img-src 'self' data:; " +
     "connect-src 'self' http://localhost:5001 https:; " +

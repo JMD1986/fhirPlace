@@ -67,7 +67,9 @@ describe("PatientEncountersPanel", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
   });
 
-  it("renders all resource type labels in the summary panel", async () => {
+  it("renders all resource type labels when every type has a non-zero total", async () => {
+    // Return total=1 for every resource type so none are filtered out
+    mockFhirSearch.mockResolvedValue(summaryBundle(1));
     renderPanel();
     const labels = [
       "Observations",
@@ -87,6 +89,15 @@ describe("PatientEncountersPanel", () => {
     for (const label of labels) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it("hides resource type rows with a total of 0", async () => {
+    // Default beforeEach: all types return total=0 → none should render
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByText(/no records found/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Observations")).not.toBeInTheDocument();
   });
 
   it("renders the total count next to each resource type", async () => {

@@ -270,49 +270,63 @@ export default function PatientEncountersPanel({
     );
   }
 
+  // Hide resource types that returned 0 results — only show types that have
+  // data (total > 0) or whose count is still unknown (total === null).
+  const visibleSummaries = summaries.filter((s) => s.total !== 0);
+
   return (
     <Box>
       {/* ── Top-3 resource summary ── */}
       <PanelShell title="Resource Summary">
-        {summaries.map((s, i) => (
-          <Box key={s.config.route}>
-            {i > 0 && <Divider />}
-            <ListItemButton
-              onClick={() => handleResourceClick(s.config)}
-              disabled={fetchingRoute === s.config.route}
-              sx={{
-                px: 2,
-                py: 1.25,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                backgroundColor: "grey.50",
-                cursor: onSelectResource ? "pointer" : "default",
-              }}
-            >
-              {fetchingRoute === s.config.route ? (
-                <CircularProgress size={16} sx={{ flexShrink: 0 }} />
-              ) : (
-                s.config.icon
-              )}
-              <Typography
-                variant="body2"
-                fontWeight={600}
-                color={onSelectResource ? "primary.main" : "text.secondary"}
-                sx={{ flexGrow: 1 }}
+        {visibleSummaries.length === 0 ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ px: 2, py: 3, textAlign: "center" }}
+          >
+            No records found for this patient.
+          </Typography>
+        ) : (
+          visibleSummaries.map((s, i) => (
+            <Box key={s.config.route}>
+              {i > 0 && <Divider />}
+              <ListItemButton
+                onClick={() => handleResourceClick(s.config)}
+                disabled={fetchingRoute === s.config.route}
+                sx={{
+                  px: 2,
+                  py: 1.25,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  backgroundColor: "grey.50",
+                  cursor: onSelectResource ? "pointer" : "default",
+                }}
               >
-                {s.config.label}
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.disabled"
-                fontWeight={600}
-              >
-                {s.total !== null ? s.total.toLocaleString() : "—"}
-              </Typography>
-            </ListItemButton>
-          </Box>
-        ))}
+                {fetchingRoute === s.config.route ? (
+                  <CircularProgress size={16} sx={{ flexShrink: 0 }} />
+                ) : (
+                  s.config.icon
+                )}
+                <Typography
+                  variant="body2"
+                  fontWeight={600}
+                  color={onSelectResource ? "primary.main" : "text.secondary"}
+                  sx={{ flexGrow: 1 }}
+                >
+                  {s.config.label}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.disabled"
+                  fontWeight={600}
+                >
+                  {s.total !== null ? s.total.toLocaleString() : "—"}
+                </Typography>
+              </ListItemButton>
+            </Box>
+          ))
+        )}
       </PanelShell>
     </Box>
   );
