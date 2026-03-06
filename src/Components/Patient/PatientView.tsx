@@ -27,7 +27,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
-import type { PatientResource, FhirExtension } from "../../types/fhir";
+import type {
+  PatientResource,
+  FhirExtension,
+  ObservationResource,
+} from "../../types/fhir";
 import PatientEncountersPanel, {
   type ResourceGroup,
 } from "./PatientEncountersPanel";
