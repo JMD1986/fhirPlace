@@ -72,27 +72,27 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t fhirplace-api .
 
-  # ── Lighthouse performance audit ─────────────────────────────────────────────
-  lighthouse:
-    name: Lighthouse
+  # ── Core Web Vitals performance audit ──────────────────────────────────────
+  perf-audit:
+    name: Perf Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          # Lighthouse 13 requires Node ≥ 22; kept separate so other jobs stay on 20.
-          node-version: 22
+          node-version: 20
           cache: npm
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Run Lighthouse audit
-        run: node scripts/lighthouse.js
+      - name: Run perf audit
+        run: node scripts/perf-audit.js
         env:
           CI: true
-      - name: Upload Lighthouse report
+      - name: Upload perf report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-report
-          path: lighthouse-reports/
+          name: perf-report
+          path: perf-reports/
           retention-days: 30
