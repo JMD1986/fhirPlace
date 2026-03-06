@@ -13,6 +13,7 @@
  * }
  * ```
  *
+ * 
  * In production, the handler POSTs this payload to VITE_VITALS_ENDPOINT.
  * In development, the handler is console.log.
  */

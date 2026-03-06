@@ -19,7 +19,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
-import { executablePath } from "puppeteer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -83,15 +82,15 @@ async function main() {
   await waitForServer(PREVIEW_URL);
   console.log(`✔  Preview server ready at ${PREVIEW_URL}\n`);
 
-  // 2 ── Launch Chrome ─────────────────────────────────────────────────────────
-  const isCI = Boolean(process.env.CI);
-  const chromeFlags = ["--headless=new", "--disable-gpu"];
-  if (isCI) chromeFlags.push("--no-sandbox", "--disable-dev-shm-usage");
-
+  // 2 ── Launch Chrome ────────────────────────────────────────────────────────
   console.log("▶  Launching Chrome…");
   chrome = await chromeLauncher.launch({
-    chromePath: executablePath(),
-    chromeFlags,
+    chromeFlags: [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox", // required in containers / CI sandboxes
+      "--disable-dev-shm-usage", // prevents OOM crashes in low-memory envs
+    ],
   });
 
   // 3 ── Run Lighthouse ────────────────────────────────────────────────────────
@@ -163,7 +162,11 @@ async function main() {
 
 async function cleanup() {
   if (chrome) {
-    await chrome.kill().catch(() => {});
+    try {
+      await chrome.kill();
+    } catch {
+      /* ignore */
+    }
     chrome = null;
   }
   if (previewProc) {
