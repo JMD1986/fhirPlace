@@ -69,18 +69,18 @@ export interface PatientResource {
   [key: string]: unknown;
 }
 
-interface BillingDashboardProps {
+export interface BillingDashboardProps {
   patientId: string;
 }
 
-interface MonthlyBucket {
+export interface MonthlyBucket {
   month: string;
   submitted: number;
   paid: number;
   claims: number;
 }
 
-interface PayerBreakdown {
+export interface PayerBreakdown {
   name: string;
   value: number;
 }

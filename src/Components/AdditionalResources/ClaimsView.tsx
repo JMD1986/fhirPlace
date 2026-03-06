@@ -21,7 +21,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { ClaimResource, ClaimItem } from "../../types/fhir";
 import { claimApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>

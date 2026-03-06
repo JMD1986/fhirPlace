@@ -21,7 +21,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { ProcedureResource } from "../../types/fhir";
 import { procedureApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>

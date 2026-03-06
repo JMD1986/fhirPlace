@@ -25,7 +25,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { ConditionResource } from "../../types/fhir";
 import { conditionApi } from "../../api/fhirApi";
 import { useNLMCondition } from "../../hooks/useNLMClinicalTables";
 

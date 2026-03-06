@@ -24,7 +24,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { DiagnosticReportResource } from "../../types/fhir";
 import { diagReportApi } from "../../api/fhirApi";
 import { useNLMLoinc } from "../../hooks/useNLMClinicalTables";
 

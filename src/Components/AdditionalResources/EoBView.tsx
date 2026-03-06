@@ -22,12 +22,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type {
-  EoBResource,
-  EoBItem,
-  EoBTotal,
-  AdjudicationItem,
-} from "../../types/fhir";
 import { eobApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>

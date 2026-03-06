@@ -21,7 +21,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { DocRefResource } from "../../types/fhir";
 import { documentReferenceApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>

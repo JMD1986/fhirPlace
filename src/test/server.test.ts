@@ -14,7 +14,7 @@
  * Simpler: mock the data layer so tests are fast and self-contained.
  */
 
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -151,7 +151,7 @@ function buildTestApp() {
         url: `${BASE}/fhir/${resource}?${new URLSearchParams(query)}`,
       },
     ],
-    entry: entries.map((r: any) => ({
+    entry: entries.map((r: Record<string, unknown>) => ({
       fullUrl: `${BASE}/fhir/${resource}/${r.id}`,
       resource: r,
       search: { mode: "match" },
@@ -200,8 +200,9 @@ function buildTestApp() {
   // ── /fhir/Encounter ────────────────────────────────────────────────────────
   app.get("/fhir/Encounter/_types", (_req, res) => {
     const types = new Set<string>();
-    for (const enc of encounterMap.values()) {
-      const text = (enc as any).type?.[0]?.text;
+    for (const encObj of encounterMap.values()) {
+      const enc = encObj as Record<string, unknown> & { type?: { text?: string }[] };
+      const text = enc.type?.[0]?.text;
       if (text) types.add(text);
     }
     res.json([...types].sort());
@@ -209,15 +210,16 @@ function buildTestApp() {
 
   app.get("/fhir/Encounter/_classes", (_req, res) => {
     const classes = new Set<string>();
-    for (const enc of encounterMap.values()) {
-      if ((enc as any).class?.code) classes.add((enc as any).class.code);
+    for (const encObj of encounterMap.values()) {
+      const enc = encObj as Record<string, unknown> & { class?: { code?: string } };
+      if (enc.class?.code) classes.add(enc.class.code);
     }
     res.json([...classes].sort());
   });
 
   app.get("/fhir/Encounter", (req, res) => {
     const { patient: pat, status, _id } = req.query;
-    let results: any[];
+    let results: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (pat) {
       const patId = String(pat).replace(/^(Patient\/|urn:uuid:)/, "");
       const ids = encountersByPatient.get(patId) ?? [];
@@ -244,7 +246,7 @@ function buildTestApp() {
   // ── /fhir/Condition ────────────────────────────────────────────────────────
   app.get("/fhir/Condition", (req, res) => {
     const { encounter, patient: pat, _id } = req.query;
-    let results: any[];
+    let results: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (encounter) {
       const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
       results = (conditionsByEncounter.get(encId) ?? [])
@@ -252,7 +254,7 @@ function buildTestApp() {
         .filter(Boolean);
     } else if (pat) {
       const patId = String(pat).replace(/^(Patient\/|urn:uuid:)/, "");
-      results = [...conditionMap.values()].filter((r: any) => r._patientId === patId);
+      results = [...conditionMap.values()].filter((r) => (r as Record<string, unknown>)._patientId === patId);
     } else if (_id) {
       const r = conditionMap.get(String(_id));
       results = r ? [r] : [];
@@ -273,7 +275,7 @@ function buildTestApp() {
   // ── /fhir/Immunization ─────────────────────────────────────────────────────
   app.get("/fhir/Immunization", (req, res) => {
     const { encounter, patient: pat, _id } = req.query;
-    let results: any[];
+    let results: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (encounter) {
       const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
       results = (immunizationsByEncounter.get(encId) ?? [])
@@ -281,7 +283,7 @@ function buildTestApp() {
         .filter(Boolean);
     } else if (pat) {
       const patId = String(pat).replace(/^(Patient\/|urn:uuid:)/, "");
-      results = [...immunizationMap.values()].filter((r: any) => r._patientId === patId);
+      results = [...immunizationMap.values()].filter((r) => (r as Record<string, unknown>)._patientId === patId);
     } else if (_id) {
       const r = immunizationMap.get(String(_id));
       results = r ? [r] : [];
@@ -302,7 +304,7 @@ function buildTestApp() {
   // ── /fhir/Procedure ────────────────────────────────────────────────────────
   app.get("/fhir/Procedure", (req, res) => {
     const { encounter, patient: pat, _id } = req.query;
-    let results: any[];
+    let results: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (encounter) {
       const encId = String(encounter).replace(/^(Encounter\/|urn:uuid:)/, "");
       results = (proceduresByEncounter.get(encId) ?? [])
@@ -310,7 +312,7 @@ function buildTestApp() {
         .filter(Boolean);
     } else if (pat) {
       const patId = String(pat).replace(/^(Patient\/|urn:uuid:)/, "");
-      results = [...procedureMap.values()].filter((r: any) => r._patientId === patId);
+      results = [...procedureMap.values()].filter((r) => (r as Record<string, unknown>)._patientId === patId);
     } else if (_id) {
       const r = procedureMap.get(String(_id));
       results = r ? [r] : [];

@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect } from "react";
-import type { NPPESAddress, NPPESTaxonomy, NPPESResult, NPPESData } from "./hookTypes";
+import type { NPPESResult, NPPESData } from "./hookTypes";
 import { API_BASE } from "../api/fhirApi";
 
 const BASE = `${API_BASE}/api/nppes`;

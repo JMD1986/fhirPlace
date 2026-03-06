@@ -26,7 +26,6 @@ import {
   useSearchParams,
   Link,
 } from "react-router-dom";
-import type { MedicationRequestResource } from "../../types/fhir";
 import { medicationRequestApi } from "../../api/fhirApi";
 import { useOpenFDA } from "../../hooks/useOpenFDA";
 import { useRxNorm } from "../../hooks/useRxNorm";
