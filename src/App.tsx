@@ -97,6 +97,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Box
+          component="main"
           sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
         >
           <Routes>
