@@ -101,6 +101,7 @@ function App() {
         <div className="synthea-controls">
           <button
             className="synthea-button"
+            disabled={loadingPatient}
             onClick={async () => {
               setLoadingPatient(true);
               setPatientError(null);
