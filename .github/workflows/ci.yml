@@ -71,3 +71,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t fhirplace-api .
+
+  # ── Lighthouse performance audit ─────────────────────────────────────────────
+  lighthouse:
+    name: Lighthouse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Lighthouse 13 requires Node ≥ 22; kept separate so other jobs stay on 20.
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Run Lighthouse audit
+        run: node scripts/lighthouse.js
+        env:
+          CI: true
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: lighthouse-reports/
+          retention-days: 30
