@@ -19,7 +19,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
-import { executablePath } from "puppeteer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -84,12 +83,8 @@ async function main() {
   console.log(`✔  Preview server ready at ${PREVIEW_URL}\n`);
 
   // 2 ── Launch Chrome ────────────────────────────────────────────────────────
-  // Use puppeteer's bundled Chromium as the binary so no system Chrome install
-  // is required locally or in CI. chrome-launcher manages the process lifecycle
-  // and opens a dedicated remote-debugging port for Lighthouse to connect to.
   console.log("▶  Launching Chrome…");
   chrome = await chromeLauncher.launch({
-    chromePath: executablePath(),
     chromeFlags: [
       "--headless=new",
       "--disable-gpu",
