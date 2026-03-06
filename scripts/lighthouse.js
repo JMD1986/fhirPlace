@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import lighthouse from "lighthouse";
 import * as chromeLauncher from "chrome-launcher";
+import { executablePath } from "puppeteer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -88,7 +89,10 @@ async function main() {
   if (isCI) chromeFlags.push("--no-sandbox", "--disable-dev-shm-usage");
 
   console.log("▶  Launching Chrome…");
-  chrome = await chromeLauncher.launch({ chromeFlags });
+  chrome = await chromeLauncher.launch({
+    chromePath: executablePath(),
+    chromeFlags,
+  });
 
   // 3 ── Run Lighthouse ────────────────────────────────────────────────────────
   console.log("▶  Running Lighthouse audit…\n");
