@@ -61,7 +61,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const emptyBundle = { entry: [], total: 0 };
+const emptyBundle = { resourceType: "Bundle" as const, entry: [], total: 0 };
 const onePatientBundle = {
   entry: [
     {

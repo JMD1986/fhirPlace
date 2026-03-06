@@ -101,7 +101,7 @@ export default function EncounterSearch() {
     try {
       const bundle = await encounterApi.search(buildParams(offset));
       const results: FhirEncounter[] = (bundle.entry ?? []).map(
-        (e: { resource: FhirEncounter }) => e.resource,
+        (e) => e.resource as FhirEncounter,
       );
       setEncounters(results);
       setTotal(bundle.total ?? results.length);

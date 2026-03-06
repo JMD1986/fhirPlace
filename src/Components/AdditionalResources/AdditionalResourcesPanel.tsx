@@ -120,6 +120,7 @@ const RESOURCE_TYPES: ResourceTypeConfig[] = [
 ];
 
 // ── Props ──────────────────────────────────────────────────────────────────────
+import type { ResourceGroup } from "../../types/fhir";
 export type { ResourceGroup } from "../../types/fhir";
 
 interface Props {
