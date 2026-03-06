@@ -138,7 +138,7 @@ function buildTestApp() {
   };
 
   const makeBundle = (
-    entries: unknown[],
+    entries: Record<string, unknown>[],
     resource: string,
     query: Record<string, string>,
   ) => ({

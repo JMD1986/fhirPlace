@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
@@ -10,13 +10,7 @@ import Button from "@mui/material/Button";
 
 // ── Inline ErrorFallback (mirrors App.tsx) ────────────────────────────────────
 
-function ErrorFallback({
-  error,
-  resetErrorBoundary,
-}: {
-  error: Error;
-  resetErrorBoundary: () => void;
-}) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <Box sx={{ p: 4, maxWidth: 600, mx: "auto", mt: 6 }}>
       <Alert
@@ -28,7 +22,7 @@ function ErrorFallback({
         }
       >
         <AlertTitle>Something went wrong</AlertTitle>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
       </Alert>
     </Box>
   );

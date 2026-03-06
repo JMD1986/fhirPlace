@@ -38,7 +38,7 @@ describe("useNLMCondition — 300 ms debounce (FHIR-5 AC1)", () => {
   it("does NOT call fetch while typing within the 300 ms window", async () => {
     const { rerender } = renderHook(
       ({ name }: { name?: string }) => useNLMCondition(name),
-      { initialProps: { name: undefined } },
+      { initialProps: { name: undefined as string | undefined } },
     );
 
     // Simulate rapid keystrokes — each < 300 ms apart, effect flushes between each
@@ -58,7 +58,7 @@ describe("useNLMCondition — 300 ms debounce (FHIR-5 AC1)", () => {
   it("calls fetch exactly once after the input settles for 300 ms", async () => {
     const { rerender } = renderHook(
       ({ name }: { name?: string }) => useNLMCondition(name),
-      { initialProps: { name: undefined } },
+      { initialProps: { name: undefined as string | undefined } },
     );
 
     await act(async () => { rerender({ name: "Hypertension" }); });
@@ -71,7 +71,7 @@ describe("useNLMCondition — 300 ms debounce (FHIR-5 AC1)", () => {
   it("calls fetch once per settled value, not for every intermediate keystroke", async () => {
     const { rerender } = renderHook(
       ({ name }: { name?: string }) => useNLMCondition(name),
-      { initialProps: { name: undefined } },
+      { initialProps: { name: undefined as string | undefined } },
     );
 
     // First burst — effects flush between each keystroke via individual acts
@@ -97,7 +97,7 @@ describe("useNLMCondition — 300 ms debounce (FHIR-5 AC1)", () => {
   it("cancels the pending debounce when the component unmounts", async () => {
     const { rerender, unmount } = renderHook(
       ({ name }: { name?: string }) => useNLMCondition(name),
-      { initialProps: { name: undefined } },
+      { initialProps: { name: undefined as string | undefined } },
     );
 
     await act(async () => { rerender({ name: "Diabetes" }); });
@@ -127,7 +127,7 @@ describe("useNLMLoinc — 300 ms debounce (FHIR-5 AC1)", () => {
   it("does NOT call fetch during a rapid typing burst", async () => {
     const { rerender } = renderHook(
       ({ code }: { code?: string }) => useNLMLoinc(code),
-      { initialProps: { code: undefined } },
+      { initialProps: { code: undefined as string | undefined } },
     );
 
     await act(async () => { rerender({ code: "8" }); });
@@ -143,7 +143,7 @@ describe("useNLMLoinc — 300 ms debounce (FHIR-5 AC1)", () => {
   it("calls fetch exactly once after the code settles for 300 ms", async () => {
     const { rerender } = renderHook(
       ({ code }: { code?: string }) => useNLMLoinc(code),
-      { initialProps: { code: undefined } },
+      { initialProps: { code: undefined as string | undefined } },
     );
 
     await act(async () => { rerender({ code: "8867-4" }); });

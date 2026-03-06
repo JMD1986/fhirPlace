@@ -559,15 +559,8 @@ function ResourceListView({
     observationApi
       .search(new URLSearchParams({ patient: patientId, _count: "2000" }))
       .then((bundle) => {
-        const obs =
-          bundle.entry?.map(
-            (e: {
-              resource: {
-                code?: { coding?: { code?: string }[]; text?: string };
-                [key: string]: unknown;
-              };
-            }) => e.resource,
-          ) ?? [];
+        const obs: ObservationResource[] =
+          bundle.entry?.map((e) => e.resource as ObservationResource) ?? [];
         const groups = buildGroups(obs);
         // Key by LOINC code OR code.text to match against list items
         const map = new Map<string, ObsGroup>();

@@ -9,7 +9,7 @@ const ENCOUNTER_ID = "enc-test-001";
 const PATIENT_ID = "pat-test-001";
 
 const makeFhirBundle = (
-  resourceType: string,
+  _resourceType: string,
   entries: { id: string; [key: string]: unknown }[],
 ) => ({
   resourceType: "Bundle",
@@ -18,7 +18,8 @@ const makeFhirBundle = (
   entry: entries.map((resource) => ({ resource })),
 });
 
-const emptyBundle = (resourceType: string) => makeFhirBundle(resourceType, []);
+const emptyBundle = (_resourceType: string) =>
+  makeFhirBundle(_resourceType, []);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
