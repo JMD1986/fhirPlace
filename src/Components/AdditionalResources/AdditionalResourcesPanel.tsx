@@ -6,7 +6,9 @@ import {
   Alert,
   ListItemButton,
   Divider,
+  Tooltip,
 } from "@mui/material";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MedicalInformationIcon from "@mui/icons-material/MedicalInformation";
 import ScienceIcon from "@mui/icons-material/Science";
@@ -155,13 +157,19 @@ export default function AdditionalResourcesPanel({
                 config: cfg,
                 items: bundle.entry?.map((e) => e.resource) ?? [],
               };
-            } catch {
-              return { config: cfg, items: [] };
+            } catch (err: unknown) {
+              return {
+                config: cfg,
+                items: [],
+                error: err instanceof Error ? err.message : "Failed to load",
+              };
             }
           }),
         );
 
-        setGroups(results.filter((g) => g.items.length > 0));
+        // Keep groups that either loaded data or encountered an error so
+        // failures are visible to the user rather than silently dropped.
+        setGroups(results.filter((g) => g.items.length > 0 || !!g.error));
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : "An unknown error occurred",
@@ -175,6 +183,7 @@ export default function AdditionalResourcesPanel({
   }, [encounterId]);
 
   const totalCount = groups.reduce((sum, g) => sum + g.items.length, 0);
+  const failedCount = groups.filter((g) => !!g.error).length;
 
   return (
     <Box>
@@ -190,13 +199,15 @@ export default function AdditionalResourcesPanel({
         <Typography variant="subtitle2" fontWeight={700} color="white">
           Additional Resources
         </Typography>
-        {!loading && !error && (
+        {!loading && !error && totalCount > 0 && (
           <Typography
             variant="caption"
             color="primary.contrastText"
             sx={{ opacity: 0.8 }}
           >
             {totalCount} resource{totalCount !== 1 ? "s" : ""} linked
+            {failedCount > 0 &&
+              `, ${failedCount} type${failedCount !== 1 ? "s" : ""} unavailable`}
           </Typography>
         )}
       </Box>
@@ -238,41 +249,80 @@ export default function AdditionalResourcesPanel({
               <Box key={group.config.resourceType}>
                 {gi > 0 && <Divider />}
 
-                {/* Section header – clicking opens the list view */}
-                <ListItemButton
-                  onClick={
-                    onSelectGroup ? () => onSelectGroup(group) : undefined
-                  }
-                  disableRipple={!onSelectGroup}
-                  sx={{
-                    px: 2,
-                    py: 1,
-                    backgroundColor: "grey.50",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    cursor: onSelectGroup ? "pointer" : "default",
-                    "&:hover": onSelectGroup
-                      ? { backgroundColor: "grey.200" }
-                      : { backgroundColor: "grey.50" },
-                  }}
-                >
-                  {group.config.icon}
-                  <Typography
-                    variant="body2"
-                    fontWeight={600}
-                    color={onSelectGroup ? "primary.main" : "text.secondary"}
+                {group.error ? (
+                  // ── Failed resource type row ──────────────────────────────
+                  <Tooltip title={group.error} arrow placement="left">
+                    <Box
+                      sx={{
+                        px: 2,
+                        py: 1,
+                        backgroundColor: "grey.50",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        cursor: "help",
+                        opacity: 0.65,
+                      }}
+                    >
+                      {group.config.icon}
+                      <Typography variant="body2" color="text.disabled">
+                        {group.config.label}
+                      </Typography>
+                      <Box
+                        sx={{
+                          ml: "auto",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        <WarningAmberIcon
+                          fontSize="small"
+                          sx={{ color: "warning.main" }}
+                        />
+                        <Typography variant="caption" color="warning.main">
+                          Failed to load
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Tooltip>
+                ) : (
+                  // ── Successful resource type row ──────────────────────────
+                  <ListItemButton
+                    onClick={
+                      onSelectGroup ? () => onSelectGroup(group) : undefined
+                    }
+                    disableRipple={!onSelectGroup}
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      backgroundColor: "grey.50",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      cursor: onSelectGroup ? "pointer" : "default",
+                      "&:hover": onSelectGroup
+                        ? { backgroundColor: "grey.200" }
+                        : { backgroundColor: "grey.50" },
+                    }}
                   >
-                    {group.config.label}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.disabled"
-                    sx={{ ml: "auto" }}
-                  >
-                    {group.items.length}
-                  </Typography>
-                </ListItemButton>
+                    {group.config.icon}
+                    <Typography
+                      variant="body2"
+                      fontWeight={600}
+                      color={onSelectGroup ? "primary.main" : "text.secondary"}
+                    >
+                      {group.config.label}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.disabled"
+                      sx={{ ml: "auto" }}
+                    >
+                      {group.items.length}
+                    </Typography>
+                  </ListItemButton>
+                )}
               </Box>
             ))}
           </Box>

@@ -68,27 +68,26 @@ describe("AdditionalResourcesPanel", () => {
   });
 
   // ── Error state ─────────────────────────────────────────────────────────────
-  it("shows empty state when all fetches fail (errors are silenced per-resource)", async () => {
-    // The panel wraps each resource fetch in its own try/catch so a network
-    // failure on one type does not surface as a top-level error alert —
-    // it simply returns an empty list for that resource type.
+  it("shows per-resource error indicators when all fetches fail", async () => {
+    // Each resource type fetch failing should surface a visible "Failed to load"
+    // indicator in that type's row rather than silently showing an empty panel.
     vi.mocked(fetch).mockRejectedValue(new Error("Network error"));
     renderPanel();
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/no linked resources found/i),
-      ).toBeInTheDocument();
+      const failedIndicators = screen.getAllByText(/failed to load/i);
+      expect(failedIndicators.length).toBeGreaterThan(0);
     });
   });
 
-  it("shows an error alert when server returns non-ok response", async () => {
-    // One request fails, rest succeed with empty
+  it("shows a per-resource error indicator for a non-ok server response", async () => {
+    // The first resource type returns HTTP 500; the rest succeed with empty bundles.
+    // Only the failed type should show an error row — empty-but-ok types are hidden.
     let callCount = 0;
     vi.mocked(fetch).mockImplementation(async () => {
       callCount++;
       if (callCount === 1) {
-        return { ok: false, status: 500 } as Response;
+        return { ok: false, status: 500, statusText: "" } as Response;
       }
       return {
         ok: true,
@@ -98,12 +97,9 @@ describe("AdditionalResourcesPanel", () => {
 
     renderPanel();
 
-    // Non-ok responses are silently treated as empty (see AdditionalResourcesPanel impl)
-    // so we should see the "no resources" message rather than an error
     await waitFor(() => {
-      expect(
-        screen.getByText(/no linked resources found/i),
-      ).toBeInTheDocument();
+      const failedIndicators = screen.getAllByText(/failed to load/i);
+      expect(failedIndicators.length).toBeGreaterThanOrEqual(1);
     });
   });
 
