@@ -12,39 +12,62 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: Lint · Type-check · Test
+  # ── Type-check ──────────────────────────────────────────────────────────────
+  typecheck:
+    name: Type-check
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
 
-      - name: Install dependencies
-        run: npm ci
+  # ── Lint ────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src
 
-      # ── Type-check ────────────────────────────────────────────────────────────
-      - name: Type-check
-        run: npx tsc --noEmit
+  # ── Tests ───────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
 
-      # ── Lint ──────────────────────────────────────────────────────────────────
-      - name: Lint
-        run: npx eslint src
+  # ── Security audit ──────────────────────────────────────────────────────────
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
 
-      # ── Tests ─────────────────────────────────────────────────────────────────
-      - name: Test
-        run: npx vitest run
-
-      # ── Security audit ────────────────────────────────────────────────────────
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
-
-      # ── Docker build check ────────────────────────────────────────────────────
-      - name: Build API Docker image
-        run: docker build -t fhirplace-api .
+  # ── Docker build check ──────────────────────────────────────────────────────
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t fhirplace-api .
