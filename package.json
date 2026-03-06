@@ -11,13 +11,14 @@
     "synthea:run": "java -jar synthea/synthea-with-dependencies.jar",
     "synthea:manifest": "node scripts/generateSyntheaManifest.cjs",
     "build": "tsc -b && vite build",
+    "build:perf": "tsc -b && vite build --mode perf",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "perf:audit": "npm run build && node scripts/perf-audit.js"
+    "perf:audit": "npm run build:perf && node scripts/perf-audit.js"
   },
   "dependencies": {
     "@emotion/css": "^11.13.5",

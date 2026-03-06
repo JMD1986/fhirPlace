@@ -20,6 +20,7 @@
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -29,7 +30,7 @@ const ROOT = path.join(__dirname, "..");
 const PREVIEW_PORT = 4173;
 // Audit the public /launch page — the root route requires SMART auth and
 // immediately redirects unauthenticated visitors to an external OAuth server.
-const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}/launch`;
+const PREVIEW_PATH = "/launch";
 const REPORT_DIR = path.join(ROOT, "perf-reports");
 
 // Path to the web-vitals IIFE build (already a project dependency).
@@ -53,6 +54,26 @@ const THRESHOLDS = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Find a free TCP port starting from `preferred`, incrementing on EADDRINUSE. */
+function findFreePort(preferred = 4173) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(preferred, "127.0.0.1", () => {
+      const port = server.address().port;
+      server.close(() => resolve(port));
+    });
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        findFreePort(preferred + 1)
+          .then(resolve)
+          .catch(reject);
+      } else {
+        reject(err);
+      }
+    });
+  });
+}
+
 /** Poll until the server responds (any non-5xx) or the timeout expires. */
 async function waitForServer(url, { timeout = 30_000, interval = 500 } = {}) {
   const deadline = Date.now() + timeout;
@@ -68,10 +89,18 @@ async function waitForServer(url, { timeout = 30_000, interval = 500 } = {}) {
   throw new Error(`Server at ${url} did not respond within ${timeout}ms`);
 }
 
-/** Resolve the local vite binary (cross-platform). */
-function viteBin() {
-  const bin = process.platform === "win32" ? "vite.cmd" : "vite";
-  return path.join(ROOT, "node_modules", ".bin", bin);
+/**
+ * Spawn vite preview on the given port.
+ * Invokes the vite JS entry directly via the current Node binary, bypassing
+ * the .cmd/.sh wrappers entirely — no shell:true needed, no DEP0190 warning.
+ */
+function spawnPreview(port) {
+  const viteCli = path.join(ROOT, "node_modules", "vite", "bin", "vite.js");
+  return spawn(
+    process.execPath,
+    [viteCli, "preview", "--port", String(port), "--strictPort"],
+    { cwd: ROOT, stdio: "pipe" },
+  );
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -84,16 +113,14 @@ async function main() {
 
   // 1 ── Start vite preview ───────────────────────────────────────────────────
   console.log("▶  Starting vite preview…");
-  previewProc = spawn(viteBin(), ["preview", "--port", String(PREVIEW_PORT)], {
-    cwd: ROOT,
-    stdio: "pipe",
-    shell: false,
-  });
+  const port = await findFreePort(PREVIEW_PORT);
+  const auditUrl = `http://localhost:${port}${PREVIEW_PATH}`;
+  previewProc = spawnPreview(port);
   previewProc.stdout.on("data", (d) => process.stdout.write(d));
   previewProc.stderr.on("data", (d) => process.stderr.write(d));
 
-  await waitForServer(PREVIEW_URL);
-  console.log(`✔  Preview server ready at ${PREVIEW_URL}\n`);
+  await waitForServer(auditUrl);
+  console.log(`✔  Preview server ready at ${auditUrl}\n`);
 
   // 2 ── Launch Playwright Chromium ───────────────────────────────────────────
   console.log("▶  Launching Chromium…");
@@ -106,40 +133,46 @@ async function main() {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  // 3 ── Inject web-vitals collectors before any page script runs ─────────────
-  // Combine the web-vitals IIFE and the collector setup into a single init
-  // script so execution order is guaranteed.
+  // 3 ── Navigate and wait for load ───────────────────────────────────────────
+  console.log(`▶  Navigating to ${auditUrl}…`);
+  await page.goto(auditUrl, { waitUntil: "load" });
+
+  // 4 ── Inject web-vitals IIFE and set up collectors ─────────────────────────
+  // Injecting AFTER navigation is correct: web-vitals uses buffered:true on
+  // PerformanceObserver, so it reads back entries (FCP, TTFB, LCP) that were
+  // already recorded before the script was injected.
   const webVitalsSource = fs.readFileSync(WEB_VITALS_IIFE, "utf8");
-  const collectorScript = `
+  await page.addScriptTag({ content: webVitalsSource });
+  await page.evaluate(() => {
     window.__webVitals = {};
-    var wv = window.webVitals;
-    wv.onCLS( function(m) { window.__webVitals.CLS  = m.value; }, { reportAllChanges: true });
-    wv.onFCP( function(m) { window.__webVitals.FCP  = m.value; });
-    wv.onLCP( function(m) { window.__webVitals.LCP  = m.value; }, { reportAllChanges: true });
-    wv.onTTFB(function(m) { window.__webVitals.TTFB = m.value; });
-  `;
-  await page.addInitScript({
-    content: webVitalsSource + "\n" + collectorScript,
+    const wv = window.webVitals;
+    wv.onCLS(
+      (m) => {
+        window.__webVitals.CLS = m.value;
+      },
+      { reportAllChanges: true },
+    );
+    wv.onFCP((m) => {
+      window.__webVitals.FCP = m.value;
+    });
+    wv.onLCP(
+      (m) => {
+        window.__webVitals.LCP = m.value;
+      },
+      { reportAllChanges: true },
+    );
+    wv.onTTFB((m) => {
+      window.__webVitals.TTFB = m.value;
+    });
   });
 
-  // 4 ── Navigate and wait for the page to settle ─────────────────────────────
-  console.log(`▶  Navigating to ${PREVIEW_URL}…`);
-  await page.goto(PREVIEW_URL, { waitUntil: "networkidle" });
+  // Allow 3 s for buffered callbacks to fire.
+  await page.waitForTimeout(3_000);
 
-  // Allow 2 s for LCP candidates to stabilise after network idle.
-  await page.waitForTimeout(2_000);
-
-  // Simulate page-hide to flush the final CLS and LCP values.
-  // web-vitals reports its final values when visibilityState → "hidden".
+  // Flush the final CLS / LCP values by simulating page-hide.
   await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", {
-      get: () => "hidden",
-      configurable: true,
-    });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-
-  // Short wait for callbacks to fire asynchronously.
   await page.waitForTimeout(500);
 
   // 5 ── Read captured metrics ────────────────────────────────────────────────
@@ -151,7 +184,7 @@ async function main() {
   fs.writeFileSync(
     jsonPath,
     JSON.stringify(
-      { url: PREVIEW_URL, timestamp: new Date().toISOString(), metrics },
+      { url: auditUrl, timestamp: new Date().toISOString(), metrics },
       null,
       2,
     ),
@@ -159,7 +192,7 @@ async function main() {
   console.log(`📄  JSON report → ${path.relative(ROOT, jsonPath)}\n`);
 
   // 7 ── Check thresholds ─────────────────────────────────────────────────────
-  console.log(`── Core Web Vitals for ${PREVIEW_URL} ──`);
+  console.log(`── Core Web Vitals for ${auditUrl} ──`);
   let anyFailed = false;
 
   for (const [name, { max, unit, label }] of Object.entries(THRESHOLDS)) {
@@ -204,7 +237,11 @@ async function cleanup() {
     browser = null;
   }
   if (previewProc) {
-    previewProc.kill("SIGTERM");
+    try {
+      previewProc.kill();
+    } catch {
+      /* ignore — process may have already exited */
+    }
     previewProc = null;
   }
 }
