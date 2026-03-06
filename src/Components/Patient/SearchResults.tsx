@@ -15,6 +15,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
 import type { Patient } from "./patientTypes";
+import { prefetchPatient } from "../../api/fhirApi";
 
 interface SearchResultsProps {
   patients: Patient[];
@@ -96,7 +97,12 @@ export default function SearchResults({
           </TableHead>
           <TableBody>
             {patients.map((patient) => (
-              <TableRow key={patient.id} hover>
+              // Prefetch patient data on hover so navigation feels instant
+              <TableRow
+                key={patient.id}
+                hover
+                onMouseEnter={() => prefetchPatient(patient.id)}
+              >
                 <TableCell>
                   <Box
                     sx={{
