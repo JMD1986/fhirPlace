@@ -107,7 +107,8 @@ describe("PatientView", () => {
   it("shows a loading spinner while fetching", () => {
     mockGetById.mockImplementation(() => new Promise(() => {}));
     renderView();
-    expect(document.querySelector("svg.MuiCircularProgress-svg")).toBeTruthy();
+    // Loading state uses MUI Skeleton (not CircularProgress)
+    expect(document.querySelector(".MuiSkeleton-root")).toBeTruthy();
   });
 
   it("shows an error alert when the fetch fails", async () => {

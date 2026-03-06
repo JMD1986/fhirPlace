@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import EncounterSearch from "../Components/Encounter/EncounterSearch";
@@ -83,6 +83,10 @@ describe("EncounterSearch", () => {
   beforeEach(() => {
     // Clear sessionStorage so useSessionState starts fresh each test
     sessionStorage.clear();
+    // Clear mock call history so each test inspects only its own calls
+    mockEncounterSearch.mockClear();
+    mockGetTypes.mockClear();
+    mockGetClasses.mockClear();
 
     mockGetTypes.mockResolvedValue(["Wellness visit", "Office visit"]);
     mockGetClasses.mockResolvedValue(["AMB", "IMP"]);
@@ -264,10 +268,7 @@ describe("EncounterSearch", () => {
     mockEncounterSearch.mockResolvedValue(makeBundle(0));
     renderSearch();
 
-    // fireEvent.change is more reliable than userEvent.type for controlled MUI inputs
-    fireEvent.change(screen.getByLabelText(/patient id/i), {
-      target: { name: "patient", value: "pat-xyz" },
-    });
+    await user.type(screen.getByLabelText(/patient id/i), "pat-xyz");
     await user.click(
       screen.getByRole("button", { name: /search encounters/i }),
     );
