@@ -20,7 +20,9 @@ import PatientSearch from "../Patient/PatientSearch";
 // EncounterSearch is the non-default panel — lazy-load so users who only ever
 // use patient search never download its chunk.
 const EncounterSearch = lazy(() => import("../Encounter/EncounterSearch"));
-import LoginSignupDialog from "../Auth/LoginSignupDialog";
+// LoginSignupDialog is only shown when the user clicks Login — lazy-load so
+// its chunk (MUI Dialog + form fields) is excluded from the initial bundle.
+const LoginSignupDialog = lazy(() => import("../Auth/LoginSignupDialog"));
 import { useAuth } from "../../context/AuthContext";
 
 const SEARCH_TYPE_KEY = "fhirPlace_lastSearchType";
@@ -139,7 +141,9 @@ export default function SearchContainer() {
           )}
         </Toolbar>
       </AppBar>
-      <LoginSignupDialog open={authOpen} onClose={() => setAuthOpen(false)} />
+      <Suspense fallback={null}>
+        <LoginSignupDialog open={authOpen} onClose={() => setAuthOpen(false)} />
+      </Suspense>
       <Box sx={{ width: "100%", mt: 4, px: 3 }}>
         <Paper elevation={0} sx={{ p: 3, backgroundColor: "#f5f5f5" }}>
           <Suspense

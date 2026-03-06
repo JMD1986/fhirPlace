@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
@@ -45,6 +45,14 @@ export default function PatientSearch() {
   const FETCH_SIZE = 50;
   const DISPLAY_SIZE = 25;
 
+  // Holds the speculatively pre-fetched next server batch so page turns
+  // that cross a batch boundary are served instantly without a network wait.
+  const prefetchedBatchRef = useRef<{
+    offset: number;
+    patients: Patient[];
+    total: number;
+  } | null>(null);
+
   const buildPatientParams = (offset: number) => {
     const params = new URLSearchParams();
     params.append("_count", String(FETCH_SIZE));
@@ -61,6 +69,24 @@ export default function PatientSearch() {
     return params;
   };
 
+  // Background prefetch — fetches the next server batch and stores it in
+  // prefetchedBatchRef without touching any React state.
+  const prefetchNextBatch = async (offset: number) => {
+    try {
+      const bundle = await patientApi.search(buildPatientParams(offset));
+      const results: Patient[] = (bundle.entry ?? []).map(
+        (e: { resource: Patient }) => e.resource,
+      );
+      prefetchedBatchRef.current = {
+        offset,
+        patients: results,
+        total: bundle.total ?? results.length,
+      };
+    } catch {
+      // Silently ignore — the user gets a normal fetch on page turn instead
+    }
+  };
+
   const fetchPatientPage = async (offset: number) => {
     setLoading(true);
     try {
@@ -71,6 +97,13 @@ export default function PatientSearch() {
       setFilteredPatients(results);
       setTotal(bundle.total ?? results.length);
       setError(null);
+      // Prefetch the next server batch in the background, but only when
+      // the server reports more results exist beyond this batch.
+      const serverTotal = bundle.total ?? results.length;
+      prefetchedBatchRef.current = null;
+      if (serverTotal > offset + FETCH_SIZE) {
+        prefetchNextBatch(offset + FETCH_SIZE);
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to search patients");
@@ -262,8 +295,21 @@ export default function PatientSearch() {
                 nextServerOffset / DISPLAY_SIZE,
               );
               if (newPage === firstPageOfNextBatch) {
-                setServerOffset(nextServerOffset);
-                await fetchPatientPage(nextServerOffset);
+                const prefetched = prefetchedBatchRef.current;
+                if (prefetched && prefetched.offset === nextServerOffset) {
+                  // Serve instantly from prefetch — no loading spinner needed
+                  setFilteredPatients(prefetched.patients);
+                  setTotal(prefetched.total);
+                  setServerOffset(nextServerOffset);
+                  prefetchedBatchRef.current = null;
+                  // Prefetch the batch after this one if more data exists
+                  if (prefetched.total > nextServerOffset + FETCH_SIZE) {
+                    prefetchNextBatch(nextServerOffset + FETCH_SIZE);
+                  }
+                } else {
+                  setServerOffset(nextServerOffset);
+                  await fetchPatientPage(nextServerOffset);
+                }
               }
             }}
           />

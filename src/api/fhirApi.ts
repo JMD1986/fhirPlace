@@ -58,6 +58,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ── Patient prefetch cache ──────────────────────────────────────────────────
+// Populated by SearchResults on row hover. PatientView consumes it via
+// patientApi.getById, which checks here before making a network request.
+// This eliminates the navigation delay when the user hovers before clicking View.
+const _patientCache = new Map<string, PatientResource>();
+
 // ── Patient endpoints (/api/patients & /fhir/Patient) ────────────────────────
 
 export const patientApi = {
@@ -66,9 +72,14 @@ export const patientApi = {
     return apiFetch(`/fhir/Patient?${params.toString()}`);
   },
 
-  /** GET /fhir/Patient/:id */
+  /** GET /fhir/Patient/:id — serves from prefetch cache when available */
   getById(id: string): Promise<PatientResource> {
-    return apiFetch(`/fhir/Patient/${id}`);
+    const cached = _patientCache.get(id);
+    if (cached) return Promise.resolve(cached);
+    return apiFetch<PatientResource>(`/fhir/Patient/${id}`).then((p) => {
+      _patientCache.set(id, p);
+      return p;
+    });
   },
 
   /** GET /api/patients?name=<q>&_count=<n>  (legacy summary list) */
@@ -81,6 +92,16 @@ export const patientApi = {
     );
   },
 };
+
+/**
+ * Fire-and-forget prefetch of a single patient into the in-memory cache.
+ * Call this on row hover in search results so the data is ready before
+ * the user clicks "View".
+ */
+export function prefetchPatient(id: string): void {
+  if (_patientCache.has(id)) return; // already cached
+  patientApi.getById(id).catch(() => { /* silently ignore prefetch failures */ });
+}
 
 // ── Encounter endpoints ───────────────────────────────────────────────────────
 
