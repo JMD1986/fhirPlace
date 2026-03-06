@@ -18,7 +18,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import lighthouse from "lighthouse";
-import puppeteer from "puppeteer";
+import * as chromeLauncher from "chrome-launcher";
+import { executablePath } from "puppeteer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -64,7 +65,7 @@ function viteBin() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 let previewProc = null;
-let browser = null;
+let chrome = null;
 
 async function main() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
@@ -82,15 +83,20 @@ async function main() {
   await waitForServer(PREVIEW_URL);
   console.log(`✔  Preview server ready at ${PREVIEW_URL}\n`);
 
-  // 2 ── Launch Chrome via Puppeteer (uses bundled Chromium — no system Chrome needed) ──
-  const isCI = Boolean(process.env.CI);
-  const args = ["--disable-gpu"];
-  if (isCI) args.push("--no-sandbox", "--disable-dev-shm-usage");
-
+  // 2 ── Launch Chrome ────────────────────────────────────────────────────────
+  // Use puppeteer's bundled Chromium as the binary so no system Chrome install
+  // is required locally or in CI. chrome-launcher manages the process lifecycle
+  // and opens a dedicated remote-debugging port for Lighthouse to connect to.
   console.log("▶  Launching Chrome…");
-  browser = await puppeteer.launch({ headless: true, args });
-  const wsUrl = new URL(browser.wsEndpoint());
-  const cdpPort = parseInt(wsUrl.port, 10);
+  chrome = await chromeLauncher.launch({
+    chromePath: executablePath(),
+    chromeFlags: [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox", // required in containers / CI sandboxes
+      "--disable-dev-shm-usage", // prevents OOM crashes in low-memory envs
+    ],
+  });
 
   // 3 ── Run Lighthouse ────────────────────────────────────────────────────────
   console.log("▶  Running Lighthouse audit…\n");
@@ -98,7 +104,7 @@ async function main() {
     logLevel: "warn",
     output: ["html", "json"],
     onlyCategories: Object.keys(THRESHOLDS),
-    port: cdpPort,
+    port: chrome.port,
     formFactor: "desktop",
     screenEmulation: {
       mobile: false,
@@ -160,13 +166,13 @@ async function main() {
 // ── Cleanup (runs on success, failure, and uncaught error) ────────────────────
 
 async function cleanup() {
-  if (browser) {
+  if (chrome) {
     try {
-      await browser.close();
+      await chrome.kill();
     } catch {
       /* ignore */
     }
-    browser = null;
+    chrome = null;
   }
   if (previewProc) {
     previewProc.kill("SIGTERM");
