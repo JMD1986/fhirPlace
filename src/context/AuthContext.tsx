@@ -1,162 +1,214 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import FHIR from "fhirclient";
+import type Client from "fhirclient/lib/Client";
+import { scrubFhirClientState } from "../lib/smartStorage";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type UserRole = "patient" | "provider";
 
 export interface AppUser {
+  /** Display name from id_token or fhirUser reference */
   username: string;
+  /** email or sub claim – used as a stable per-user key (e.g. saved searches) */
   email: string;
+  /** ISO timestamp when this SMART session was established */
   createdAt: string;
+  /** "patient" if a patient context was supplied by the EHR, else "provider" */
   role: UserRole;
-  /** FHIR Patient UUID linked to this account (patient role only) */
+  /** FHIR Patient resource ID from the launch context */
   linkedPatientId?: string;
-}
-
-interface StoredUser extends AppUser {
-  passwordHash: string;
+  /** Full FHIR user reference, e.g. "Practitioner/abc" or "Patient/xyz" */
+  fhirUser?: string;
+  /** FHIR server base URL for this session */
+  serverUrl?: string;
 }
 
 interface AuthContextValue {
   user: AppUser | null;
-  login: (email: string, password: string) => string | null;
-  signup: (
-    username: string,
-    email: string,
-    password: string,
-    role: UserRole,
-    linkedPatientId?: string,
-  ) => string | null;
+  /** Live fhirclient Client – use for direct FHIR requests after auth */
+  client: Client | null;
+  isLoading: boolean;
+  error: string | null;
+  /**
+   * Kick off a SMART standalone launch.
+   * Pass `iss` explicitly or rely on VITE_SMART_ISS.
+   */
+  launchStandalone: (iss?: string) => void;
+  logout: () => void;
+  /** In-memory update for UI adjustments (role, linkedPatientId). */
   updateUser: (
     updates: Partial<Pick<AppUser, "linkedPatientId" | "role">>,
   ) => void;
-  logout: () => void;
+  /**
+   * Called by CallbackPage once ready() resolves so AuthContext gets the
+   * live Client without requiring a full page reload.
+   */
+  _receiveClient: (fhirClient: Client) => void;
 }
 
-// ── Simple hash (not cryptographic – fine for localStorage demo) ────────────────
-const hashPassword = (pw: string): string => {
-  let h = 0;
-  for (let i = 0; i < pw.length; i++) {
-    h = (Math.imul(31, h) + pw.charCodeAt(i)) | 0;
-  }
-  return h.toString(16);
-};
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-const USERS_KEY = "fhirPlace_users";
-const SESSION_KEY = "fhirPlace_session";
-
-const getStoredUsers = (): StoredUser[] => {
+/** Decode a JWT payload without signature verification (server already did that). */
+function decodeJwtPayload(jwt: string): Record<string, unknown> {
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) ?? "[]");
+    return JSON.parse(atob(jwt.split(".")[1])) as Record<string, unknown>;
   } catch {
-    return [];
+    return {};
   }
-};
+}
 
-const saveStoredUsers = (users: StoredUser[]) => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
+function deriveUser(fhirClient: Client): AppUser {
+  const state = fhirClient.state;
+  const tokenResponse = (state.tokenResponse ?? {}) as Record<string, unknown>;
+
+  let username = "SMART User";
+  let email: string = state.serverUrl ?? "smart-user";
+  let fhirUser: string | undefined;
+
+  // Prefer claims from the id_token when present
+  const idToken = tokenResponse.id_token;
+  if (typeof idToken === "string") {
+    const claims = decodeJwtPayload(idToken);
+    username =
+      (claims.name as string | undefined) ??
+      (claims.given_name as string | undefined) ??
+      (claims.fhirUser as string | undefined)?.split("/").pop() ??
+      "SMART User";
+    email =
+      (claims.email as string | undefined) ??
+      (claims.sub as string | undefined) ??
+      state.serverUrl ??
+      "smart-user";
+    fhirUser = claims.fhirUser as string | undefined;
+  }
+
+  // Fall back to top-level token field
+  if (!fhirUser && typeof tokenResponse.fhirUser === "string") {
+    fhirUser = tokenResponse.fhirUser;
+  }
+
+  const patientId = fhirClient.getPatientId() ?? undefined;
+
+  return {
+    username,
+    email,
+    createdAt: new Date().toISOString(),
+    role: patientId ? "patient" : "provider",
+    linkedPatientId: patientId,
+    fhirUser,
+    serverUrl: state.serverUrl,
+  };
+}
 
 // ── Context ────────────────────────────────────────────────────────────────────
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(SESSION_KEY) ?? "null");
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(SESSION_KEY);
-    }
-  }, [user]);
-
-  const signup = (
-    username: string,
-    email: string,
-    password: string,
-    role: UserRole = "provider",
-    linkedPatientId?: string,
-  ): string | null => {
-    if (!username.trim()) return "Username is required.";
-    if (!email.includes("@")) return "Enter a valid email address.";
-    if (password.length < 6) return "Password must be at least 6 characters.";
-
-    const users = getStoredUsers();
-    if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return "An account with that email already exists.";
-    }
-
-    const newUser: StoredUser = {
-      username: username.trim(),
-      email: email.toLowerCase().trim(),
-      passwordHash: hashPassword(password),
-      createdAt: new Date().toISOString(),
-      role,
-      linkedPatientId,
-    };
-
-    saveStoredUsers([...users, newUser]);
-
-    const session: AppUser = {
-      username: newUser.username,
-      email: newUser.email,
-      createdAt: newUser.createdAt,
-      role: newUser.role,
-      linkedPatientId: newUser.linkedPatientId,
-    };
-    setUser(session);
-    return null;
-  };
-
-  const login = (email: string, password: string): string | null => {
-    const users = getStoredUsers();
-    const match = users.find(
-      (u) =>
-        u.email.toLowerCase() === email.toLowerCase().trim() &&
-        u.passwordHash === hashPassword(password),
-    );
-    if (!match) return "Invalid email or password.";
-
-    const session: AppUser = {
-      username: match.username,
-      email: match.email,
-      createdAt: match.createdAt,
-      role: match.role ?? "provider",
-      linkedPatientId: match.linkedPatientId,
-    };
-    setUser(session);
-    return null;
-  };
-
-  const updateUser = (
-    updates: Partial<Pick<AppUser, "linkedPatientId" | "role">>,
-  ) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...updates };
-      // also persist into the stored users list
-      const users = getStoredUsers();
-      const idx = users.findIndex(
-        (u) => u.email.toLowerCase() === prev.email.toLowerCase(),
-      );
-      if (idx !== -1) {
-        users[idx] = { ...users[idx], ...updates };
-        saveStoredUsers(users);
+  const scheduleRefresh = useCallback((fhirClient: Client) => {
+    const token = (fhirClient.state.tokenResponse ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const expiresIn = token.expires_in as number | undefined;
+    if (!expiresIn) return;
+    const delay = Math.max((expiresIn - 30) * 1000, 5_000);
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(async () => {
+      try {
+        await fhirClient.refresh();
+        scheduleRefresh(fhirClient);
+      } catch (e) {
+        console.warn("[SMART] token refresh failed:", e);
       }
-      return updated;
-    });
-  };
+    }, delay);
+  }, []);
 
-  const logout = () => setUser(null);
+  // Restore an existing SMART session on page load (token lives in sessionStorage
+  // until the tab closes or the user explicitly logs out).
+  useEffect(() => {
+    FHIR.oauth2
+      .ready()
+      .then((fhirClient) => {
+        setClient(fhirClient);
+        setUser(deriveUser(fhirClient));
+        scheduleRefresh(fhirClient);
+      })
+      .catch(() => {
+        // No existing session — normal for a fresh visit.
+      })
+      .finally(() => setIsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Injected by CallbackPage after FHIR.oauth2.ready() succeeds. */
+  const _receiveClient = useCallback(
+    (fhirClient: Client) => {
+      setClient(fhirClient);
+      setUser(deriveUser(fhirClient));
+      scheduleRefresh(fhirClient);
+      setError(null);
+    },
+    [scheduleRefresh],
+  );
+
+  const launchStandalone = useCallback((iss?: string) => {
+    const serverUrl = iss ?? import.meta.env.VITE_SMART_ISS ?? "";
+    if (!serverUrl) {
+      setError(
+        "No FHIR server URL provided. Pass an ISS or set VITE_SMART_ISS in .env",
+      );
+      return;
+    }
+    FHIR.oauth2.authorize({
+      clientId: import.meta.env.VITE_SMART_CLIENT_ID ?? "fhirplace-dev",
+      // Standalone: no EHR launch token, so omit launch/patient
+      scope: "openid fhirUser patient/*.read offline_access",
+      redirectUri: `${window.location.origin}/callback`,
+      iss: serverUrl,
+    });
+  }, []);
+
+  const logout = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    scrubFhirClientState(); // Belt-and-suspenders: scrub any lingering SMART sessionStorage
+    setUser(null);
+    setClient(null);
+    setError(null);
+  }, []);
+
+  const updateUser = useCallback(
+    (updates: Partial<Pick<AppUser, "linkedPatientId" | "role">>) => {
+      setUser((prev) => (prev ? { ...prev, ...updates } : prev));
+    },
+    [],
+  );
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, updateUser, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        client,
+        isLoading,
+        error,
+        launchStandalone,
+        logout,
+        updateUser,
+        _receiveClient,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

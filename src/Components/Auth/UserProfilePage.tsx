@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Box,
   Paper,
@@ -6,10 +5,7 @@ import {
   Button,
   Chip,
   Divider,
-  TextField,
   Alert,
-  Autocomplete,
-  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -19,17 +15,10 @@ import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
 import PersonIcon from "@mui/icons-material/Person";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
-import LinkIcon from "@mui/icons-material/Link";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { patientApi } from "../../api/fhirApi";
 import PatientView from "../Patient/PatientView";
-
-interface PatientOption {
-  id: string;
-  label: string;
-}
 
 // ── Patient portal shell ─────────────────────────────────────────────────────
 function PatientPortal({ patientId }: { patientId: string }) {
@@ -67,18 +56,8 @@ function ProviderPortal({ username }: { username: string }) {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function UserProfilePage() {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  // Patient-link editing
-  const [linkMode, setLinkMode] = useState(false);
-  const [patientOptions, setPatientOptions] = useState<PatientOption[]>([]);
-  const [patientLoading, setPatientLoading] = useState(false);
-  const [patientQuery, setPatientQuery] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<PatientOption | null>(
-    null,
-  );
-  const [linkSuccess, setLinkSuccess] = useState(false);
 
   if (!user) {
     return (
@@ -100,39 +79,6 @@ export default function UserProfilePage() {
   const handleLogout = () => {
     logout();
     navigate("/");
-  };
-
-  const handlePatientSearch = async (_: unknown, value: string) => {
-    setPatientQuery(value);
-    setSelectedPatient(null);
-    if (value.trim().length < 2) {
-      setPatientOptions([]);
-      return;
-    }
-    setPatientLoading(true);
-    try {
-      const data = await patientApi.searchSummary(value, 10);
-      setPatientOptions(
-        data.map((p) => {
-          const displayName =
-            p.name ?? [p.given, p.family].filter(Boolean).join(" ") ?? p.id;
-          const dob = p.birthDate ? ` (DOB: ${p.birthDate})` : "";
-          return { id: p.id, label: `${displayName}${dob}` };
-        }),
-      );
-    } catch {
-      setPatientOptions([]);
-    } finally {
-      setPatientLoading(false);
-    }
-  };
-
-  const handleSaveLink = () => {
-    if (!selectedPatient) return;
-    updateUser({ linkedPatientId: selectedPatient.id });
-    setLinkMode(false);
-    setLinkSuccess(true);
-    setTimeout(() => setLinkSuccess(false), 3000);
   };
 
   const roleLabel = user.role === "patient" ? "Patient" : "Provider";
@@ -209,13 +155,15 @@ export default function UserProfilePage() {
               <TableCell
                 sx={{ fontWeight: 600, color: "text.secondary", border: 0 }}
               >
-                Member since
+                Session started
               </TableCell>
               <TableCell sx={{ border: 0 }}>
-                {new Date(user.createdAt).toLocaleDateString(undefined, {
+                {new Date(user.createdAt).toLocaleString(undefined, {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 })}
               </TableCell>
             </TableRow>
@@ -224,7 +172,7 @@ export default function UserProfilePage() {
                 <TableCell
                   sx={{ fontWeight: 600, color: "text.secondary", border: 0 }}
                 >
-                  Linked Record
+                  Patient ID
                 </TableCell>
                 <TableCell sx={{ border: 0 }}>
                   {user.linkedPatientId ? (
@@ -236,95 +184,53 @@ export default function UserProfilePage() {
                       sx={{ fontFamily: "monospace", fontSize: "0.7rem" }}
                     />
                   ) : (
-                    <Typography variant="body2" color="warning.main">
-                      No patient record linked
+                    <Typography variant="body2" color="text.secondary">
+                      Not provided by EHR
                     </Typography>
                   )}
                 </TableCell>
               </TableRow>
             )}
+            {user.fhirUser && (
+              <TableRow>
+                <TableCell
+                  sx={{ fontWeight: 600, color: "text.secondary", border: 0 }}
+                >
+                  FHIR Identity
+                </TableCell>
+                <TableCell sx={{ border: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}
+                  >
+                    {user.fhirUser}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {user.serverUrl && (
+              <TableRow>
+                <TableCell
+                  sx={{ fontWeight: 600, color: "text.secondary", border: 0 }}
+                >
+                  FHIR Server
+                </TableCell>
+                <TableCell sx={{ border: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: "monospace",
+                      fontSize: "0.75rem",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {user.serverUrl}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
-
-        {/* Patient-link edit section */}
-        {user.role === "patient" && (
-          <Box sx={{ mt: 2 }}>
-            {linkSuccess && (
-              <Alert severity="success" sx={{ mb: 1.5 }}>
-                Patient record linked successfully!
-              </Alert>
-            )}
-            {!linkMode ? (
-              <Button
-                size="small"
-                startIcon={<LinkIcon />}
-                onClick={() => setLinkMode(true)}
-              >
-                {user.linkedPatientId
-                  ? "Change linked record"
-                  : "Link patient record"}
-              </Button>
-            ) : (
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: 1.5,
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                }}
-              >
-                <Autocomplete
-                  sx={{ minWidth: 320 }}
-                  options={patientOptions}
-                  getOptionLabel={(o) => o.label}
-                  loading={patientLoading}
-                  inputValue={patientQuery}
-                  value={selectedPatient}
-                  onInputChange={handlePatientSearch}
-                  onChange={(_e, val) => setSelectedPatient(val)}
-                  filterOptions={(x) => x}
-                  noOptionsText={
-                    patientQuery.length < 2
-                      ? "Type at least 2 characters…"
-                      : "No patients found"
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      label="Search patient records"
-                      placeholder="Type a name…"
-                      slotProps={{
-                        input: {
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {patientLoading && (
-                                <CircularProgress color="inherit" size={14} />
-                              )}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        },
-                      }}
-                    />
-                  )}
-                />
-                <Button
-                  variant="contained"
-                  size="small"
-                  disabled={!selectedPatient}
-                  onClick={handleSaveLink}
-                >
-                  Save
-                </Button>
-                <Button size="small" onClick={() => setLinkMode(false)}>
-                  Cancel
-                </Button>
-              </Box>
-            )}
-          </Box>
-        )}
       </Paper>
 
       {/* ── Role-specific portal ── */}
@@ -332,9 +238,9 @@ export default function UserProfilePage() {
         user.linkedPatientId ? (
           <PatientPortal patientId={user.linkedPatientId} />
         ) : (
-          <Alert severity="warning">
-            Link a patient record above to view your medical history and billing
-            information.
+          <Alert severity="info">
+            No patient context was provided during launch. Re-launch from your
+            EHR to access your health record.
           </Alert>
         )
       ) : (

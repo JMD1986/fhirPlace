@@ -1,319 +1,102 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tabs,
-  Tab,
-  TextField,
-  Button,
   Alert,
   Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  TextField,
   Typography,
-  ToggleButton,
-  ToggleButtonGroup,
-  Autocomplete,
-  CircularProgress,
 } from "@mui/material";
-import PersonIcon from "@mui/icons-material/Person";
-import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { patientApi } from "../../api/fhirApi";
-import type { UserRole } from "../../context/AuthContext";
-
-interface PatientOption {
-  id: string;
-  label: string;
-}
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
+/**
+ * Auth dialog  replaced by SMART on FHIR.
+ *
+ * Options:
+ *   EHR launch   handled automatically when the EHR navigates to /launch.
+ *   Standalone   user enters a FHIR server URL here and we kick off
+ *                  FHIR.oauth2.authorize() via launchStandalone().
+ */
 export default function LoginSignupDialog({ open, onClose }: Props) {
-  const { login, signup } = useAuth();
-  const [tab, setTab] = useState<0 | 1>(0); // 0 = Login, 1 = Sign Up
+  const { launchStandalone, error: authError } = useAuth();
+  const navigate = useNavigate();
 
-  // Login fields
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-
-  // Sign-up fields
-  const [signupUsername, setSignupUsername] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupConfirm, setSignupConfirm] = useState("");
-  const [signupRole, setSignupRole] = useState<UserRole>("provider");
-
-  // Patient linking
-  const [patientOptions, setPatientOptions] = useState<PatientOption[]>([]);
-  const [patientLoading, setPatientLoading] = useState(false);
-  const [patientQuery, setPatientQuery] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<PatientOption | null>(
-    null,
+  const [iss, setIss] = useState(
+    import.meta.env.VITE_SMART_ISS ??
+      "https://launch.smarthealthit.org/v/r4/fhir",
   );
 
-  const [error, setError] = useState<string | null>(null);
-
-  const resetForm = () => {
-    setLoginEmail("");
-    setLoginPassword("");
-    setSignupUsername("");
-    setSignupEmail("");
-    setSignupPassword("");
-    setSignupConfirm("");
-    setSignupRole("provider");
-    setPatientQuery("");
-    setSelectedPatient(null);
-    setPatientOptions([]);
-    setError(null);
-  };
-
-  const handleTabChange = (_: React.SyntheticEvent, val: 0 | 1) => {
-    setTab(val);
-    setError(null);
-  };
-
-  const handleClose = () => {
-    resetForm();
-    setTab(0);
+  const handleLaunch = () => {
     onClose();
+    launchStandalone(iss.trim() || undefined);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const err = login(loginEmail, loginPassword);
-    if (err) {
-      setError(err);
-    } else {
-      handleClose();
-    }
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (signupPassword !== signupConfirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (signupRole === "patient" && !selectedPatient) {
-      setError("Please search for and select your patient record.");
-      return;
-    }
-    const err = signup(
-      signupUsername,
-      signupEmail,
-      signupPassword,
-      signupRole,
-      selectedPatient?.id,
-    );
-    if (err) {
-      setError(err);
-    } else {
-      handleClose();
-    }
-  };
-
-  // Live patient search for linking
-  const handlePatientInputChange = async (_: unknown, value: string) => {
-    setPatientQuery(value);
-    setSelectedPatient(null);
-    if (value.trim().length < 2) {
-      setPatientOptions([]);
-      return;
-    }
-    setPatientLoading(true);
-    try {
-      const rawData = await patientApi.searchSummary(value, 10);
-      const list: {
-        id: string;
-        name?: string;
-        given?: string;
-        family?: string;
-        birthDate?: string;
-      }[] = ((rawData as unknown as { patients?: unknown[] }).patients ??
-        rawData ??
-        []) as typeof list;
-      const patients: PatientOption[] = list.map((p) => {
-        const displayName =
-          p.name ?? [p.given, p.family].filter(Boolean).join(" ") ?? p.id;
-        const dob = p.birthDate ? ` (DOB: ${p.birthDate})` : "";
-        return { id: p.id, label: `${displayName}${dob}` };
-      });
-      setPatientOptions(patients);
-    } catch {
-      setPatientOptions([]);
-    } finally {
-      setPatientLoading(false);
-    }
+  const handleGoToLaunchPage = () => {
+    onClose();
+    navigate("/launch");
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ pb: 0 }}>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
         <Typography variant="h6" fontWeight={600}>
-          {tab === 0 ? "Sign in to FHIRPlace" : "Create an account"}
+          Connect to FHIRPlace
         </Typography>
       </DialogTitle>
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3, pt: 1 }}>
-        <Tabs value={tab} onChange={handleTabChange}>
-          <Tab label="Login" />
-          <Tab label="Sign Up" />
-        </Tabs>
-      </Box>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {authError && <Alert severity="error">{authError}</Alert>}
 
-      {/* ── Login ── */}
-      {tab === 0 && (
-        <Box component="form" onSubmit={handleLogin}>
-          <DialogContent
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        <Alert severity="info">
+          FHIRPlace uses <strong>SMART on FHIR</strong> for authentication.
+          <br />
+          <strong>EHR launch:</strong> your EHR navigates to{" "}
+          <code>/launch</code> automatically.
+          <br />
+          <strong>Standalone:</strong> enter a SMART-enabled FHIR server URL and
+          click <em>Launch</em>.
+        </Alert>
+
+        <TextField
+          label="FHIR Server URL (ISS)"
+          value={iss}
+          onChange={(e) => setIss(e.target.value)}
+          fullWidth
+          size="small"
+          placeholder="https://launch.smarthealthit.org/v/r4/fhir"
+          helperText="Use the public SMART sandbox for development"
+        />
+
+        <Divider />
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleLaunch}
+            disabled={!iss.trim()}
           >
-            {error && <Alert severity="error">{error}</Alert>}
-            <TextField
-              label="Email"
-              type="email"
-              fullWidth
-              required
-              autoFocus
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-            />
-            <TextField
-              label="Password"
-              type="password"
-              fullWidth
-              required
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button type="submit" variant="contained">
-              Login
-            </Button>
-          </DialogActions>
+            Launch with SMART
+          </Button>
+          <Button variant="outlined" fullWidth onClick={handleGoToLaunchPage}>
+            Open full launch page
+          </Button>
         </Box>
-      )}
+      </DialogContent>
 
-      {/* ── Sign Up ── */}
-      {tab === 1 && (
-        <Box component="form" onSubmit={handleSignup}>
-          <DialogContent
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-          >
-            {error && <Alert severity="error">{error}</Alert>}
-
-            {/* Role selector */}
-            <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                I am a…
-              </Typography>
-              <ToggleButtonGroup
-                value={signupRole}
-                exclusive
-                onChange={(_e, val) => {
-                  if (val) setSignupRole(val);
-                }}
-                fullWidth
-                size="small"
-              >
-                <ToggleButton value="patient">
-                  <PersonIcon fontSize="small" sx={{ mr: 0.75 }} />
-                  Patient
-                </ToggleButton>
-                <ToggleButton value="provider">
-                  <MedicalServicesIcon fontSize="small" sx={{ mr: 0.75 }} />
-                  Provider
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-
-            <TextField
-              label="Username"
-              fullWidth
-              required
-              autoFocus
-              value={signupUsername}
-              onChange={(e) => setSignupUsername(e.target.value)}
-            />
-            <TextField
-              label="Email"
-              type="email"
-              fullWidth
-              required
-              value={signupEmail}
-              onChange={(e) => setSignupEmail(e.target.value)}
-            />
-            <TextField
-              label="Password"
-              type="password"
-              fullWidth
-              required
-              value={signupPassword}
-              onChange={(e) => setSignupPassword(e.target.value)}
-              helperText="Minimum 6 characters"
-            />
-            <TextField
-              label="Confirm Password"
-              type="password"
-              fullWidth
-              required
-              value={signupConfirm}
-              onChange={(e) => setSignupConfirm(e.target.value)}
-            />
-
-            {/* Patient record linking (patient role only) */}
-            {signupRole === "patient" && (
-              <Autocomplete
-                options={patientOptions}
-                getOptionLabel={(o) => o.label}
-                loading={patientLoading}
-                inputValue={patientQuery}
-                value={selectedPatient}
-                onInputChange={handlePatientInputChange}
-                onChange={(_e, val) => setSelectedPatient(val)}
-                filterOptions={(x) => x}
-                noOptionsText={
-                  patientQuery.length < 2
-                    ? "Type at least 2 characters…"
-                    : "No patients found"
-                }
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Link your patient record"
-                    placeholder="Search by name…"
-                    helperText="Find your name in the patient database"
-                    slotProps={{
-                      input: {
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {patientLoading && (
-                              <CircularProgress color="inherit" size={16} />
-                            )}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      },
-                    }}
-                  />
-                )}
-              />
-            )}
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button onClick={handleClose}>Cancel</Button>
-            <Button type="submit" variant="contained">
-              Create Account
-            </Button>
-          </DialogActions>
-        </Box>
-      )}
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+      </DialogActions>
     </Dialog>
   );
 }
