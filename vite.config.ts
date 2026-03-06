@@ -28,6 +28,18 @@ export default defineConfig({
   server: {
     headers: securityHeaders,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Isolate recharts into its own chunk so it is cached independently
+        // of app code and only downloaded when the billing or observation
+        // charts panel is first opened.
+        manualChunks: {
+          'vendor-recharts': ['recharts'],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

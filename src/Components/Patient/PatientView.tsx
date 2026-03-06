@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import {
   Box,
   Paper,
   Typography,
   Alert,
   Button,
+  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -34,17 +35,39 @@ import {
   buildGroups,
   type ObsGroup,
 } from "../AdditionalResources/observationGroupUtils";
-import { ObservationChartDialog } from "../AdditionalResources/ObservationCharts";
-import DocumentReferenceView from "../AdditionalResources/DocumentReferenceView";
-import ConditionView from "../AdditionalResources/ConditionView";
-import DiagnosticReportView from "../AdditionalResources/DiagnosticReportView";
-import ClaimsView from "../AdditionalResources/ClaimsView";
-import EoBView from "../AdditionalResources/EoBView";
-import ImmunizationView from "../AdditionalResources/ImmunizationView";
-import ProcedureView from "../AdditionalResources/ProcedureView";
-import ObservationView from "../AdditionalResources/ObservationView";
-import MedicationRequestView from "../AdditionalResources/MedicationRequestView";
-import BillingDashboard from "./BillingDashboard";
+
+// ── Lazy-loaded sub-views ─────────────────────────────────────────────────────
+// Downloaded only when the user navigates into that specific panel, keeping the
+// initial patient-page bundle free of recharts and all 9 resource view modules.
+const ObservationChartDialog = lazy(() =>
+  import("../AdditionalResources/ObservationCharts").then((m) => ({
+    default: m.ObservationChartDialog,
+  })),
+);
+const DocumentReferenceView = lazy(
+  () => import("../AdditionalResources/DocumentReferenceView"),
+);
+const ConditionView = lazy(
+  () => import("../AdditionalResources/ConditionView"),
+);
+const DiagnosticReportView = lazy(
+  () => import("../AdditionalResources/DiagnosticReportView"),
+);
+const ClaimsView = lazy(() => import("../AdditionalResources/ClaimsView"));
+const EoBView = lazy(() => import("../AdditionalResources/EoBView"));
+const ImmunizationView = lazy(
+  () => import("../AdditionalResources/ImmunizationView"),
+);
+const ProcedureView = lazy(
+  () => import("../AdditionalResources/ProcedureView"),
+);
+const ObservationView = lazy(
+  () => import("../AdditionalResources/ObservationView"),
+);
+const MedicationRequestView = lazy(
+  () => import("../AdditionalResources/MedicationRequestView"),
+);
+const BillingDashboard = lazy(() => import("./BillingDashboard"));
 import { useParams, useNavigate } from "react-router-dom";
 import { patientApi, observationApi } from "../../api/fhirApi";
 
@@ -396,7 +419,17 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
       </ToggleButtonGroup>
 
       {/* ── Billing dashboard (full-width) ── */}
-      {mainTab === "billing" && <BillingDashboard patientId={patientId} />}
+      {mainTab === "billing" && (
+        <Suspense
+          fallback={
+            <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
+              <CircularProgress />
+            </Box>
+          }
+        >
+          <BillingDashboard patientId={patientId} />
+        </Suspense>
+      )}
 
       {/* ── Overview: sidebar + main content ── */}
       {mainTab === "overview" && (
@@ -472,7 +505,9 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
 // ── Map from FHIR resourceType → embeddable view component ───────────────────
 const INLINE_VIEWS: Record<
   string,
-  React.ComponentType<{ resourceId?: string; patientId?: string }>
+  React.LazyExoticComponent<
+    React.ComponentType<{ resourceId?: string; patientId?: string }>
+  >
 > = {
   DocumentReference: DocumentReferenceView,
   Condition: ConditionView,
@@ -508,6 +543,7 @@ function ResourceListView({
   const [page, setPage] = useState(0);
   const [obsGroups, setObsGroups] = useState<Map<string, ObsGroup>>(new Map());
   const [chartTarget, setChartTarget] = useState<ObsGroup | null>(null);
+  const [chartLoaded, setChartLoaded] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -599,7 +635,15 @@ function ResourceListView({
         >
           ← Back to {config.label}
         </Button>
-        <InlineView resourceId={selectedItemId} patientId={patientId} />
+        <Suspense
+          fallback={
+            <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
+              <CircularProgress />
+            </Box>
+          }
+        >
+          <InlineView resourceId={selectedItemId} patientId={patientId} />
+        </Suspense>
       </Box>
     );
   }
@@ -752,7 +796,10 @@ function ResourceListView({
                             size="small"
                             variant="outlined"
                             color="primary"
-                            onClick={() => setChartTarget(chartGroup)}
+                            onClick={() => {
+                              setChartLoaded(true);
+                              setChartTarget(chartGroup);
+                            }}
                           >
                             View Chart
                           </Button>
@@ -788,10 +835,14 @@ function ResourceListView({
         )}
       </TableContainer>
 
-      <ObservationChartDialog
-        group={chartTarget}
-        onClose={() => setChartTarget(null)}
-      />
+      {chartLoaded && (
+        <Suspense fallback={null}>
+          <ObservationChartDialog
+            group={chartTarget}
+            onClose={() => setChartTarget(null)}
+          />
+        </Suspense>
+      )}
     </Box>
   );
 }
