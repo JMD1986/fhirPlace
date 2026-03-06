@@ -375,4 +375,6 @@ export interface ResourceTypeConfig {
 export interface ResourceGroup {
   config: ResourceTypeConfig;
   items: AnyResource[];
+  /** Set when the fetch for this resource type failed; items will be empty. */
+  error?: string | null;
 }
