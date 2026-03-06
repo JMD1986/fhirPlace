@@ -18,8 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import lighthouse from "lighthouse";
-import * as chromeLauncher from "chrome-launcher";
-import { executablePath } from "puppeteer";
+import puppeteer from "puppeteer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -65,7 +64,7 @@ function viteBin() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 let previewProc = null;
-let chrome = null;
+let browser = null;
 
 async function main() {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
@@ -83,16 +82,15 @@ async function main() {
   await waitForServer(PREVIEW_URL);
   console.log(`✔  Preview server ready at ${PREVIEW_URL}\n`);
 
-  // 2 ── Launch Chrome ─────────────────────────────────────────────────────────
+  // 2 ── Launch Chrome via Puppeteer (uses bundled Chromium — no system Chrome needed) ──
   const isCI = Boolean(process.env.CI);
-  const chromeFlags = ["--headless=new", "--disable-gpu"];
-  if (isCI) chromeFlags.push("--no-sandbox", "--disable-dev-shm-usage");
+  const args = ["--disable-gpu"];
+  if (isCI) args.push("--no-sandbox", "--disable-dev-shm-usage");
 
   console.log("▶  Launching Chrome…");
-  chrome = await chromeLauncher.launch({
-    chromePath: executablePath(),
-    chromeFlags,
-  });
+  browser = await puppeteer.launch({ headless: true, args });
+  const wsUrl = new URL(browser.wsEndpoint());
+  const cdpPort = parseInt(wsUrl.port, 10);
 
   // 3 ── Run Lighthouse ────────────────────────────────────────────────────────
   console.log("▶  Running Lighthouse audit…\n");
@@ -100,7 +98,7 @@ async function main() {
     logLevel: "warn",
     output: ["html", "json"],
     onlyCategories: Object.keys(THRESHOLDS),
-    port: chrome.port,
+    port: cdpPort,
     formFactor: "desktop",
     screenEmulation: {
       mobile: false,
@@ -162,9 +160,13 @@ async function main() {
 // ── Cleanup (runs on success, failure, and uncaught error) ────────────────────
 
 async function cleanup() {
-  if (chrome) {
-    await chrome.kill().catch(() => {});
-    chrome = null;
+  if (browser) {
+    try {
+      await browser.close();
+    } catch {
+      /* ignore */
+    }
+    browser = null;
   }
   if (previewProc) {
     previewProc.kill("SIGTERM");
