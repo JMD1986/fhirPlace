@@ -292,7 +292,7 @@ export default function PatientEncountersPanel({
               {i > 0 && <Divider />}
               <ListItemButton
                 onClick={() => handleResourceClick(s.config)}
-                disabled={fetchingRoute === s.config.route}
+                disabled={fetchingRoute !== null}
                 sx={{
                   px: 2,
                   py: 1.25,
