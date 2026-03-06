@@ -19,7 +19,7 @@ import type { FhirEncounter } from "./encounterTypes";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
 import { encounterApi } from "../../api/fhirApi";
-import type { EncounterSearchParams } from "../../hooks/useSavedSearches";
+import type { EncounterSearchParams } from "../../hooks/hookTypes";
 import { useAuth } from "../../context/AuthContext";
 
 // ── Component ─────────────────────────────────────────────────────────────────

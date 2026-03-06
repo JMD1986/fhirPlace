@@ -1,25 +1,7 @@
 import { useState, useEffect } from "react";
+import type { RxNormDrugClass, RxNormData } from "./hookTypes";
 
 const BASE = "https://rxnav.nlm.nih.gov/REST";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface RxNormDrugClass {
-  classId: string;
-  className: string;
-  classType: string; // "EPC" | "MOA" | "ATC1-4" | "CHEM" | etc.
-  rela: string;      // "has_epc" | "has_moa" | "has_chemical_structure" | etc.
-}
-
-export interface RxNormData {
-  ingredientName: string;       // resolved ingredient (IN) name, e.g. "amoxicillin"
-  ingredientRxcui: string;      // ingredient-level rxcui
-  brandNames: string[];         // brand name equivalents, e.g. ["Augmentin"]
-  brandedProducts: string[];    // full branded clinical drug names (SBD)
-  drugClasses: RxNormDrugClass[]; // EPC, MOA, ATC, CHEM classes
-  loading: boolean;
-  error: string | null;
-}
 
 // ─── Internal response shapes ─────────────────────────────────────────────────
 

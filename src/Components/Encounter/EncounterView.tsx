@@ -32,7 +32,7 @@ import {
   useNPPESOrg,
   extractNPIFromReference,
 } from "../../hooks/useNPPES";
-import type { NPPESResult } from "../../hooks/useNPPES";
+import type { NPPESResult } from "../../hooks/hookTypes";
 import Grid from "@mui/material/Grid";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { encounterApi } from "../../api/fhirApi";

@@ -25,7 +25,7 @@ import type {
   SavedSearch,
   PatientSearchParams,
   EncounterSearchParams,
-} from "../../hooks/useSavedSearches";
+} from "../../hooks/hookTypes";
 
 interface Props<T extends PatientSearchParams | EncounterSearchParams> {
   searches: SavedSearch<T>[];

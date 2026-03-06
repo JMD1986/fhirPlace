@@ -38,21 +38,7 @@ import type { ClaimResource, EoBResource } from "../../types/fhir";
 import { claimApi, eobApi } from "../../api/fhirApi";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-interface BillingDashboardProps {
-  patientId: string;
-}
 
-interface MonthlyBucket {
-  month: string;
-  submitted: number;
-  paid: number;
-  claims: number;
-}
-
-interface PayerBreakdown {
-  name: string;
-  value: number;
-}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PIE_COLORS = [

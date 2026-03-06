@@ -14,7 +14,7 @@ import type { Patient } from "../../types/fhir";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
 import { patientApi } from "../../api/fhirApi";
-import type { PatientSearchParams } from "../../hooks/useSavedSearches";
+import type { PatientSearchParams } from "../../hooks/hookTypes";
 import { useAuth } from "../../context/AuthContext";
 
 export default function PatientSearch() {

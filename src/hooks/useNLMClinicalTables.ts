@@ -1,31 +1,7 @@
 import { useState, useEffect } from "react";
-import { set } from "supertest/lib/cookies";
+import type { NLMConditionInfo, NLMLoincInfo } from "./hookTypes";
 
 const BASE = "https://clinicaltables.nlm.nih.gov/api";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface NLMConditionInfo {
-  consumerName: string;   // e.g. "High blood pressure (hypertension (HTN))"
-  medlinePlusUrl: string; // e.g. "http://www.nlm.nih.gov/medlineplus/..."
-  medlinePlusLabel: string; // e.g. "High Blood Pressure"
-  icd10Code: string;      // e.g. "I10"
-  loading: boolean;
-  error: string | null;
-}
-
-export interface NLMLoincInfo {
-  loincNum: string;        // e.g. "8867-4"
-  component: string;       // e.g. "Heart rate"
-  shortName: string;       // e.g. "Heart rate"
-  exampleUnits: string;    // e.g. "/min"
-  description: string;     // long description (may be empty)
-  method: string;          // e.g. "Automated count"
-  orderObs: string;        // "Order" | "Observation" | "Both" | "Subset"
-  loincClass: string;      // e.g. "PANEL.HEMATOLOGY&COAGULATION"
-  loading: boolean;
-  error: string | null;
-}
 
 // ─── Response shape from NLM Clinical Tables ─────────────────────────────────
 // [totalCount, [ids...], null, [[field1, field2, ...], ...]]

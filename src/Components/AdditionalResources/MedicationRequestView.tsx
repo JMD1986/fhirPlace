@@ -225,7 +225,7 @@ export default function MedicationRequestView({
 
 // ─── RxNorm Panel sub-component ───────────────────────────────────────────────
 
-import type { RxNormData } from "../../hooks/useRxNorm";
+import type { RxNormData } from "../../hooks/hookTypes";
 
 const CLASS_TYPE_LABEL: Record<string, string> = {
   EPC: "Pharmacologic Class",
@@ -416,7 +416,7 @@ function RxNormPanel({
 
 // ─── FDA Panel sub-component ──────────────────────────────────────────────────
 
-import type { OpenFDAData } from "../../hooks/useOpenFDA";
+import type { OpenFDAData } from "../../hooks/hookTypes";
 
 function FDAPanel({
   drugName,

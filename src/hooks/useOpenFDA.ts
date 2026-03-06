@@ -1,28 +1,5 @@
 import { useState, useEffect } from "react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface FDAReaction {
-  term: string;
-  count: number;
-}
-
-export interface FDARecall {
-  recall_number: string;
-  status: string; // "Ongoing" | "Terminated" | "Completed" | "Pending"
-  classification: string; // "Class I" | "Class II" | "Class III"
-  reason_for_recall: string;
-  product_description: string;
-  recall_initiation_date?: string;
-}
-
-export interface OpenFDAData {
-  topReactions: FDAReaction[]; // top 10 adverse reactions by report count
-  recalls: FDARecall[]; // active/recent recalls
-  totalReports: number; // total adverse event reports found
-  loading: boolean;
-  error: string | null;
-}
+import type { FDAReaction, FDARecall, OpenFDAData } from "./hookTypes";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

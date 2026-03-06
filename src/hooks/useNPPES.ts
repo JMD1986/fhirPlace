@@ -12,54 +12,9 @@
  */
 
 import { useState, useEffect } from "react";
+import type { NPPESAddress, NPPESTaxonomy, NPPESResult, NPPESData } from "./hookTypes";
 
 const BASE = "https://npiregistry.cms.hhs.gov/api/";
-
-export interface NPPESAddress {
-  address_1: string;
-  address_2?: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  telephone_number?: string;
-  fax_number?: string;
-  address_purpose?: string; // "LOCATION" | "MAILING"
-}
-
-export interface NPPESTaxonomy {
-  code: string;
-  desc: string;
-  primary: boolean;
-  state?: string;
-  license?: string;
-}
-
-export interface NPPESResult {
-  number: string; // NPI
-  enumeration_type: "NPI-1" | "NPI-2";
-  basic: {
-    // Organization (NPI-2)
-    organization_name?: string;
-    // Individual (NPI-1)
-    first_name?: string;
-    last_name?: string;
-    middle_name?: string;
-    credential?: string;
-    gender?: string;
-    sole_proprietor?: string;
-    status?: string;
-  };
-  addresses: NPPESAddress[];
-  taxonomies: NPPESTaxonomy[];
-  other_names?: Array<{ type: string; organization_name?: string }>;
-}
-
-export interface NPPESData {
-  results: NPPESResult[];
-  loading: boolean;
-  error: string | null;
-  searchedBy: "npi" | "name" | null; // how we found the result
-}
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 

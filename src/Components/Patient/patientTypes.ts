@@ -68,3 +68,19 @@ export interface PatientResource {
   }>;
   [key: string]: unknown;
 }
+
+interface BillingDashboardProps {
+  patientId: string;
+}
+
+interface MonthlyBucket {
+  month: string;
+  submitted: number;
+  paid: number;
+  claims: number;
+}
+
+interface PayerBreakdown {
+  name: string;
+  value: number;
+}

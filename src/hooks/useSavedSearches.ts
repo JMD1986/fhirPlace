@@ -1,36 +1,10 @@
 import { useState, useCallback } from "react";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface PatientSearchParams {
-  name: string;
-  familyName: string;
-  givenName: string;
-  gender: string;
-  birthDate: string;
-  phone: string;
-  address: string;
-}
-
-export interface EncounterSearchParams {
-  patient: string;
-  status: string;
-  classCode: string;
-  type: string;
-  dateFrom: string;
-  dateTo: string;
-  reason: string;
-}
-
-export type SearchKind = "patient" | "encounter";
-
-export interface SavedSearch<T extends PatientSearchParams | EncounterSearchParams> {
-  id: string;
-  name: string;
-  kind: SearchKind;
-  params: T;
-  createdAt: string;
-}
+import type {
+  PatientSearchParams,
+  EncounterSearchParams,
+  SearchKind,
+  SavedSearch,
+} from "./hookTypes";
 
 type AnySearch = SavedSearch<PatientSearchParams> | SavedSearch<EncounterSearchParams>;
 
