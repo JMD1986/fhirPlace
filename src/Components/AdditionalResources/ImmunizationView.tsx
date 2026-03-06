@@ -21,7 +21,6 @@ import {
   Link,
 } from "react-router-dom";
 
-import type { ImmunizationResource } from "../../types/fhir";
 import { immunizationApi } from "../../api/fhirApi";
 
 const fmt = (iso?: string) =>

@@ -12,6 +12,23 @@ type AnySearch = SavedSearch<PatientSearchParams> | SavedSearch<EncounterSearchP
 const storageKey = (userEmail?: string) =>
   `fhirPlace_savedSearches${userEmail ? `_${userEmail}` : ""}`;
 
+// ── PHI storage audit (FHIR-9) ───────────────────────────────────────────────
+// localStorage stores user-authored SEARCH QUERY TEMPLATES only.
+// Specifically, PatientSearchParams fields (name, familyName, givenName,
+// gender, birthDate, phone, address) and EncounterSearchParams fields
+// (patient ref, status, classCode, type, dateFrom, dateTo, reason) are
+// persisted as user-entered search criteria, NOT as retrieved patient records.
+//
+// Risk classification: LOW — values are partial / user-typed inputs that may
+// contain demographic fragments. They are scoped to the authenticated user's
+// email slug, never contain OAuth tokens, and are never populated from server
+// responses.  No Encounter clinical notes, diagnosis codes, medication data,
+// or other clinical PHI from server responses are written here.
+//
+// Mitigation: keys are cleared on explicit "delete saved search" actions;
+// no server-fetched PHI (names, DOBs, clinical data) is ever passed to
+// persist().  Reviewed and approved per FHIR-9 security hardening.
+
 const load = (userEmail?: string): AnySearch[] => {
   try {
     return JSON.parse(localStorage.getItem(storageKey(userEmail)) ?? "[]");

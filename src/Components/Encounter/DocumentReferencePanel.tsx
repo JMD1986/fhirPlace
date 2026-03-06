@@ -20,11 +20,7 @@ import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import MedicationIcon from "@mui/icons-material/Medication";
 import { Link } from "react-router-dom";
-import type {
-  ResourceTypeConfig,
-  AnyResource,
-  FhirBundle,
-} from "../../types/fhir";
+import type { ResourceTypeConfig, FhirBundle } from "../../types/fhir";
 import { fhirSearch } from "../../api/fhirApi";
 
 // ── Types ──────────────────────────────────────────────────────────────────────

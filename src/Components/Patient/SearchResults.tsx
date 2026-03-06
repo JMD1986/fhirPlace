@@ -14,12 +14,7 @@ import {
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
-import type {
-  FhirName,
-  FhirAddress,
-  FhirCommunication,
-  Patient,
-} from "./patientTypes";
+import type { Patient } from "./patientTypes";
 
 interface SearchResultsProps {
   patients: Patient[];

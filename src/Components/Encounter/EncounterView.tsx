@@ -48,31 +48,6 @@ import ProcedureView from "../AdditionalResources/ProcedureView";
 import ObservationView from "../AdditionalResources/ObservationView";
 import MedicationRequestView from "../AdditionalResources/MedicationRequestView";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-interface EncounterResource {
-  id: string;
-  status?: string;
-  class?: { code?: string };
-  type?: Array<{ text?: string; coding?: Array<{ display?: string }> }>;
-  subject?: { reference?: string; display?: string };
-  _patientId?: string;
-  period?: { start?: string; end?: string };
-  participant?: Array<{
-    type?: Array<{ text?: string }>;
-    period?: { start?: string; end?: string };
-    individual?: { reference?: string; display?: string };
-  }>;
-  serviceProvider?: { reference?: string; display?: string };
-  location?: Array<{ location?: { reference?: string; display?: string } }>;
-  diagnosis?: Array<{
-    condition?: { reference?: string; display?: string };
-    role?: { text?: string };
-    rank?: number;
-  }>;
-  reason?: Array<{ text?: string; coding?: Array<{ display?: string }> }>;
-}
-
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const stripNums = (s: string) => s.replace(/\d+/g, "").trim();
 
@@ -375,7 +350,7 @@ interface ResourceListViewProps {
 
 function ResourceListView({
   group,
-  encounterId,
+  // encounterId is part of the interface but not used directly in this view
   patientId,
   onBack,
 }: ResourceListViewProps) {

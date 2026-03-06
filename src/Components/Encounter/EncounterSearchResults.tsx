@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Table from "@mui/material/Table";

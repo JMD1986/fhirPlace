@@ -7,6 +7,20 @@ import App from "./App.tsx";
 import { theme } from "./theme";
 import { reportWebVitals } from "./reportWebVitals";
 
+// ── HTTPS enforcement (HIPAA/SOC 2) ──────────────────────────────────────────
+// In production, VITE_API_BASE must be an HTTPS URL. A non-HTTPS base would
+// transmit PHI in plaintext, violating HIPAA technical safeguard requirements.
+if (import.meta.env.PROD) {
+  const apiBase = import.meta.env.VITE_API_BASE as string | undefined;
+  if (apiBase && !apiBase.startsWith("https://")) {
+    throw new Error(
+      `[SECURITY] VITE_API_BASE must use HTTPS in production. ` +
+        `Received: "${apiBase}". ` +
+        `Transmitting PHI over non-HTTPS violates HIPAA technical safeguard requirements.`,
+    );
+  }
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>

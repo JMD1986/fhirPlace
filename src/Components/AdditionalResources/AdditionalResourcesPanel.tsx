@@ -16,11 +16,7 @@ import VaccinesIcon from "@mui/icons-material/Vaccines";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import MedicationIcon from "@mui/icons-material/Medication";
-import type {
-  AnyResource,
-  FhirBundle,
-  ResourceTypeConfig,
-} from "../../types/fhir";
+import type { FhirBundle, ResourceTypeConfig } from "../../types/fhir";
 import { fhirSearch } from "../../api/fhirApi";
 
 const RESOURCE_TYPES: ResourceTypeConfig[] = [
@@ -132,7 +128,7 @@ interface Props {
 
 export default function AdditionalResourcesPanel({
   encounterId,
-  patientId,
+  // patientId is part of the Props interface but not yet used in this view
   onSelectGroup,
 }: Props) {
   const [groups, setGroups] = useState<ResourceGroup[]>([]);
