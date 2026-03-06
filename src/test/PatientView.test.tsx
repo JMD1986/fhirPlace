@@ -186,7 +186,10 @@ describe("PatientView", () => {
       expect(screen.getByText(/billing/i)).toBeInTheDocument(),
     );
     await user.click(screen.getByRole("button", { name: /billing/i }));
-    expect(screen.getByTestId("billing-dashboard")).toBeInTheDocument();
+    // BillingDashboard is lazy-loaded; wait for Suspense to resolve.
+    await waitFor(() =>
+      expect(screen.getByTestId("billing-dashboard")).toBeInTheDocument(),
+    );
     expect(screen.queryByTestId("encounters-panel")).not.toBeInTheDocument();
   });
 

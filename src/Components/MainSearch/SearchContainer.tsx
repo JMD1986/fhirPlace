@@ -5,11 +5,21 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { MenuItem, Paper, Menu, Tooltip, Box, Chip } from "@mui/material";
-import { useState } from "react";
+import {
+  MenuItem,
+  Paper,
+  Menu,
+  Tooltip,
+  Box,
+  Chip,
+  CircularProgress,
+} from "@mui/material";
+import { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import EncounterSearch from "../Encounter/EncounterSearch";
 import PatientSearch from "../Patient/PatientSearch";
+// EncounterSearch is the non-default panel — lazy-load so users who only ever
+// use patient search never download its chunk.
+const EncounterSearch = lazy(() => import("../Encounter/EncounterSearch"));
 import LoginSignupDialog from "../Auth/LoginSignupDialog";
 import { useAuth } from "../../context/AuthContext";
 
@@ -132,8 +142,16 @@ export default function SearchContainer() {
       <LoginSignupDialog open={authOpen} onClose={() => setAuthOpen(false)} />
       <Box sx={{ width: "100%", mt: 4, px: 3 }}>
         <Paper elevation={0} sx={{ p: 3, backgroundColor: "#f5f5f5" }}>
-          {displayPatientSearch && <PatientSearch />}
-          {displayEncounterSearch && <EncounterSearch />}
+          <Suspense
+            fallback={
+              <Box sx={{ display: "flex", justifyContent: "center", pt: 6 }}>
+                <CircularProgress />
+              </Box>
+            }
+          >
+            {displayPatientSearch && <PatientSearch />}
+            {displayEncounterSearch && <EncounterSearch />}
+          </Suspense>
         </Paper>
       </Box>
     </>
