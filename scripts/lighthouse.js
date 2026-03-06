@@ -23,7 +23,10 @@ import * as chromeLauncher from "chrome-launcher";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const PREVIEW_PORT = 4173;
-const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}`;
+// Audit the public /launch page — the root route requires SMART auth and
+// immediately redirects unauthenticated visitors to an external OAuth server,
+// causing Lighthouse to return null scores for all categories.
+const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}/launch`;
 const REPORT_DIR = path.join(ROOT, "lighthouse-reports");
 
 // ── Score thresholds (0–1) ────────────────────────────────────────────────────
@@ -132,7 +135,11 @@ async function main() {
     const cat = categories[key];
     if (!cat) continue;
 
-    const score = cat.score ?? 0;
+    const score = cat.score;
+    if (score === null) {
+      console.log(`  -  ${cat.title.padEnd(20)} N/A   (not scored)`);
+      continue;
+    }
     const pct = Math.round(score * 100);
     const minPct = Math.round(threshold * 100);
     const pass = score >= threshold;
