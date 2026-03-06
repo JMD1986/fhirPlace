@@ -5,6 +5,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import "./index.css";
 import App from "./App.tsx";
 import { theme } from "./theme";
+import { reportWebVitals } from "./reportWebVitals";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -12,5 +13,34 @@ createRoot(document.getElementById("root")!).render(
       <CssBaseline />
       <App />
     </ThemeProvider>
-  </StrictMode>
+  </StrictMode>,
 );
+
+// ── Web Vitals reporting ───────────────────────────────────────────────────────
+// Production: POST { name, value, id, delta } to the configured analytics endpoint.
+// Development: log metrics to the console for easy inspection.
+if (import.meta.env.PROD) {
+  const endpoint = import.meta.env.VITE_VITALS_ENDPOINT as string | undefined;
+  if (!endpoint) {
+    console.warn(
+      "[reportWebVitals] VITE_VITALS_ENDPOINT is not set; " +
+        "Web Vitals will not be reported in this production build.",
+    );
+  } else {
+    reportWebVitals(({ name, value, id, delta }) => {
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Payload shape: { name: string; value: number; id: string; delta: number }
+        body: JSON.stringify({ name, value, id, delta }),
+        // keepalive lets the request outlive the page unload event
+        keepalive: true,
+      }).catch((err: unknown) => {
+        console.error("[reportWebVitals] Failed to send metric:", err);
+      });
+    });
+  }
+} else {
+  // Dev: surface metrics in the console for quick feedback during development.
+  reportWebVitals(console.log);
+}

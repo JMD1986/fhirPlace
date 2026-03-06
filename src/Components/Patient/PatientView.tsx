@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  CircularProgress,
   Alert,
   Button,
   Table,
@@ -19,6 +18,7 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  Skeleton,
 } from "@mui/material";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PersonIcon from "@mui/icons-material/Person";
@@ -203,8 +203,99 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-        <CircularProgress />
+      <Box sx={{ p: 3, mt: 2 }}>
+        {/* Back button */}
+        <Skeleton variant="rounded" width={110} height={36} sx={{ mb: 2 }} />
+
+        {/* Avatar + name header */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+          <Skeleton variant="circular" width={80} height={80} />
+          <Box sx={{ flex: 1 }}>
+            <Skeleton variant="text" width="35%" height={48} />
+          </Box>
+        </Box>
+
+        {/* Tab toggle */}
+        <Skeleton variant="rounded" width={200} height={36} sx={{ mb: 3 }} />
+
+        {/* Grid: sidebar + main table */}
+        <Grid container spacing={3} alignItems="flex-start">
+          {/* Sidebar skeleton */}
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Skeleton
+                variant="text"
+                width="60%"
+                height={28}
+                sx={{ mb: 1.5 }}
+              />
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    py: 0.75,
+                  }}
+                >
+                  <Skeleton variant="text" width="55%" height={20} />
+                  <Skeleton variant="text" width="20%" height={20} />
+                </Box>
+              ))}
+            </Paper>
+          </Grid>
+
+          {/* Main table skeleton */}
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Paper variant="outlined">
+              {/* Table header */}
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  px: 2,
+                  py: 1.5,
+                  backgroundColor: "primary.main",
+                  borderRadius: "4px 4px 0 0",
+                }}
+              >
+                <Skeleton
+                  variant="text"
+                  width="28%"
+                  height={22}
+                  sx={{ bgcolor: "primary.light" }}
+                />
+                <Skeleton
+                  variant="text"
+                  width="50%"
+                  height={22}
+                  sx={{ bgcolor: "primary.light" }}
+                />
+              </Box>
+              {/* Table rows */}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    gap: 2,
+                    px: 2,
+                    py: 1.25,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Skeleton variant="text" width="28%" height={20} />
+                  <Skeleton
+                    variant="text"
+                    width={`${35 + (i % 4) * 12}%`}
+                    height={20}
+                  />
+                </Box>
+              ))}
+            </Paper>
+          </Grid>
+        </Grid>
       </Box>
     );
   }
