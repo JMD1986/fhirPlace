@@ -1267,6 +1267,24 @@ app.get("/fhir/ExplanationOfBenefit/:id", (req, res) => {
   res.setHeader("Content-Type", FHIR_CONTENT_TYPE);
   res.json(resource);
 });
+// ── NPPES proxy ───────────────────────────────────────────────────────────────
+// The NPI Registry API doesn't send CORS headers, so browser requests are
+// blocked. We proxy through here so the call is server-to-server.
+app.get("/api/nppes", async (req, res) => {
+  try {
+    const upstream = new URL("https://npiregistry.cms.hhs.gov/api/");
+    // Forward every query param the client sent
+    Object.entries(req.query).forEach(([k, v]) =>
+      upstream.searchParams.set(k, String(v)),
+    );
+    const response = await fetch(upstream.toString());
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: "NPPES proxy error", detail: String(err) });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 loadPatients().then(() => {

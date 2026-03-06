@@ -165,7 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const launchStandalone = useCallback((iss?: string) => {
-    const serverUrl = iss ?? import.meta.env.VITE_SMART_ISS ?? "";
+    const serverUrl =
+      iss ?? import.meta.env.VITE_SMART_ISS ?? "https://r4.smarthealthit.org";
     if (!serverUrl) {
       setError(
         "No FHIR server URL provided. Pass an ISS or set VITE_SMART_ISS in .env",

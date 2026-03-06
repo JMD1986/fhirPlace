@@ -36,8 +36,7 @@ export default function LaunchPage() {
 
   // ── Standalone launch ─────────────────────────────────────────────────────
   const [iss, setIss] = useState(
-    import.meta.env.VITE_SMART_ISS ??
-      "https://launch.smarthealthit.org/v/r4/fhir",
+    import.meta.env.VITE_SMART_ISS ?? "https://r4.smarthealthit.org",
   );
 
   const handleStandalone = () => {
@@ -86,12 +85,13 @@ export default function LaunchPage() {
       </Typography>
 
       <Alert severity="info" sx={{ maxWidth: 520, width: "100%" }}>
-        <strong>EHR launch:</strong> Your EHR navigates to{" "}
-        <code>/launch?iss=…&amp;launch=…</code> automatically.
+        <strong>Standalone / dev:</strong> use{" "}
+        <strong>r4.smarthealthit.org</strong> below — no registration or portal
+        needed.
         <br />
-        <strong>Standalone / dev:</strong> Enter a SMART-enabled FHIR server URL
-        below and click <em>Launch</em>. The public SMART sandbox at{" "}
-        <strong>launch.smarthealthit.org</strong> requires no registration.
+        <strong>EHR launch:</strong> go to{" "}
+        <strong>launch.smarthealthit.org</strong>, set your App Launch URL to{" "}
+        <code>{window.location.origin}/launch</code>, then click Launch there.
       </Alert>
 
       <Box

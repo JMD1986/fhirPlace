@@ -10,6 +10,7 @@ import {
   TableBody,
   TableCell,
   TableRow,
+  CircularProgress,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
@@ -18,17 +19,130 @@ import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import PatientView from "../Patient/PatientView";
+import { useEffect, useState } from "react";
+import type Client from "fhirclient/lib/Client";
+import type { PatientResource } from "../../types/fhir";
 
 // ── Patient portal shell ─────────────────────────────────────────────────────
-function PatientPortal({ patientId }: { patientId: string }) {
+// Fetches the Patient resource directly from the SMART FHIR server (via the
+// fhirclient Client) so we don't depend on the local Synthea server, which
+// won't have sandbox patients.
+function PatientPortal({
+  patientId,
+  client,
+}: {
+  patientId: string;
+  client: Client | null;
+}) {
+  const [patient, setPatient] = useState<PatientResource | null>(null);
+  const [loading, setLoading] = useState(!!client);
+  const [error, setError] = useState<string | null>(
+    client ? null : "No FHIR client available.",
+  );
+
+  useEffect(() => {
+    if (!client) return;
+    client
+      .request<PatientResource>(`Patient/${patientId}`)
+      .then((p) => {
+        setPatient(p);
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : String(e));
+        setLoading(false);
+      });
+  }, [client, patientId]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error">Could not load patient record: {error}</Alert>
+    );
+  }
+
+  if (!patient) return null;
+
+  const name = patient.name?.[0];
+  const displayName = [
+    name?.prefix?.join(" "),
+    name?.given?.join(" "),
+    name?.family,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const address = patient.address?.[0];
+  const addressLine = [
+    address?.line?.join(", "),
+    address?.city,
+    address?.state,
+    address?.postalCode,
+    address?.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const telecom = patient.telecom ?? [];
+  const phone = telecom.find((t) => t.system === "phone")?.value;
+  const email = telecom.find((t) => t.system === "email")?.value;
+
+  const rows: Array<{ label: string; value: string | undefined }> = [
+    { label: "Name", value: displayName || undefined },
+    { label: "Date of birth", value: patient.birthDate },
+    { label: "Gender", value: patient.gender },
+    { label: "Address", value: addressLine || undefined },
+    { label: "Phone", value: phone },
+    { label: "Email", value: email },
+    {
+      label: "Language",
+      value:
+        patient.communication?.[0]?.language?.text ??
+        patient.communication?.[0]?.language?.coding?.[0]?.display,
+    },
+    { label: "Marital status", value: patient.maritalStatus?.text },
+  ].filter((r) => r.value);
+
   return (
     <Box>
       <Alert severity="info" sx={{ mb: 3 }}>
-        You are viewing your personal health record. All information is
-        read-only.
+        You are viewing your personal health record from{" "}
+        <strong>{client?.state.serverUrl ?? "the FHIR server"}</strong>. All
+        information is read-only.
       </Alert>
-      <PatientView patientId={patientId} />
+
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={700} gutterBottom>
+          Patient Record
+        </Typography>
+        <Table size="small" sx={{ maxWidth: 560 }}>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.label}>
+                <TableCell
+                  sx={{
+                    fontWeight: 600,
+                    color: "text.secondary",
+                    border: 0,
+                    width: 160,
+                    verticalAlign: "top",
+                  }}
+                >
+                  {r.label}
+                </TableCell>
+                <TableCell sx={{ border: 0 }}>{r.value}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
     </Box>
   );
 }
@@ -56,7 +170,7 @@ function ProviderPortal({ username }: { username: string }) {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function UserProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, client, logout } = useAuth();
   const navigate = useNavigate();
 
   if (!user) {
@@ -236,7 +350,7 @@ export default function UserProfilePage() {
       {/* ── Role-specific portal ── */}
       {user.role === "patient" ? (
         user.linkedPatientId ? (
-          <PatientPortal patientId={user.linkedPatientId} />
+          <PatientPortal patientId={user.linkedPatientId} client={client} />
         ) : (
           <Alert severity="info">
             No patient context was provided during launch. Re-launch from your

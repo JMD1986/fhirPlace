@@ -32,8 +32,7 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
   const navigate = useNavigate();
 
   const [iss, setIss] = useState(
-    import.meta.env.VITE_SMART_ISS ??
-      "https://launch.smarthealthit.org/v/r4/fhir",
+    import.meta.env.VITE_SMART_ISS ?? "https://r4.smarthealthit.org",
   );
 
   const handleLaunch = () => {
@@ -74,7 +73,7 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
           fullWidth
           size="small"
           placeholder="https://launch.smarthealthit.org/v/r4/fhir"
-          helperText="Use the public SMART sandbox for development"
+          helperText="Standalone: use r4.smarthealthit.org — for EHR launch use the portal at launch.smarthealthit.org"
         />
 
         <Divider />

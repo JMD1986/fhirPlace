@@ -1,27 +1,17 @@
-/**
- * FHIR-5  AC3 — Persist last search params to sessionStorage
+﻿/**
+ * FHIR-5  AC3 - Persist last search params across in-app navigation
  *
- * When a user navigates away from PatientSearch and then comes back,
- * the search form must be restored to its last submitted state.
- *
- * Implementation contract tested here:
- *  - After a successful search, the submitted params are written to
- *    sessionStorage under the key "fhirPlace_patientSearch_lastParams".
- *  - On mount, if that key exists, the form fields are pre-populated with
- *    the stored values.
- *  - EncounterSearch follows the same contract under
- *    "fhirPlace_encounterSearch_lastParams".
+ * Search form values are held in a module-level in-memory store
+ * (useSessionState). This means they:
+ *   - Survive React component unmount/remount (in-app navigation)
+ *   - Reset on page refresh (module re-evaluated)
+ *   - Reset when the user clicks Clear / Reset
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-
-export const PATIENT_SEARCH_KEY = "fhirPlace_patientSearch_lastParams";
-export const ENCOUNTER_SEARCH_KEY = "fhirPlace_encounterSearch_lastParams";
-
-// ── Module mocks ──────────────────────────────────────────────────────────────
 
 vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({ user: null }),
@@ -47,24 +37,14 @@ vi.mock("../api/fhirApi", () => ({
   },
 }));
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
-
 beforeEach(() => {
-  sessionStorage.clear();
   mockPatientSearch.mockResolvedValue({ entry: [], total: 0 });
   vi.spyOn(globalThis, "fetch").mockResolvedValue({
     ok: true,
     json: async () => [],
   } as Response);
+  vi.resetModules();
 });
-
-afterEach(() => {
-  sessionStorage.clear();
-  vi.restoreAllMocks();
-  vi.clearAllMocks();
-});
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const renderPatientSearch = async () => {
   const { default: PatientSearch } =
@@ -86,145 +66,72 @@ const renderEncounterSearch = async () => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("PatientSearch — sessionStorage persistence (FHIR-5 AC3)", () => {
-  it("writes submitted search params to sessionStorage after a search", async () => {
+describe("PatientSearch - in-memory persistence (FHIR-5 AC3)", () => {
+  it("form fields are empty on initial mount", async () => {
     await renderPatientSearch();
+    expect(screen.getByLabelText(/patient name/i)).toHaveValue("");
+    expect(screen.getByLabelText(/family name/i)).toHaveValue("");
+  });
 
+  it("persists form values after unmount + remount (in-app navigation)", async () => {
+    const { default: PatientSearch } =
+      await import("../Components/Patient/PatientSearch");
+    const wrap = (<MemoryRouter><PatientSearch /></MemoryRouter>);
+    const { unmount } = render(wrap);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/patient name/i), "Alice");
     await user.type(screen.getByLabelText(/family name/i), "Smith");
     await user.click(screen.getByRole("button", { name: /search patients/i }));
-
-    await waitFor(() => {
-      const stored = sessionStorage.getItem(PATIENT_SEARCH_KEY);
-      expect(stored).not.toBeNull();
-      const params = JSON.parse(stored!);
-      expect(params.name).toBe("Alice");
-      expect(params.familyName).toBe("Smith");
-    });
+    await waitFor(() => expect(mockPatientSearch).toHaveBeenCalled());
+    unmount();
+    render(wrap);
+    expect(screen.getByLabelText(/patient name/i)).toHaveValue("Alice");
+    expect(screen.getByLabelText(/family name/i)).toHaveValue("Smith");
   }, 15_000);
 
-  it("restores form fields from sessionStorage on mount", async () => {
-    // Pre-populate sessionStorage as if a previous search was performed
-    sessionStorage.setItem(
-      PATIENT_SEARCH_KEY,
-      JSON.stringify({
-        name: "Bob",
-        familyName: "Jones",
-        givenName: "",
-        gender: "male",
-        birthDate: "",
-        phone: "",
-        address: "",
-      }),
-    );
-
-    await renderPatientSearch();
-
-    expect(screen.getByLabelText(/patient name/i)).toHaveValue("Bob");
-    expect(screen.getByLabelText(/family name/i)).toHaveValue("Jones");
-    expect(screen.getByLabelText(/gender/i)).toHaveValue("male");
-  });
-
-  it("overwrites sessionStorage with the latest submitted params", async () => {
-    // Seed with old params
-    sessionStorage.setItem(
-      PATIENT_SEARCH_KEY,
-      JSON.stringify({
-        name: "Old",
-        familyName: "",
-        givenName: "",
-        gender: "",
-        birthDate: "",
-        phone: "",
-        address: "",
-      }),
-    );
-
-    await renderPatientSearch();
-
+  it("clears form values when the Clear button is clicked", async () => {
+    const { default: PatientSearch } =
+      await import("../Components/Patient/PatientSearch");
+    const wrap = (<MemoryRouter><PatientSearch /></MemoryRouter>);
+    const { unmount } = render(wrap);
     const user = userEvent.setup();
-    // Clear the restored "Old" value and type something new
-    await user.clear(screen.getByLabelText(/patient name/i));
-    await user.type(screen.getByLabelText(/patient name/i), "New");
+    await user.type(screen.getByLabelText(/patient name/i), "Alice");
     await user.click(screen.getByRole("button", { name: /search patients/i }));
-
-    await waitFor(() => {
-      const stored = JSON.parse(sessionStorage.getItem(PATIENT_SEARCH_KEY)!);
-      expect(stored.name).toBe("New");
-    });
+    await waitFor(() => expect(mockPatientSearch).toHaveBeenCalled());
+    await user.click(screen.getByRole("button", { name: /clear/i }));
+    unmount();
+    render(wrap);
+    expect(screen.getByLabelText(/patient name/i)).toHaveValue("");
+    expect(screen.getByLabelText(/family name/i)).toHaveValue("");
   }, 15_000);
 
-  it("clears sessionStorage when the form is cleared", async () => {
-    sessionStorage.setItem(
-      PATIENT_SEARCH_KEY,
-      JSON.stringify({
-        name: "Alice",
-        familyName: "",
-        givenName: "",
-        gender: "",
-        birthDate: "",
-        phone: "",
-        address: "",
-      }),
-    );
-
+  it("does not write search params to sessionStorage", async () => {
     await renderPatientSearch();
-
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /clear/i }));
-
-    await waitFor(() => {
-      const stored = sessionStorage.getItem(PATIENT_SEARCH_KEY);
-      // Either the key is removed or the stored value has all-empty fields
-      if (stored !== null) {
-        const params = JSON.parse(stored);
-        expect(Object.values(params).every((v) => v === "")).toBe(true);
-      } else {
-        expect(stored).toBeNull();
-      }
-    });
-  });
+    await user.type(screen.getByLabelText(/patient name/i), "Alice");
+    await user.click(screen.getByRole("button", { name: /search patients/i }));
+    await waitFor(() => expect(mockPatientSearch).toHaveBeenCalled());
+    const hasSensitiveKey = Object.keys(sessionStorage).some(
+      (k) => k.includes("patientSearch") || k.includes("lastParams"),
+    );
+    expect(hasSensitiveKey).toBe(false);
+  }, 15_000);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("EncounterSearch — sessionStorage persistence (FHIR-5 AC3)", () => {
-  it("writes submitted search params to sessionStorage after a search", async () => {
+describe("EncounterSearch - in-memory persistence (FHIR-5 AC3)", () => {
+  it("form fields are empty on initial mount", async () => {
     await renderEncounterSearch();
+    expect(screen.getByLabelText(/patient/i)).toHaveValue("");
+  });
 
+  it("does not write search params to sessionStorage", async () => {
+    await renderEncounterSearch();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/patient/i), "pat-001");
-    await user.click(
-      screen.getByRole("button", { name: /search encounters/i }),
+    await user.click(screen.getByRole("button", { name: /search/i }));
+    const hasSensitiveKey = Object.keys(sessionStorage).some(
+      (k) => k.includes("encounterSearch") || k.includes("lastParams"),
     );
-
-    await waitFor(() => {
-      const stored = sessionStorage.getItem(ENCOUNTER_SEARCH_KEY);
-      expect(stored).not.toBeNull();
-      const params = JSON.parse(stored!);
-      expect(params.patient).toBe("pat-001");
-    });
-  });
-
-  it("restores form fields from sessionStorage on mount", async () => {
-    sessionStorage.setItem(
-      ENCOUNTER_SEARCH_KEY,
-      JSON.stringify({
-        patient: "pat-restored",
-        status: "",
-        classCode: "",
-        type: "",
-        dateFrom: "",
-        dateTo: "",
-        reason: "",
-      }),
-    );
-
-    await renderEncounterSearch();
-
-    expect(screen.getByLabelText(/patient/i)).toHaveValue("pat-restored");
-  });
+    expect(hasSensitiveKey).toBe(false);
+  }, 15_000);
 });

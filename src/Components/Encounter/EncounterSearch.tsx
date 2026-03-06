@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
-export const ENCOUNTER_SEARCH_KEY = "fhirPlace_encounterSearch_lastParams";
+import { useSessionState } from "../../hooks/useSessionState";
 import TextField from "@mui/material/TextField";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
@@ -25,25 +25,20 @@ import { useAuth } from "../../context/AuthContext";
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function EncounterSearch() {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useState<EncounterSearchParams>(
-    () => {
-      try {
-        const stored = sessionStorage.getItem(ENCOUNTER_SEARCH_KEY);
-        if (stored) return JSON.parse(stored) as EncounterSearchParams;
-      } catch {
-        // ignore
-      }
-      return {
-        patient: "",
-        status: "",
-        classCode: "",
-        type: "",
-        dateFrom: "",
-        dateTo: "",
-        reason: "",
-      };
-    },
-  );
+  const EMPTY_ENCOUNTER_PARAMS: EncounterSearchParams = {
+    patient: "",
+    status: "",
+    classCode: "",
+    type: "",
+    dateFrom: "",
+    dateTo: "",
+    reason: "",
+  };
+  const [searchParams, setSearchParams, clearSearchParams] =
+    useSessionState<EncounterSearchParams>(
+      "encounterSearch",
+      EMPTY_ENCOUNTER_PARAMS,
+    );
 
   const { searches, save, remove, rename, MAX_SAVED } = useSavedSearches(
     "encounter",
@@ -141,7 +136,6 @@ export default function EncounterSearch() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    sessionStorage.setItem(ENCOUNTER_SEARCH_KEY, JSON.stringify(searchParams));
     setSearched(true);
     setPage(0);
     setServerOffset(0);
@@ -161,16 +155,7 @@ export default function EncounterSearch() {
   };
 
   const handleReset = () => {
-    sessionStorage.removeItem(ENCOUNTER_SEARCH_KEY);
-    setSearchParams({
-      patient: "",
-      status: "",
-      classCode: "",
-      type: "",
-      dateFrom: "",
-      dateTo: "",
-      reason: "",
-    } satisfies EncounterSearchParams);
+    clearSearchParams();
     setSearched(false);
     setEncounters([]);
     setTotal(null);
