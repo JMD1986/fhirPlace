@@ -1,4 +1,34 @@
-# React + TypeScript + Vite
+# fhirPlace
+
+A React + TypeScript + Vite application for browsing and analysing synthetic FHIR R4 patient records. Designed for hospital IT evaluation, clinical workflow demos, and SMART on FHIR integration testing.
+
+---
+
+## Documentation
+
+Full integration and deployment documentation lives in the [`docs/`](./docs/README.md) folder.
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](./docs/architecture.md) | System diagram, data flow, SMART auth sequence, security controls |
+| [API Reference](./docs/api-reference.md) | All HTTP endpoints, query params, FHIR resource types, required scopes |
+| [Environment Variables](./docs/environment-variables.md) | Every `VITE_*` variable with type, default, and production requirements |
+| [Network Requirements](./docs/network-requirements.md) | Ports, domains to allowlist, CSP and CORS settings |
+| [Sandbox Setup](./docs/sandbox-setup.md) | Local, SMART Health IT sandbox, and Docker testing guide |
+| [Troubleshooting](./docs/troubleshooting.md) | FAQ for common installation, auth, and deployment issues |
+
+---
+
+## Quick start
+
+```sh
+npm install
+npm run dev:all   # starts Vite (5173) + Express API (5001) concurrently
+```
+
+Open `http://localhost:5173`.
+
+---
 
 ## Synthea setup
 
@@ -40,20 +70,27 @@ Generated files will appear in the current directory by default; you can add
 - After you generate FHIR files, run `npm run synthea:manifest` to refresh the
   manifest used by the front end.
 
+---
 
+## npm scripts
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Vite dev server only (port 5173) |
+| `npm run server` | Start Express API server only (port 5001) |
+| `npm run dev:all` | Start both servers concurrently |
+| `npm run build` | Type-check and produce a production build in `dist/` |
+| `npm run test:run` | Run all tests once |
+| `npm run test` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with coverage report |
+| `npm run lint` | Run ESLint across `src/` |
+| `npm run synthea:setup` | Download the Synthea jar |
+| `npm run synthea:run` | Generate synthetic patient data |
+| `npm run synthea:manifest` | Rebuild `public/synthea/manifest.json` |
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
+## Contributing & ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 

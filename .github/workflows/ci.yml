@@ -44,3 +44,7 @@ jobs:
       # ── Security audit ────────────────────────────────────────────────────────
       - name: Audit dependencies
         run: npm audit --audit-level=high
+
+      # ── Docker build check ────────────────────────────────────────────────────
+      - name: Build API Docker image
+        run: docker build -t fhirplace-api .
