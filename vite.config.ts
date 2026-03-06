@@ -28,13 +28,32 @@ export default defineConfig({
     headers: securityHeaders,
   },
   build: {
+    // Vendor UI chunk (React + MUI + Emotion) is intentionally large (~580 KB).
+    // It is a stable long-cached chunk, so the size is acceptable.
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
-        // Isolate recharts into its own chunk so it is cached independently
-        // of app code and only downloaded when the billing or observation
-        // charts panel is first opened.
-        manualChunks: {
-          'vendor-recharts': ['recharts'],
+        // Split large, stable vendor libraries into their own chunks.
+        // These rarely change, so browsers can serve them from cache even
+        // after app code is updated — reducing repeat-visit download size.
+        // Function form assigns each module id to exactly one chunk,
+        // avoiding circular-chunk warnings from the object form.
+        manualChunks(id: string) {
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
+            return 'vendor-recharts';
+          }
+          // React and MUI share internal imports so they go in one chunk to
+          // avoid circular-chunk warnings. Both are stable and update together.
+          if (
+            id.includes('node_modules/react') ||
+            id.includes('node_modules/@mui') ||
+            id.includes('node_modules/@emotion')
+          ) {
+            return 'vendor-ui';
+          }
+          if (id.includes('node_modules/react-router')) {
+            return 'vendor-router';
+          }
         },
       },
     },
