@@ -40,3 +40,7 @@ jobs:
       # ── Tests ─────────────────────────────────────────────────────────────────
       - name: Test
         run: npx vitest run
+
+      # ── Security audit ────────────────────────────────────────────────────────
+      - name: Audit dependencies
+        run: npm audit --audit-level=high

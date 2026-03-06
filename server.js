@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,6 +10,29 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 5001;
+
+// ── Security headers (HIPAA/SOC 2) ───────────────────────────────────────────
+// helmet sets X-Content-Type-Options, X-Frame-Options, Referrer-Policy, and
+// more by default. We layer a strict CSP on top for the API server.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // MUI/Emotion injects inline styles
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "https:"],
+        fontSrc: ["'self'", "data:"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // allow loading Synthea JSON from /public
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  }),
+);
 
 // Configure CORS explicitly
 const corsOptions = {
