@@ -14,9 +14,15 @@ COPY --from=build /app/publish ./
 # Mount this volume or bake it in below.
 COPY public/synthea ./public/synthea
 
+# SQLite DB is written to /data/fhir.db so it can be mounted as a named volume.
+# This keeps the DB across container restarts and avoids re-seeding every start.
+# Usage: docker run -v fhirplace_db:/data ...
+ENV FHIRPLACE_DB_PATH=/data/fhir.db
+RUN mkdir -p /data && chown $APP_UID /data
+
 EXPOSE 5001
 
-# Tighten permissions — run as non-root for HIPAA/SOC 2 hardening
+# Run as non-root (HIPAA/SOC 2 hardening)
 USER $APP_UID
 
 ENTRYPOINT ["dotnet", "FhirPlace.Server.dll"]

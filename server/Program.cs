@@ -7,9 +7,13 @@ using Microsoft.EntityFrameworkCore;
 // â”€â”€ Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var builder = WebApplication.CreateBuilder(args);
 
+// FHIRPLACE_DB_PATH env var lets Docker mount a persistent volume (e.g. /data/fhir.db).
+// Falls back to fhir.db in the working directory for local dev.
+var dbPath = Environment.GetEnvironmentVariable("FHIRPLACE_DB_PATH")
+             ?? builder.Configuration.GetConnectionString("FhirDb")
+             ?? "fhir.db";
 builder.Services.AddDbContext<FhirDbContext>(opts =>
-    opts.UseSqlite(builder.Configuration.GetConnectionString("FhirDb")
-                   ?? "Data Source=fhir.db"));
+    opts.UseSqlite($"Data Source={dbPath}"));
 
 builder.Services.ConfigureHttpJsonOptions(opts =>
 {
