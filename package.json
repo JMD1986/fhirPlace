@@ -14,10 +14,11 @@
     "build:perf": "tsc -b && vite build --mode perf",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest run --reporter=verbose src",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --reporter=verbose tests",
     "perf:audit": "npm run build:perf && node scripts/perf-audit.js"
   },
   "dependencies": {

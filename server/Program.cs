@@ -7,9 +7,13 @@ using Microsoft.EntityFrameworkCore;
 // â”€â”€ Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var builder = WebApplication.CreateBuilder(args);
 
+// FHIRPLACE_DB_PATH env var lets Docker mount a persistent volume (e.g. /data/fhir.db).
+// Falls back to fhir.db in the working directory for local dev.
+var dbPath = Environment.GetEnvironmentVariable("FHIRPLACE_DB_PATH")
+             ?? builder.Configuration.GetConnectionString("FhirDb")
+             ?? "fhir.db";
 builder.Services.AddDbContext<FhirDbContext>(opts =>
-    opts.UseSqlite(builder.Configuration.GetConnectionString("FhirDb")
-                   ?? "Data Source=fhir.db"));
+    opts.UseSqlite($"Data Source={dbPath}"));
 
 builder.Services.ConfigureHttpJsonOptions(opts =>
 {
@@ -148,7 +152,7 @@ app.MapGet("/api/patients", async (
   if (name is not null) q = q.Where(p => p.Name.Contains(name));
   if (family is not null) q = q.Where(p => p.Family.Contains(family));
   if (given is not null) q = q.Where(p => p.Given.Contains(given));
-  if (gender is not null) q = q.Where(p => p.Gender.Contains(gender));
+  if (gender is not null) q = q.Where(p => p.Gender == gender);
   if (birthDate is not null) q = q.Where(p => p.BirthDate == birthDate);
   if (phone is not null) q = q.Where(p => p.Phone.Contains(phone));
   if (address is not null) q = q.Where(p => p.Address.Contains(address));
