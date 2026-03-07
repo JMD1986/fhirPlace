@@ -1,16 +1,16 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using FhirPlace.Server;
+using Microsoft.EntityFrameworkCore;
 
-// ── Builder ───────────────────────────────────────────────────────────────────
+// â”€â”€ Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<FhirDataStore>();
+builder.Services.AddDbContext<FhirDbContext>(opts =>
+    opts.UseSqlite(builder.Configuration.GetConnectionString("FhirDb")
+                   ?? "Data Source=fhir.db"));
 
-// Serialise PatientSummary (PascalCase props) as camelCase to match the
-// existing Express API contract.  Anonymous-type props are already camelCase,
-// so this policy leaves them unchanged.
 builder.Services.ConfigureHttpJsonOptions(opts =>
 {
   opts.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -25,16 +25,13 @@ builder.Services.AddCors(opts =>
          .AllowAnyHeader()
          .AllowAnyMethod()));
 
-// HTTP only on port 5001 — matches the existing server.js URL used by the Vite
-// dev server and the .env.perf performance audit.
 builder.WebHost.UseUrls("http://localhost:5001");
 
-// ── App pipeline ──────────────────────────────────────────────────────────────
+// â”€â”€ App pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var app = builder.Build();
 
 app.UseCors();
 
-// Helmet-equivalent security headers
 app.Use(async (ctx, next) =>
 {
   var h = ctx.Response.Headers;
@@ -42,28 +39,29 @@ app.Use(async (ctx, next) =>
   h["X-Frame-Options"] = "DENY";
   h["Referrer-Policy"] = "strict-origin-when-cross-origin";
   h["Content-Security-Policy"] =
-      "default-src 'self'; " +
-      "script-src 'self'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data:; " +
-      "connect-src 'self' https:; " +
-      "font-src 'self' data:; " +
-      "object-src 'none'; " +
-      "frame-ancestors 'none'";
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data:; connect-src 'self' https:; font-src 'self' data:; " +
+      "object-src 'none'; frame-ancestors 'none'";
   await next();
 });
 
-// ── Startup: load FHIR data ───────────────────────────────────────────────────
-var store = app.Services.GetRequiredService<FhirDataStore>();
-var fhirDir = Path.GetFullPath(
-    Path.Combine(builder.Environment.ContentRootPath, "..", "public", "synthea", "fhir"));
-await store.LoadPatientsAsync(fhirDir);
+// â”€â”€ Startup: seed DB from Synthea files (no-op on subsequent restarts) â”€â”€â”€â”€â”€â”€â”€â”€
+using (var scope = app.Services.CreateScope())
+{
+  var db = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
+  var fhirDir = Path.GetFullPath(
+      Path.Combine(builder.Environment.ContentRootPath, "..", "public", "synthea", "fhir"));
+  await FhirSeeder.SeedAsync(db, fhirDir);
+}
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const string FhirContentType = "application/fhir+json";
 const string BaseUrl = "http://localhost:5001";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+/// <summary>Deserialise a stored JSON string to JsonObject.</summary>
+static JsonObject J(string json) => JsonNode.Parse(json)!.AsObject();
 
 /// <summary>Build a FHIR searchset Bundle and return it with the correct content-type.</summary>
 static IResult SearchSetBundle(
@@ -92,13 +90,12 @@ static IResult SearchSetBundle(
 }
 
 /// <summary>
-/// Generic handler for resources that support encounter / patient / _id filtering
-/// plus standard _count / _offset pagination.
+/// Generic encounter/patient/_id search against the FhirResources table.
+/// Handles all resource types except Encounter, DocumentReference, Claim, and EOB
+/// (those have dedicated helpers for their multi-encounter joins).
 /// </summary>
-static IResult ResourceSearch(
-    FhirDataStore store,
-    Dictionary<string, ResourceEntry> resourceMap,
-    Dictionary<string, List<string>> byEncounter,
+static async Task<IResult> SimpleResourceSearch(
+    FhirDbContext db,
     string resourceType,
     string? encounter,
     string? patient,
@@ -107,84 +104,92 @@ static IResult ResourceSearch(
     int offset,
     string selfUrl)
 {
-  if (store.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-
-  IEnumerable<JsonObject> results;
+  var q = db.Resources
+            .Where(r => r.ResourceType == resourceType)
+            .AsNoTracking();
 
   if (encounter is not null)
   {
     var encId = encounter.Replace("Encounter/", "").Replace("urn:uuid:", "");
-    var ids = byEncounter.TryGetValue(encId, out var list) ? list : [];
-    results = ids.Select(i => resourceMap.TryGetValue(i, out var e) ? e.Resource : null)
-                   .Where(r => r is not null).Select(r => r!);
+    q = q.Where(r => r.EncounterId == encId);
   }
   else if (patient is not null)
   {
     var patId = patient.Replace("Patient/", "").Replace("urn:uuid:", "");
-    results = resourceMap.Values.Where(e => e.PatientId == patId).Select(e => e.Resource);
+    q = q.Where(r => r.PatientId == patId);
   }
   else if (_id is not null)
   {
-    results = resourceMap.TryGetValue(_id, out var e) ? [e.Resource] : [];
-  }
-  else
-  {
-    results = resourceMap.Values.Select(e => e.Resource);
+    q = q.Where(r => r.Id == _id);
   }
 
-  var all = results.ToList();
-  var total = all.Count;
-  var page = all.Skip(offset).Take(count);
-  return SearchSetBundle(resourceType, page, total, selfUrl);
+  var total = await q.CountAsync();
+  var records = await q.Skip(offset).Take(count).Select(r => r.ResourceJson).ToListAsync();
+  return SearchSetBundle(resourceType, records.Select(J), total, selfUrl);
 }
 
-// ── Routes: simple utility ────────────────────────────────────────────────────
+// â”€â”€ Routes: utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-app.MapGet("/", () => Results.Json(new { status = "ok", service = "FhirPlace API" }));
-
+app.MapGet("/", () => Results.Json(new { status = "ok", service = "FhirPlace .NET API" }));
 app.MapGet("/api/health", () => Results.Json(new { status = "ok" }));
 
-// ── Routes: /api/patients ─────────────────────────────────────────────────────
+// â”€â”€ Routes: /api/patients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-app.MapGet("/api/patients-count", (FhirDataStore s) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  return Results.Json(new { count = s.PatientListCache.Count });
-});
+app.MapGet("/api/patients-count", async (FhirDbContext db) =>
+    Results.Json(new { count = await db.Patients.CountAsync() }));
 
-app.MapGet("/api/patients", (
-    FhirDataStore s,
+app.MapGet("/api/patients", async (
+    FhirDbContext db,
     string? name, string? family, string? given,
     string? gender, string? birthDate, string? phone, string? address) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
+  var q = db.Patients.AsNoTracking().AsQueryable();
 
-  IEnumerable<PatientSummary> results = s.PatientListCache;
+  if (name is not null) q = q.Where(p => p.Name.Contains(name));
+  if (family is not null) q = q.Where(p => p.Family.Contains(family));
+  if (given is not null) q = q.Where(p => p.Given.Contains(given));
+  if (gender is not null) q = q.Where(p => p.Gender.Contains(gender));
+  if (birthDate is not null) q = q.Where(p => p.BirthDate == birthDate);
+  if (phone is not null) q = q.Where(p => p.Phone.Contains(phone));
+  if (address is not null) q = q.Where(p => p.Address.Contains(address));
 
-  if (name is not null) results = results.Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase));
-  if (family is not null) results = results.Where(p => p.Family.Contains(family, StringComparison.OrdinalIgnoreCase));
-  if (given is not null) results = results.Where(p => p.Given.Contains(given, StringComparison.OrdinalIgnoreCase));
-  if (gender is not null) results = results.Where(p => p.Gender.Contains(gender, StringComparison.OrdinalIgnoreCase));
-  if (birthDate is not null) results = results.Where(p => p.BirthDate == birthDate);
-  if (phone is not null) results = results.Where(p => p.Phone.Contains(phone, StringComparison.OrdinalIgnoreCase));
-  if (address is not null) results = results.Where(p => p.Address.Contains(address, StringComparison.OrdinalIgnoreCase));
+  var results = await q.Select(p => new
+  {
+    p.Id,
+    p.Name,
+    p.Family,
+    p.Given,
+    p.Gender,
+    p.BirthDate,
+    p.MaritalStatus,
+    p.Phone,
+    p.Address,
+    p.Race,
+    p.Ethnicity,
+    p.BirthPlace,
+    p.Language,
+    p.Ssn,
+    p.Mrn,
+    p.Filename,
+    resourceType = "Patient",
+  }).ToListAsync();
 
-  return Results.Json(results.ToList());
+  return Results.Json(results);
 });
 
-app.MapGet("/api/patients/{id}", (FhirDataStore s, string id) =>
+app.MapGet("/api/patients/{id}", async (FhirDbContext db, string id) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.PatientBundleMap.TryGetValue(id, out var bundle))
-    return Results.Json(new { error = "Patient not found" }, statusCode: 404);
-  return Results.Json(bundle);
+  var bundleJson = await db.Patients
+      .Where(p => p.Id == id)
+      .Select(p => p.BundleJson)
+      .FirstOrDefaultAsync();
+
+  return bundleJson is null
+      ? Results.Json(new { error = "Patient not found" }, statusCode: 404)
+      : Results.Json(J(bundleJson));
 });
 
-// ── Routes: NPPES proxy ───────────────────────────────────────────────────────
+// â”€â”€ Routes: NPPES proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.MapGet("/api/nppes", async (HttpRequest req) =>
 {
@@ -192,11 +197,9 @@ app.MapGet("/api/nppes", async (HttpRequest req) =>
   {
     var qs = string.Join("&", req.Query.Select(kv =>
         $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value.ToString())}"));
-    var url = $"https://npiregistry.cms.hhs.gov/api/?{qs}";
-
     using var http = new HttpClient();
-    var responseStr = await http.GetStringAsync(url);
-    return Results.Text(responseStr, "application/json");
+    return Results.Text(await http.GetStringAsync(
+        $"https://npiregistry.cms.hhs.gov/api/?{qs}"), "application/json");
   }
   catch (Exception ex)
   {
@@ -204,193 +207,91 @@ app.MapGet("/api/nppes", async (HttpRequest req) =>
   }
 });
 
-// ── Routes: /fhir/Patient ─────────────────────────────────────────────────────
+// â”€â”€ Routes: /fhir/Patient â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-app.MapGet("/fhir/Patient", (
-    FhirDataStore s, HttpRequest req,
+app.MapGet("/fhir/Patient", async (
+    FhirDbContext db, HttpRequest req,
     string? family, string? given, string? name, string? gender,
     string? birthdate, string? _id, string? address, string? phone,
     int _count = 20, int _offset = 0) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
+  var q = db.Patients.AsNoTracking().AsQueryable();
 
-  IEnumerable<JsonObject> results = s.PatientResourceMap.Values;
+  if (_id is not null) q = q.Where(p => p.Id == _id);
+  if (family is not null) q = q.Where(p => p.Family.Contains(family));
+  if (given is not null) q = q.Where(p => p.Given.Contains(given));
+  if (name is not null) q = q.Where(p => p.Name.Contains(name) || p.Family.Contains(name) || p.Given.Contains(name));
+  if (gender is not null) q = q.Where(p => p.Gender == gender);
+  if (birthdate is not null) q = q.Where(p => p.BirthDate == birthdate);
+  if (address is not null) q = q.Where(p => p.Address.Contains(address));
+  if (phone is not null) q = q.Where(p => p.Phone.Contains(phone));
 
-  if (_id is not null) results = results.Where(p => p["id"]?.GetValue<string>() == _id);
-  if (family is not null)
-  {
-    var q = family;
-    results = results.Where(p =>
-        p["name"]?.AsArray().FirstOrDefault()?["family"]?.GetValue<string>()
-         ?.Contains(q, StringComparison.OrdinalIgnoreCase) == true);
-  }
-  if (given is not null)
-  {
-    var q = given;
-    results = results.Where(p =>
-        string.Join(" ", p["name"]?.AsArray().FirstOrDefault()?["given"]?.AsArray()
-            .Select(g => g?.GetValue<string>()) ?? [])
-        .Contains(q, StringComparison.OrdinalIgnoreCase));
-  }
-  if (name is not null)
-  {
-    var q = name;
-    results = results.Where(p =>
-    {
-      var n = p["name"]?.AsArray().FirstOrDefault();
-      return n?["text"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true ||
-                 n?["family"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true ||
-                 string.Join(" ", n?["given"]?.AsArray().Select(g => g?.GetValue<string>()) ?? [])
-                     .Contains(q, StringComparison.OrdinalIgnoreCase);
-    });
-  }
-  if (gender is not null)
-  {
-    var q = gender;
-    results = results.Where(p =>
-        string.Equals(p["gender"]?.GetValue<string>(), q, StringComparison.OrdinalIgnoreCase));
-  }
-  if (birthdate is not null)
-  {
-    var q = birthdate;
-    results = results.Where(p => p["birthDate"]?.GetValue<string>() == q);
-  }
-  if (address is not null)
-  {
-    var q = address;
-    results = results.Where(p =>
-        p["address"]?.AsArray().Any(a =>
-            string.Join(" ", new[]
-            {
-                    string.Join(" ", a?["line"]?.AsArray().Select(l => l?.GetValue<string>()) ?? []),
-                    a?["city"]?.GetValue<string>(),
-                    a?["state"]?.GetValue<string>(),
-                    a?["postalCode"]?.GetValue<string>(),
-                    a?["country"]?.GetValue<string>(),
-            }.Where(v => !string.IsNullOrEmpty(v)))
-            .Contains(q, StringComparison.OrdinalIgnoreCase)) == true);
-  }
-  if (phone is not null)
-  {
-    var q = phone;
-    results = results.Where(p =>
-        p["telecom"]?.AsArray().Any(t =>
-            t?["system"]?.GetValue<string>() == "phone" &&
-            t["value"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true) == true);
-  }
-
-  var all = results.ToList();
-  var total = all.Count;
-  var page = all.Skip(_offset).Take(_count);
+  var total = await q.CountAsync();
+  var records = await q.Skip(_offset).Take(_count).Select(p => p.ResourceJson).ToListAsync();
   var selfUrl = $"{BaseUrl}/fhir/Patient?{req.QueryString.ToString().TrimStart('?')}";
   var extra = new List<object>();
   if (_offset + _count < total)
     extra.Add(new { relation = "next", url = $"{BaseUrl}/fhir/Patient?_count={_count}&_offset={_offset + _count}" });
 
-  return SearchSetBundle("Patient", page, total, selfUrl, extra);
+  return SearchSetBundle("Patient", records.Select(J), total, selfUrl, extra);
 });
 
-app.MapGet("/fhir/Patient/{id}", (FhirDataStore s, string id) =>
+app.MapGet("/fhir/Patient/{id}", async (FhirDbContext db, string id) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.PatientResourceMap.TryGetValue(id, out var resource))
-    return Results.Json(new { error = "Patient not found" }, statusCode: 404);
-  return Results.Json(resource, contentType: FhirContentType);
+  var json = await db.Patients
+      .Where(p => p.Id == id)
+      .Select(p => p.ResourceJson)
+      .FirstOrDefaultAsync();
+
+  return json is null
+      ? Results.Json(new { error = "Patient not found" }, statusCode: 404)
+      : Results.Json(J(json), contentType: FhirContentType);
 });
 
-// ── Routes: /fhir/Encounter ───────────────────────────────────────────────────
+// â”€â”€ Routes: /fhir/Encounter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-app.MapGet("/fhir/Encounter/_types", (FhirDataStore s) =>
+app.MapGet("/fhir/Encounter/_types", async (FhirDbContext db) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-
-  var types = new SortedSet<string>();
-  foreach (var enc in s.EncounterResourceMap.Values.Select(e => e.Resource))
-  {
-    var text = enc["type"]?.AsArray().FirstOrDefault()?["text"]?.GetValue<string>()
-        ?? enc["type"]?.AsArray().FirstOrDefault()?["coding"]?.AsArray()
-            .FirstOrDefault()?["display"]?.GetValue<string>();
-    if (!string.IsNullOrEmpty(text)) types.Add(text);
-  }
-  return Results.Json(types.ToList());
+  var types = await db.Encounters
+      .Where(e => e.TypeText != null)
+      .Select(e => e.TypeText!)
+      .Distinct()
+      .OrderBy(t => t)
+      .ToListAsync();
+  return Results.Json(types);
 });
 
-app.MapGet("/fhir/Encounter/_classes", (FhirDataStore s) =>
+app.MapGet("/fhir/Encounter/_classes", async (FhirDbContext db) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-
-  var classes = new SortedSet<string>();
-  foreach (var enc in s.EncounterResourceMap.Values.Select(e => e.Resource))
-  {
-    var code = enc["class"]?["code"]?.GetValue<string>();
-    if (!string.IsNullOrEmpty(code)) classes.Add(code);
-  }
-  return Results.Json(classes.ToList());
+  var classes = await db.Encounters
+      .Where(e => e.ClassCode != null)
+      .Select(e => e.ClassCode!)
+      .Distinct()
+      .OrderBy(c => c)
+      .ToListAsync();
+  return Results.Json(classes);
 });
 
-app.MapGet("/fhir/Encounter", (
-    FhirDataStore s, HttpRequest req,
+app.MapGet("/fhir/Encounter", async (
+    FhirDbContext db, HttpRequest req,
     string? patient, string? status, string? date, string? type, string? reason, string? _id,
     int _count = 20, int _offset = 0) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-
   var classCode = req.Query["class"].ToString() is { Length: > 0 } c ? c : null;
 
-  IEnumerable<JsonObject> results;
+  var q = db.Encounters.AsNoTracking().AsQueryable();
+
   if (patient is not null)
   {
     var patId = patient.Replace("Patient/", "").Replace("urn:uuid:", "");
-    var ids = s.EncountersByPatient.TryGetValue(patId, out var l) ? l : [];
-    results = ids.Select(i => s.EncounterResourceMap.TryGetValue(i, out var e) ? e.Resource : null)
-                   .Where(r => r is not null).Select(r => r!);
+    q = q.Where(e => e.PatientId == patId);
   }
-  else
-  {
-    results = s.EncounterResourceMap.Values.Select(e => e.Resource);
-  }
+  if (_id is not null) q = q.Where(e => e.Id == _id);
+  if (status is not null) q = q.Where(e => e.Status == status);
+  if (classCode is not null) q = q.Where(e => e.ClassCode == classCode);
+  if (type is not null) q = q.Where(e => e.TypeText != null && e.TypeText.Contains(type));
+  if (reason is not null) q = q.Where(e => e.ReasonText != null && e.ReasonText.Contains(reason));
 
-  if (_id is not null)
-  {
-    var q = _id;
-    results = results.Where(e => e["id"]?.GetValue<string>() == q);
-  }
-  if (status is not null)
-  {
-    var q = status;
-    results = results.Where(e =>
-        string.Equals(e["status"]?.GetValue<string>(), q, StringComparison.OrdinalIgnoreCase));
-  }
-  if (classCode is not null)
-  {
-    var q = classCode;
-    results = results.Where(e =>
-        string.Equals(e["class"]?["code"]?.GetValue<string>(), q, StringComparison.OrdinalIgnoreCase));
-  }
-  if (type is not null)
-  {
-    var q = type;
-    results = results.Where(e =>
-        e["type"]?.AsArray().Any(t =>
-            t?["text"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true ||
-            t?["coding"]?.AsArray().Any(c =>
-                c?["display"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true) == true) == true);
-  }
-  if (reason is not null)
-  {
-    var q = reason;
-    results = results.Where(e =>
-        e["reason"]?.AsArray().Any(r =>
-            r?["text"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true ||
-            r?["coding"]?.AsArray().Any(c =>
-                c?["code"]?.GetValue<string>() == q ||
-                c?["display"]?.GetValue<string>()?.Contains(q, StringComparison.OrdinalIgnoreCase) == true) == true) == true);
-  }
   if (date is not null)
   {
     var m = System.Text.RegularExpressions.Regex.Match(date, @"^(eq|ge|le|gt|lt)?(\d{4}-\d{2}-\d{2})");
@@ -398,280 +299,240 @@ app.MapGet("/fhir/Encounter", (
     {
       var prefix = m.Groups[1].Value is { Length: > 0 } p ? p : "eq";
       var target = m.Groups[2].Value;
-      results = results.Where(e =>
+      q = prefix switch
       {
-        var start = e["period"]?["start"]?.GetValue<string>();
-        if (start is null || start.Length < 10) return false;
-        var startDate = start[..10];
-        return prefix switch
-        {
-          "eq" => startDate == target,
-          "ge" => string.Compare(startDate, target, StringComparison.Ordinal) >= 0,
-          "le" => string.Compare(startDate, target, StringComparison.Ordinal) <= 0,
-          "gt" => string.Compare(startDate, target, StringComparison.Ordinal) > 0,
-          "lt" => string.Compare(startDate, target, StringComparison.Ordinal) < 0,
-          _ => false,
-        };
-      });
+        "ge" => q.Where(e => e.PeriodStart != null && string.Compare(e.PeriodStart, target) >= 0),
+        "le" => q.Where(e => e.PeriodStart != null && string.Compare(e.PeriodStart, target) <= 0),
+        "gt" => q.Where(e => e.PeriodStart != null && string.Compare(e.PeriodStart, target) > 0),
+        "lt" => q.Where(e => e.PeriodStart != null && string.Compare(e.PeriodStart, target) < 0),
+        _ => q.Where(e => e.PeriodStart == target),
+      };
     }
   }
 
-  var all = results.ToList();
-  var total = all.Count;
-  var page = all.Skip(_offset).Take(_count);
+  var total = await q.CountAsync();
+  var records = await q.Skip(_offset).Take(_count).Select(e => e.ResourceJson).ToListAsync();
   var selfUrl = $"{BaseUrl}/fhir/Encounter?{req.QueryString.ToString().TrimStart('?')}";
   var extra = new List<object>();
   if (_offset + _count < total)
     extra.Add(new { relation = "next", url = $"{BaseUrl}/fhir/Encounter?_count={_count}&_offset={_offset + _count}" });
 
-  return SearchSetBundle("Encounter", page, total, selfUrl, extra);
+  return SearchSetBundle("Encounter", records.Select(J), total, selfUrl, extra);
 });
 
-app.MapGet("/fhir/Encounter/{id}", (FhirDataStore s, string id) =>
+app.MapGet("/fhir/Encounter/{id}", async (FhirDbContext db, string id) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.EncounterResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "Encounter not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
+  var json = await db.Encounters.Where(e => e.Id == id).Select(e => e.ResourceJson).FirstOrDefaultAsync();
+  return json is null
+      ? Results.Json(new { error = "Encounter not found" }, statusCode: 404)
+      : Results.Json(J(json), contentType: FhirContentType);
 });
 
-// ── Routes: /fhir/DocumentReference ──────────────────────────────────────────
+// â”€â”€ Routes: /fhir/DocumentReference â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Uses DocRefEncounterLinks junction table for the ?encounter= filter.
 
-app.MapGet("/fhir/DocumentReference", (
-    FhirDataStore s, HttpRequest req,
+app.MapGet("/fhir/DocumentReference", async (
+    FhirDbContext db, HttpRequest req,
     string? encounter, string? patient, string? _id,
     int _count = 50, int _offset = 0) =>
 {
   var cap = Math.Min(_count, 500);
   var self = $"{BaseUrl}/fhir/DocumentReference?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.DocRefResourceMap, s.DocRefsByEncounter,
-                        "DocumentReference", encounter, patient, _id, cap, _offset, self);
-});
 
-app.MapGet("/fhir/DocumentReference/{id}", (FhirDataStore s, string id) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.DocRefResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "DocumentReference not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
-});
-
-// ── Routes: /fhir/Condition ───────────────────────────────────────────────────
-
-app.MapGet("/fhir/Condition", (
-    FhirDataStore s, HttpRequest req,
-    string? encounter, string? patient, string? _id,
-    int _count = 50, int _offset = 0) =>
-{
-  var cap = Math.Min(_count, 500);
-  var self = $"{BaseUrl}/fhir/Condition?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.ConditionResourceMap, s.ConditionsByEncounter,
-                        "Condition", encounter, patient, _id, cap, _offset, self);
-});
-
-app.MapGet("/fhir/Condition/{id}", (FhirDataStore s, string id) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.ConditionResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "Condition not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
-});
-
-// ── Routes: /fhir/DiagnosticReport ───────────────────────────────────────────
-
-app.MapGet("/fhir/DiagnosticReport", (
-    FhirDataStore s, HttpRequest req,
-    string? encounter, string? patient, string? _id,
-    int _count = 50, int _offset = 0) =>
-{
-  var cap = Math.Min(_count, 500);
-  var self = $"{BaseUrl}/fhir/DiagnosticReport?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.DiagReportResourceMap, s.DiagReportsByEncounter,
-                        "DiagnosticReport", encounter, patient, _id, cap, _offset, self);
-});
-
-app.MapGet("/fhir/DiagnosticReport/{id}", (FhirDataStore s, string id) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.DiagReportResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "DiagnosticReport not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
-});
-
-// ── Routes: /fhir/Immunization ────────────────────────────────────────────────
-
-app.MapGet("/fhir/Immunization", (
-    FhirDataStore s, HttpRequest req,
-    string? encounter, string? patient, string? _id,
-    int _count = 50, int _offset = 0) =>
-{
-  var cap = Math.Min(_count, 500);
-  var self = $"{BaseUrl}/fhir/Immunization?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.ImmunizationResourceMap, s.ImmunizationsByEncounter,
-                        "Immunization", encounter, patient, _id, cap, _offset, self);
-});
-
-app.MapGet("/fhir/Immunization/{id}", (FhirDataStore s, string id) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.ImmunizationResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "Immunization not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
-});
-
-// ── Routes: /fhir/Procedure ───────────────────────────────────────────────────
-
-app.MapGet("/fhir/Procedure", (
-    FhirDataStore s, HttpRequest req,
-    string? encounter, string? patient, string? _id,
-    int _count = 50, int _offset = 0) =>
-{
-  var cap = Math.Min(_count, 500);
-  var self = $"{BaseUrl}/fhir/Procedure?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.ProcedureResourceMap, s.ProceduresByEncounter,
-                        "Procedure", encounter, patient, _id, cap, _offset, self);
-});
-
-app.MapGet("/fhir/Procedure/{id}", (FhirDataStore s, string id) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.ProcedureResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "Procedure not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
-});
-
-// ── Routes: /fhir/Observation (has extra ?code= filter) ───────────────────────
-
-app.MapGet("/fhir/Observation", (
-    FhirDataStore s, HttpRequest req,
-    string? encounter, string? patient, string? _id, string? code,
-    int _count = 500, int _offset = 0) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-
-  var cap = Math.Min(_count, 2000);
-  IEnumerable<JsonObject> results;
+  var q = db.Resources.Where(r => r.ResourceType == "DocumentReference").AsNoTracking();
 
   if (encounter is not null)
   {
     var encId = encounter.Replace("Encounter/", "").Replace("urn:uuid:", "");
-    var ids = s.ObservationsByEncounter.TryGetValue(encId, out var l) ? l : [];
-    results = ids.Select(i => s.ObservationResourceMap.TryGetValue(i, out var e) ? e.Resource : null)
-                   .Where(r => r is not null).Select(r => r!);
+    var ids = await db.DocRefEncounterLinks
+        .Where(l => l.EncounterId == encId).Select(l => l.DocRefId).ToListAsync();
+    q = q.Where(r => ids.Contains(r.Id));
   }
   else if (patient is not null)
   {
     var patId = patient.Replace("Patient/", "").Replace("urn:uuid:", "");
-    results = s.ObservationResourceMap.Values
-                 .Where(e => e.PatientId == patId).Select(e => e.Resource);
-
-    if (code is not null)
-    {
-      var codeStr = code;
-      results = results.Where(r =>
-          r["code"]?["coding"]?.AsArray().Any(c =>
-              c?["code"]?.GetValue<string>() == codeStr) == true ||
-          r["code"]?["text"]?.GetValue<string>() == codeStr);
-    }
+    q = q.Where(r => r.PatientId == patId);
   }
   else if (_id is not null)
   {
-    results = s.ObservationResourceMap.TryGetValue(_id, out var e) ? [e.Resource] : [];
+    q = q.Where(r => r.Id == _id);
   }
-  else
+
+  var total = await q.CountAsync();
+  var records = await q.Skip(_offset).Take(cap).Select(r => r.ResourceJson).ToListAsync();
+  return SearchSetBundle("DocumentReference", records.Select(J), total, self);
+});
+
+app.MapGet("/fhir/DocumentReference/{id}", async (FhirDbContext db, string id) =>
+{
+  var json = await db.Resources
+      .Where(r => r.ResourceType == "DocumentReference" && r.Id == id)
+      .Select(r => r.ResourceJson).FirstOrDefaultAsync();
+  return json is null
+      ? Results.Json(new { error = "DocumentReference not found" }, statusCode: 404)
+      : Results.Json(J(json), contentType: FhirContentType);
+});
+
+// â”€â”€ Routes: simple single-encounter resource types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Condition, DiagnosticReport, Immunization, Procedure, MedicationRequest
+
+foreach (var (path, rt, defaultCount, maxCount) in new[]
+{
+    ("/fhir/Condition",         "Condition",         50,  500),
+    ("/fhir/DiagnosticReport",  "DiagnosticReport",  50,  500),
+    ("/fhir/Immunization",      "Immunization",      50,  500),
+    ("/fhir/Procedure",         "Procedure",         50,  500),
+    ("/fhir/MedicationRequest", "MedicationRequest", 50,  500),
+})
+{
+  var rtCapture = rt;
+  var defaultCapture = defaultCount;
+  var maxCapture = maxCount;
+
+  app.MapGet(path, async (
+      FhirDbContext db, HttpRequest req,
+      string? encounter, string? patient, string? _id,
+      int _count = 50, int _offset = 0) =>
   {
-    results = s.ObservationResourceMap.Values.Select(e => e.Resource);
+    var cap = Math.Min(_count == defaultCapture ? defaultCapture : _count, maxCapture);
+    var self = $"{BaseUrl}{path}?{req.QueryString.ToString().TrimStart('?')}";
+    return await SimpleResourceSearch(db, rtCapture, encounter, patient, _id, cap, _offset, self);
+  });
+
+  app.MapGet($"{path}/{{id}}", async (FhirDbContext db, string id) =>
+  {
+    var json = await db.Resources
+          .Where(r => r.ResourceType == rtCapture && r.Id == id)
+          .Select(r => r.ResourceJson).FirstOrDefaultAsync();
+    return json is null
+          ? Results.Json(new { error = $"{rtCapture} not found" }, statusCode: 404)
+          : Results.Json(J(json), contentType: FhirContentType);
+  });
+}
+
+// â”€â”€ Routes: /fhir/Observation (extra ?code= filter) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+app.MapGet("/fhir/Observation", async (
+    FhirDbContext db, HttpRequest req,
+    string? encounter, string? patient, string? _id, string? code,
+    int _count = 500, int _offset = 0) =>
+{
+  var cap = Math.Min(_count, 2000);
+  var q = db.Resources.Where(r => r.ResourceType == "Observation").AsNoTracking();
+
+  if (encounter is not null)
+  {
+    var encId = encounter.Replace("Encounter/", "").Replace("urn:uuid:", "");
+    q = q.Where(r => r.EncounterId == encId);
+  }
+  else if (patient is not null)
+  {
+    var patId = patient.Replace("Patient/", "").Replace("urn:uuid:", "");
+    q = q.Where(r => r.PatientId == patId);
+    if (code is not null)
+      q = q.Where(r => r.Code != null && r.Code.Contains(code));
+  }
+  else if (_id is not null)
+  {
+    q = q.Where(r => r.Id == _id);
   }
 
-  var all = results.ToList();
-  var total = all.Count;
-  var page = all.Skip(_offset).Take(cap);
+  var total = await q.CountAsync();
+  var records = await q.Skip(_offset).Take(cap).Select(r => r.ResourceJson).ToListAsync();
   var selfUrl = $"{BaseUrl}/fhir/Observation?{req.QueryString.ToString().TrimStart('?')}";
-  return SearchSetBundle("Observation", page, total, selfUrl);
+  return SearchSetBundle("Observation", records.Select(J), total, selfUrl);
 });
 
-app.MapGet("/fhir/Observation/{id}", (FhirDataStore s, string id) =>
+app.MapGet("/fhir/Observation/{id}", async (FhirDbContext db, string id) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.ObservationResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "Observation not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
+  var json = await db.Resources
+      .Where(r => r.ResourceType == "Observation" && r.Id == id)
+      .Select(r => r.ResourceJson).FirstOrDefaultAsync();
+  return json is null
+      ? Results.Json(new { error = "Observation not found" }, statusCode: 404)
+      : Results.Json(J(json), contentType: FhirContentType);
 });
 
-// ── Routes: /fhir/MedicationRequest ──────────────────────────────────────────
+// â”€â”€ Routes: /fhir/Claim â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-app.MapGet("/fhir/MedicationRequest", (
-    FhirDataStore s, HttpRequest req,
-    string? encounter, string? patient, string? _id,
-    int _count = 50, int _offset = 0) =>
-{
-  var cap = Math.Min(_count, 500);
-  var self = $"{BaseUrl}/fhir/MedicationRequest?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.MedicationRequestResourceMap, s.MedicationRequestsByEncounter,
-                        "MedicationRequest", encounter, patient, _id, cap, _offset, self);
-});
-
-app.MapGet("/fhir/MedicationRequest/{id}", (FhirDataStore s, string id) =>
-{
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.MedicationRequestResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "MedicationRequest not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
-});
-
-// ── Routes: /fhir/Claim ───────────────────────────────────────────────────────
-
-app.MapGet("/fhir/Claim", (
-    FhirDataStore s, HttpRequest req,
+app.MapGet("/fhir/Claim", async (
+    FhirDbContext db, HttpRequest req,
     string? encounter, string? patient, string? _id,
     int _count = 50, int _offset = 0) =>
 {
   var cap = Math.Min(_count, 500);
   var self = $"{BaseUrl}/fhir/Claim?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.ClaimResourceMap, s.ClaimsByEncounter,
-                        "Claim", encounter, patient, _id, cap, _offset, self);
+  var q = db.Resources.Where(r => r.ResourceType == "Claim").AsNoTracking();
+
+  if (encounter is not null)
+  {
+    var encId = encounter.Replace("Encounter/", "").Replace("urn:uuid:", "");
+    var ids = await db.ClaimEncounterLinks
+        .Where(l => l.EncounterId == encId).Select(l => l.ClaimId).ToListAsync();
+    q = q.Where(r => ids.Contains(r.Id));
+  }
+  else if (patient is not null)
+  {
+    var patId = patient.Replace("Patient/", "").Replace("urn:uuid:", "");
+    q = q.Where(r => r.PatientId == patId);
+  }
+  else if (_id is not null) { q = q.Where(r => r.Id == _id); }
+
+  var total = await q.CountAsync();
+  var records = await q.Skip(_offset).Take(cap).Select(r => r.ResourceJson).ToListAsync();
+  return SearchSetBundle("Claim", records.Select(J), total, self);
 });
 
-app.MapGet("/fhir/Claim/{id}", (FhirDataStore s, string id) =>
+app.MapGet("/fhir/Claim/{id}", async (FhirDbContext db, string id) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.ClaimResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "Claim not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
+  var json = await db.Resources
+      .Where(r => r.ResourceType == "Claim" && r.Id == id)
+      .Select(r => r.ResourceJson).FirstOrDefaultAsync();
+  return json is null
+      ? Results.Json(new { error = "Claim not found" }, statusCode: 404)
+      : Results.Json(J(json), contentType: FhirContentType);
 });
 
-// ── Routes: /fhir/ExplanationOfBenefit ───────────────────────────────────────
+// â”€â”€ Routes: /fhir/ExplanationOfBenefit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-app.MapGet("/fhir/ExplanationOfBenefit", (
-    FhirDataStore s, HttpRequest req,
+app.MapGet("/fhir/ExplanationOfBenefit", async (
+    FhirDbContext db, HttpRequest req,
     string? encounter, string? patient, string? _id,
     int _count = 50, int _offset = 0) =>
 {
   var cap = Math.Min(_count, 500);
   var self = $"{BaseUrl}/fhir/ExplanationOfBenefit?{req.QueryString.ToString().TrimStart('?')}";
-  return ResourceSearch(s, s.EobResourceMap, s.EobsByEncounter,
-                        "ExplanationOfBenefit", encounter, patient, _id, cap, _offset, self);
+  var q = db.Resources.Where(r => r.ResourceType == "ExplanationOfBenefit").AsNoTracking();
+
+  if (encounter is not null)
+  {
+    var encId = encounter.Replace("Encounter/", "").Replace("urn:uuid:", "");
+    var ids = await db.EobEncounterLinks
+        .Where(l => l.EncounterId == encId).Select(l => l.EobId).ToListAsync();
+    q = q.Where(r => ids.Contains(r.Id));
+  }
+  else if (patient is not null)
+  {
+    var patId = patient.Replace("Patient/", "").Replace("urn:uuid:", "");
+    q = q.Where(r => r.PatientId == patId);
+  }
+  else if (_id is not null) { q = q.Where(r => r.Id == _id); }
+
+  var total = await q.CountAsync();
+  var records = await q.Skip(_offset).Take(cap).Select(r => r.ResourceJson).ToListAsync();
+  return SearchSetBundle("ExplanationOfBenefit", records.Select(J), total, self);
 });
 
-app.MapGet("/fhir/ExplanationOfBenefit/{id}", (FhirDataStore s, string id) =>
+app.MapGet("/fhir/ExplanationOfBenefit/{id}", async (FhirDbContext db, string id) =>
 {
-  if (s.PatientListCache is null)
-    return Results.Json(new { error = "Cache not ready" }, statusCode: 503);
-  if (!s.EobResourceMap.TryGetValue(id, out var entry))
-    return Results.Json(new { error = "ExplanationOfBenefit not found" }, statusCode: 404);
-  return Results.Json(entry.Resource, contentType: FhirContentType);
+  var json = await db.Resources
+      .Where(r => r.ResourceType == "ExplanationOfBenefit" && r.Id == id)
+      .Select(r => r.ResourceJson).FirstOrDefaultAsync();
+  return json is null
+      ? Results.Json(new { error = "ExplanationOfBenefit not found" }, statusCode: 404)
+      : Results.Json(J(json), contentType: FhirContentType);
 });
 
-// ── Run ───────────────────────────────────────────────────────────────────────
-Console.WriteLine("🏥 FhirPlace .NET API running on http://localhost:5001");
+// â”€â”€ Run â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Console.WriteLine("ðŸ¥ FhirPlace .NET API running on http://localhost:5001");
 app.Run();

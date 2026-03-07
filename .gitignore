@@ -32,3 +32,6 @@ perf-reports/
 # .NET build output
 server/bin/
 server/obj/
+server/fhir.db
+server/fhir.db-shm
+server/fhir.db-wal
