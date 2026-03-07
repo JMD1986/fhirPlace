@@ -1,0 +1,85 @@
+name: Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: ["**"]
+  schedule:
+    - cron: "0 8 * * 1"   # every Monday at 08:00 UTC — catches newly published CVEs
+
+permissions:
+  contents: read
+  security-events: write   # required for CodeQL SARIF upload
+
+jobs:
+  # ── CodeQL (SAST) — scans C# and TypeScript/JavaScript ──────────────────────
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, csharp]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - uses: actions/setup-dotnet@v4
+        if: matrix.language == 'csharp'
+        with:
+          dotnet-version: 9.x
+      - name: Build .NET (required for C# analysis)
+        if: matrix.language == 'csharp'
+        run: dotnet build server/FhirPlace.Server.csproj -c Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ── gitleaks — secret / credential leak detection ───────────────────────────
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so gitleaks can scan all commits
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Dependency vulnerability audits ─────────────────────────────────────────
+  deps:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: npm audit (high+critical)
+        run: npm audit --audit-level=high
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+      - name: dotnet restore
+        run: dotnet restore server/
+      - name: dotnet vulnerable packages
+        run: |
+          dotnet list server/FhirPlace.Server.csproj package --vulnerable --include-transitive 2>&1 \
+            | tee /tmp/dotnet-vuln.txt
+          if grep -q "has the following vulnerable packages" /tmp/dotnet-vuln.txt; then
+            echo "::error::Vulnerable .NET packages found — see output above"
+            exit 1
+          fi

@@ -1,10 +1,15 @@
-# Exclude everything by default, then allow only what the Dockerfile needs.
+# Exclude everything, then explicitly re-include only what the Dockerfile COPYs.
+# Using !path/** (not !path/) is required — Docker only re-includes directory
+# entries with !path/, not the files inside them.
 **
 
 # ── C# server source ─────────────────────────────────────────────────────────
-!server/
-server/bin/
-server/obj/
+!server/**
+server/bin/**
+server/obj/**
+
+# ── Synthea FHIR seed data (needed at container start-up for seeding) ─────────
+!public/synthea/fhir/*.json
 
 # ── Docker config itself ──────────────────────────────────────────────────────
 !Dockerfile
