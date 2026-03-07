@@ -38,7 +38,9 @@ builder.Services.AddCors(opts =>
          .AllowAnyHeader()
          .AllowAnyMethod()));
 
-builder.WebHost.UseUrls("http://localhost:5001");
+// In production (Docker/Fly.io) ASPNETCORE_URLS env var controls the listen
+// address (http://+:5001).  In local dev the default (http://localhost:5001)
+// is fine — do NOT call UseUrls() here as it would override the env var.
 
 // â”€â”€ App pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var app = builder.Build();
