@@ -1,0 +1,38 @@
+# fly.toml — Fly.io configuration for fhirPlace API
+# Deploy with: fly deploy
+# First-time setup:
+#   1. fly auth login
+#   2. fly apps create fhirplace          (choose a unique name)
+#   3. fly volumes create fhirplace_db --size 1 --region ord
+#   4. fly deploy
+
+app = "fhirplace"        # ← change to your unique app name
+primary_region = "ord"   # Chicago; see `fly platform regions` for options
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ASPNETCORE_URLS     = "http://+:5001"
+  FHIRPLACE_DB_PATH   = "/data/fhir.db"
+  ASPNETCORE_ENVIRONMENT = "Production"
+
+[[mounts]]
+  source      = "fhirplace_db"   # name of the Fly volume (created in step 3 above)
+  destination = "/data"
+
+[http_service]
+  internal_port        = 5001
+  force_https          = true
+  auto_stop_machines   = true   # stop idle machines to stay within free tier
+  auto_start_machines  = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "256mb"

@@ -1,0 +1,11 @@
+# Exclude everything by default, then allow only what the Dockerfile needs.
+**
+
+# ── C# server source ─────────────────────────────────────────────────────────
+!server/
+server/bin/
+server/obj/
+
+# ── Docker config itself ──────────────────────────────────────────────────────
+!Dockerfile
+!.dockerignore

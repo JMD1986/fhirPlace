@@ -1,0 +1,27 @@
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches: [main, master]
+
+# Only run after CI passes on the same commit.
+# Remove the `needs` block if you want independent deploys.
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    # Uncomment to require CI to pass first:
+    # needs: [typecheck, lint, test, dotnet-build, docker]
+    concurrency:
+      group: fly-deploy
+      cancel-in-progress: false   # never cancel an in-flight deploy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

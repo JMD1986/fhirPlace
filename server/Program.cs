@@ -152,7 +152,7 @@ app.MapGet("/api/patients", async (
   if (name is not null) q = q.Where(p => p.Name.Contains(name));
   if (family is not null) q = q.Where(p => p.Family.Contains(family));
   if (given is not null) q = q.Where(p => p.Given.Contains(given));
-  if (gender is not null) q = q.Where(p => p.Gender.Contains(gender));
+  if (gender is not null) q = q.Where(p => p.Gender == gender);
   if (birthDate is not null) q = q.Where(p => p.BirthDate == birthDate);
   if (phone is not null) q = q.Where(p => p.Phone.Contains(phone));
   if (address is not null) q = q.Where(p => p.Address.Contains(address));
