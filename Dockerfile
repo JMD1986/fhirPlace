@@ -1,23 +1,22 @@
-# ── Build stage: install production deps only ─────────────────────────────────
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
+# ── Build stage: restore & publish the .NET API ──────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
+WORKDIR /src
+COPY server/ ./server/
+RUN dotnet publish server/FhirPlace.Server.csproj -c Release -o /app/publish --no-self-contained
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:20-alpine
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
 WORKDIR /app
 
-# Copy production node_modules from the deps stage
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/publish ./
 
-# Copy server source and Synthea FHIR data
-COPY server.js ./
+# Synthea FHIR data expected at /app/public/synthea/fhir/ at runtime.
+# Mount this volume or bake it in below.
 COPY public/synthea ./public/synthea
 
 EXPOSE 5001
 
 # Tighten permissions — run as non-root for HIPAA/SOC 2 hardening
-USER node
+USER $APP_UID
 
-CMD ["node", "server.js"]
+ENTRYPOINT ["dotnet", "FhirPlace.Server.dll"]

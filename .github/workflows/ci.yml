@@ -64,6 +64,18 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=high
 
+  # ── .NET server build ──────────────────────────────────────────────────────
+  dotnet-build:
+    name: .NET build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+      - run: dotnet restore server/
+      - run: dotnet build server/ --no-restore -c Release
+
   # ── Docker build check ──────────────────────────────────────────────────────
   docker:
     name: Docker build
@@ -84,7 +96,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
+      - run: npm run build:perf
       - name: Run perf audit
         run: node scripts/perf-audit.js
         env:
