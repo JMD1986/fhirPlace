@@ -10,6 +10,10 @@ WORKDIR /app
 
 COPY --from=build /app/publish ./
 
+# Synthea FHIR seed files — the seeder resolves ContentRootPath/../public/synthea/fhir
+# which maps to /public/synthea/fhir inside the container.
+COPY public/synthea/fhir /public/synthea/fhir
+
 # SQLite DB is written to /data/fhir.db so it can be mounted as a named volume.
 # This keeps the DB across container restarts and avoids re-seeding every start.
 # Usage: docker run -v fhirplace_db:/data ...

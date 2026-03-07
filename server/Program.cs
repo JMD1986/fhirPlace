@@ -22,9 +22,18 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
   opts.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
+// ALLOWED_ORIGINS env var lets production deployments (e.g. Fly.io) add extra
+// origins without code changes. Comma-separated, e.g.:
+//   ALLOWED_ORIGINS=https://fhirplace.fly.dev,https://my-frontend.fly.dev
+var extraOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS") ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var allowedOrigins = new[] { "http://localhost:5173", "http://localhost:3000" }
+    .Concat(extraOrigins)
+    .ToArray();
+
 builder.Services.AddCors(opts =>
     opts.AddDefaultPolicy(p =>
-        p.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        p.WithOrigins(allowedOrigins)
          .AllowCredentials()
          .AllowAnyHeader()
          .AllowAnyMethod()));
@@ -230,12 +239,13 @@ app.MapGet("/fhir/Patient", async (
   if (address is not null) q = q.Where(p => p.Address.Contains(address));
   if (phone is not null) q = q.Where(p => p.Phone.Contains(phone));
 
+  var cap = Math.Min(_count, 500);
   var total = await q.CountAsync();
-  var records = await q.Skip(_offset).Take(_count).Select(p => p.ResourceJson).ToListAsync();
+  var records = await q.Skip(_offset).Take(cap).Select(p => p.ResourceJson).ToListAsync();
   var selfUrl = $"{BaseUrl}/fhir/Patient?{req.QueryString.ToString().TrimStart('?')}";
   var extra = new List<object>();
-  if (_offset + _count < total)
-    extra.Add(new { relation = "next", url = $"{BaseUrl}/fhir/Patient?_count={_count}&_offset={_offset + _count}" });
+  if (_offset + cap < total)
+    extra.Add(new { relation = "next", url = $"{BaseUrl}/fhir/Patient?_count={cap}&_offset={_offset + cap}" });
 
   return SearchSetBundle("Patient", records.Select(J), total, selfUrl, extra);
 });
@@ -314,12 +324,13 @@ app.MapGet("/fhir/Encounter", async (
     }
   }
 
+  var cap = Math.Min(_count, 500);
   var total = await q.CountAsync();
-  var records = await q.Skip(_offset).Take(_count).Select(e => e.ResourceJson).ToListAsync();
+  var records = await q.Skip(_offset).Take(cap).Select(e => e.ResourceJson).ToListAsync();
   var selfUrl = $"{BaseUrl}/fhir/Encounter?{req.QueryString.ToString().TrimStart('?')}";
   var extra = new List<object>();
-  if (_offset + _count < total)
-    extra.Add(new { relation = "next", url = $"{BaseUrl}/fhir/Encounter?_count={_count}&_offset={_offset + _count}" });
+  if (_offset + cap < total)
+    extra.Add(new { relation = "next", url = $"{BaseUrl}/fhir/Encounter?_count={cap}&_offset={_offset + cap}" });
 
   return SearchSetBundle("Encounter", records.Select(J), total, selfUrl, extra);
 });

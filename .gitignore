@@ -35,3 +35,8 @@ server/obj/
 server/fhir.db
 server/fhir.db-shm
 server/fhir.db-wal
+
+# Local environment variables — never commit real secrets
+# Use .env.example as a template, .env.local for machine-specific overrides
+.env
+.env.perf
