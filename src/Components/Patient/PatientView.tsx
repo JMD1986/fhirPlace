@@ -427,7 +427,8 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
         PaperProps={{ sx: { width: 420, maxWidth: "100vw" } }}
       >
         <Box sx={{ width: 400, maxWidth: "100vw", p: 2, height: "100%" }}>
-          <Chatbot />
+          {/* <Chatbot /> */}
+          <Chatbot patientContext={JSON.stringify(patient, null, 2)} />
         </Box>
       </Drawer>
 
