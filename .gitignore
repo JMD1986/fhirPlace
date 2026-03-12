@@ -40,3 +40,12 @@ server/fhir.db-wal
 # Use .env.example as a template, .env.local for machine-specific overrides
 .env
 .env.perf
+
+ server/Data Source=fhir.db
+ # Embedded/bare git repos and backups
+fhirPlace/fhirPlace/
+fhirPlace/fhirPlace-backup/
+fhirPlace/fhirPlace-cleanworking/
+fhirPlace-mirror/
+fhirPlace-mirror.git/
+server/Data Source=fhir.db
