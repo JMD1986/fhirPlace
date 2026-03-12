@@ -20,6 +20,7 @@ import {
   InputAdornment,
   IconButton,
   Skeleton,
+  Drawer,
 } from "@mui/material";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PersonIcon from "@mui/icons-material/Person";
@@ -39,6 +40,8 @@ import {
   buildGroups,
   type ObsGroup,
 } from "../AdditionalResources/observationGroupUtils";
+
+import Chatbot from "../Shared/Chatbot/Chatbot";
 
 // ── Lazy-loaded sub-views ─────────────────────────────────────────────────────
 // Downloaded only when the user navigates into that specific panel, keeping the
@@ -90,6 +93,9 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   const [selectedResource, setSelectedResource] =
     useState<ResourceGroup | null>(null);
   const [mainTab, setMainTab] = useState<"overview" | "billing">("overview");
+
+  // Drawer state for chatbot
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Helper function to extract Patient resource from FHIR Bundle
   const extractPatientFromBundle = (
@@ -386,9 +392,23 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   ];
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back to search
-      </Button>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Button onClick={() => navigate(-1)}>&larr; Back to search</Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setChatOpen(true)}
+        >
+          Chat with AIgent
+        </Button>
+      </Box>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
         <Avatar size={80} name={displayName} />
@@ -398,6 +418,18 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
           </Typography>
         </Box>
       </Box>
+
+      {/* Chatbot Drawer */}
+      <Drawer
+        anchor="right"
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        PaperProps={{ sx: { width: 420, maxWidth: "100vw" } }}
+      >
+        <Box sx={{ width: 400, maxWidth: "100vw", p: 2, height: "100%" }}>
+          <Chatbot />
+        </Box>
+      </Drawer>
 
       {/* ── Main tab toggle ── */}
       <ToggleButtonGroup
