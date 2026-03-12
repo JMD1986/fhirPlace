@@ -1,10 +1,15 @@
-﻿using System.Text.Json;
+﻿
+
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using FhirPlace.Server;
 using Microsoft.EntityFrameworkCore;
 
-// â”€â”€ Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+
+
+// ── Builder ─────────────────────────────────────────────────────────
 var builder = WebApplication.CreateBuilder(args);
 
 // FHIRPLACE_DB_PATH env var lets Docker mount a persistent volume (e.g. /data/fhir.db).
@@ -42,39 +47,17 @@ builder.Services.AddCors(opts =>
 // address (http://+:5001).  In local dev the default (http://localhost:5001)
 // is fine — do NOT call UseUrls() here as it would override the env var.
 
-// â”€â”€ App pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── App pipeline ─────────────────────────────────────────────────────
 var app = builder.Build();
 
+// Ensure CORS headers are applied to all responses
 app.UseCors();
 
-app.Use(async (ctx, next) =>
-{
-  var h = ctx.Response.Headers;
-  h["X-Content-Type-Options"] = "nosniff";
-  h["X-Frame-Options"] = "DENY";
-  h["Referrer-Policy"] = "strict-origin-when-cross-origin";
-  h["Content-Security-Policy"] =
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data:; connect-src 'self' https:; font-src 'self' data:; " +
-      "object-src 'none'; frame-ancestors 'none'";
-  await next();
-});
-
-// â”€â”€ Startup: seed DB from Synthea files (no-op on subsequent restarts) â”€â”€â”€â”€â”€â”€â”€â”€
-using (var scope = app.Services.CreateScope())
-{
-  var db = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
-  var fhirDir = Path.GetFullPath(
-      Path.Combine(builder.Environment.ContentRootPath, "..", "public", "synthea", "fhir"));
-  await FhirSeeder.SeedAsync(db, fhirDir);
-}
-
-// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constants ────────────────────────────────────────────────────────
 const string FhirContentType = "application/fhir+json";
 const string BaseUrl = "http://localhost:5001";
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
+// ── Helpers ──────────────────────────────────────────────────────────
 /// <summary>Deserialise a stored JSON string to JsonObject.</summary>
 static JsonObject J(string json) => JsonNode.Parse(json)!.AsObject();
 
@@ -142,6 +125,45 @@ static async Task<IResult> SimpleResourceSearch(
   var records = await q.Skip(offset).Take(count).Select(r => r.ResourceJson).ToListAsync();
   return SearchSetBundle(resourceType, records.Select(J), total, selfUrl);
 }
+
+// ── Anthropic Chat Proxy ─────────────────────────────────────────────
+app.MapPost("/api/anthropic-chat", async (HttpRequest req) =>
+{
+  // Read API key from environment variable for security
+  var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+  if (string.IsNullOrWhiteSpace(apiKey))
+    return Results.Json(new { error = "Anthropic API key not configured" }, statusCode: 500);
+
+  // Parse incoming JSON body
+  using var reader = new StreamReader(req.Body);
+  var body = await reader.ReadToEndAsync();
+  if (string.IsNullOrWhiteSpace(body))
+    return Results.Json(new { error = "Empty request body" }, statusCode: 400);
+
+  // Forward the request to Anthropic API
+  using var http = new HttpClient();
+  var anthropicReq = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+  {
+    Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+  };
+  anthropicReq.Headers.Add("x-api-key", apiKey);
+  anthropicReq.Headers.Add("anthropic-version", "2023-06-01");
+
+  try
+  {
+    var resp = await http.SendAsync(anthropicReq);
+    var respContent = await resp.Content.ReadAsStringAsync();
+    return Results.Content(respContent, "application/json");
+  }
+  catch (Exception ex)
+  {
+    return Results.Json(new { error = "Anthropic proxy error", detail = ex.Message }, statusCode: 502);
+  }
+});
+
+
+
+
 
 // â”€â”€ Routes: utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 

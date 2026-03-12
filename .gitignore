@@ -49,3 +49,8 @@ fhirPlace/fhirPlace-cleanworking/
 fhirPlace-mirror/
 fhirPlace-mirror.git/
 server/Data Source=fhir.db
+
+"server/Data Source=fhir.db-shm"
+"server/Data Source=fhir.db-wal"
+src/Components/Shared/
+output/
