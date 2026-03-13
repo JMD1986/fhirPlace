@@ -1,0 +1,22 @@
+# Ignore backup and cleanworking folders
+fhirPlace-backup/
+fhirPlace-cleanworking/
+
+# Ignore venv and node_modules
+.venv/
+node_modules/
+
+# Ignore output and build artifacts
+output/
+server/bin/
+server/obj/
+
+# Ignore environment and config files
+.env
+.env.*
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Add more rules as needed
