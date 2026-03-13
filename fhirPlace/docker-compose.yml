@@ -1,0 +1,20 @@
+services:
+  api:
+    build: .
+    image: fhirplace:latest
+    ports:
+      - "5001:5001"
+    environment:
+      FHIRPLACE_DB_PATH: /data/fhir.db
+      ASPNETCORE_URLS: http://+:5001
+    volumes:
+      # Persistent SQLite database — survives container restarts and re-builds.
+      # Remove this volume (docker compose down -v) to force a full re-seed.
+      - fhirplace_db:/data
+      # Synthea FHIR source files — read-only mount for initial seeding.
+      # After the DB is seeded once, the seeder is a no-op on subsequent starts.
+      - ./public/synthea:/public/synthea:ro
+    restart: unless-stopped
+
+volumes:
+  fhirplace_db:

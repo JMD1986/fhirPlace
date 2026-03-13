@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: [main, master]
+
+# Cancel in-flight runs for the same PR/branch so only the latest commit is checked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Type-check ──────────────────────────────────────────────────────────────
+  typecheck:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  # ── Lint ────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src
+
+  # ── Unit tests (no server required) ────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # ── Integration tests (spins up .NET server) ─────────────────────────────
+  integration-test:
+    name: Integration test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+      - run: npm ci
+      - run: dotnet build server/ --no-restore -c Release
+        env:
+          DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      - name: Start API server
+        run: |
+          FHIRPLACE_DB_PATH=/tmp/fhir-test.db \
+          ASPNETCORE_URLS=http://+:5001 \
+          dotnet run --project server/FhirPlace.Server.csproj --no-build -c Release &
+          echo $! > /tmp/server.pid
+      - name: Wait for server
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5001/api/health && break
+            echo "Waiting for server... ($i)"
+            sleep 3
+          done
+          curl -sf http://localhost:5001/api/health || (echo "Server failed to start" && exit 1)
+      - run: npm run test:integration
+      - name: Stop API server
+        if: always()
+        run: kill $(cat /tmp/server.pid) 2>/dev/null || true
+
+  # ── Security audit ──────────────────────────────────────────────────────────
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+
+  # ── .NET server build ──────────────────────────────────────────────────────
+  dotnet-build:
+    name: .NET build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+      - run: dotnet restore server/
+      - run: dotnet build server/ --no-restore -c Release
+
+  # ── Docker build check ──────────────────────────────────────────────────────
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t fhirplace-api .
+
+  # ── Core Web Vitals performance audit ──────────────────────────────────────
+  perf-audit:
+    name: Perf Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:perf
+      - name: Run perf audit
+        run: node scripts/perf-audit.js
+        env:
+          CI: true
+      - name: Upload perf report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-report
+          path: perf-reports/
+          retention-days: 30
