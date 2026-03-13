@@ -54,7 +54,6 @@ fhirPlace-cleanworking/
 fhirPlace/
 "server/Data Source=fhir.db-shm"
 "server/Data Source=fhir.db-wal"
-src/Components/Shared/
 output/
 fhirPlace-backup 
 fhirPlace-backup/
