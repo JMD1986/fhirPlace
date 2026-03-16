@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Ignore backup and cleanworking folders
 fhirPlace-backup/
 fhirPlace-cleanworking/
@@ -21,7 +20,6 @@ server/obj/
 Thumbs.db
 
 # Add more rules as needed
-=======
 # Logs
 logs
 *.log
@@ -73,4 +71,5 @@ fhirPlace/fhirPlace-cleanworking/
 fhirPlace-mirror/
 fhirPlace-mirror.git/
 server/Data Source=fhir.db
->>>>>>> 18e769cc8491b9eb3fdee3856de4f34b42426b52
+server/Data Source=fhir.db-shm
+server/Data Source=fhir.db-wal

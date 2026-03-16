@@ -15,8 +15,10 @@ import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
 // import { patientApi } from "../../api/fhirApi";
 import type { PatientSearchParams } from "../../hooks/hookTypes";
+
 import { useAuth } from "../../context/AuthContext";
 
+function PatientSearch() {
   const { user } = useAuth();
   const EMPTY_PATIENT_PARAMS: PatientSearchParams = {
     name: "",
@@ -252,3 +254,5 @@ import { useAuth } from "../../context/AuthContext";
     </Box>
   );
 }
+
+export default PatientSearch;

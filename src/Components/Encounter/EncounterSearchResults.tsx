@@ -24,7 +24,7 @@ import {
   getLocation,
   formatDate,
   statusColor,
-} from "./encounterUtils";
+} from "../../helpers/encounterUtils";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {

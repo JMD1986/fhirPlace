@@ -29,8 +29,8 @@ export function useEncounterSearch(initialParams: EncounterSearchParams) {
         case "status": params.append("status", value); break;
         case "classCode": params.append("class", value); break;
         case "type": params.append("type", value); break;
-        case "dateFrom": params.append("date", `ge${value}"); break;
-        case "dateTo": params.append("date", `le${value}"); break;
+        case "dateFrom": params.append("date", `ge${value}`); break;
+        case "dateTo": params.append("date", `le${value}`); break;
         case "reason": params.append("reason", value); break;
       }
     }
