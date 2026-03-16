@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
 import type { Patient } from "./patientTypes";
 import { prefetchPatient } from "../../api/fhirApi";
+import { getName, getAddress, getLanguage, stripNums } from "./patientUtils";
 
 interface SearchResultsProps {
   patients: Patient[];
@@ -48,27 +49,7 @@ export default function SearchResults({
     // console.log("View details for patient ID:", patientId);
   };
 
-  const stripNums = (s: string) => s.replace(/\d+/g, "").trim();
-
-  const getName = (patient: Patient) => {
-    const n = patient.name?.[0];
-    const given = n?.given?.map(stripNums).join(" ") ?? "";
-    const family = stripNums(n?.family ?? "");
-    return [given, family].filter(Boolean).join(" ") || patient.id;
-  };
-
-  const getAddress = (patient: Patient) => {
-    const a = patient.address?.[0];
-    if (!a) return "—";
-    return [a.line?.join(" "), a.city, a.state, a.postalCode]
-      .filter(Boolean)
-      .join(", ");
-  };
-
-  const getLanguage = (patient: Patient) => {
-    const c = patient.communication?.[0];
-    return c?.language?.text ?? c?.language?.coding?.[0]?.display ?? "—";
-  };
+  // ...existing code...
 
   if (patients.length === 0) {
     return (

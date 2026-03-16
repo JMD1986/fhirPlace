@@ -27,11 +27,16 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
-import type {
-  PatientResource,
-  FhirExtension,
-  ObservationResource,
-} from "../../types/fhir";
+import type { PatientResource, ObservationResource } from "../../types/fhir";
+import {
+  extractPatientFromBundle,
+  getRace,
+  getEthnicity,
+  getBirthPlace,
+  formatName,
+  getPhone,
+  formatAddress,
+} from "./patientUtils";
 import PatientEncountersPanel, {
   type ResourceGroup,
 } from "./PatientEncountersPanel";
@@ -91,101 +96,7 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     useState<ResourceGroup | null>(null);
   const [mainTab, setMainTab] = useState<"overview" | "billing">("overview");
 
-  // Helper function to extract Patient resource from FHIR Bundle
-  const extractPatientFromBundle = (
-    data: Record<string, unknown>,
-  ): PatientResource | null => {
-    // If data already has resourceType: "Patient", return it directly
-    if (data?.resourceType === "Patient") {
-      return data as unknown as PatientResource;
-    }
-
-    // If it's a Bundle, drill into the entry array
-    if (data?.resourceType === "Bundle" && Array.isArray(data.entry)) {
-      const patientEntry = (data.entry as Record<string, unknown>[]).find(
-        (entry) =>
-          (entry?.resource as Record<string, unknown>)?.resourceType ===
-          "Patient",
-      );
-      return (patientEntry?.resource as PatientResource) || null;
-    }
-
-    return null;
-  };
-
-  // Helper to extract race from extensions
-  const getRace = (extensions: FhirExtension[] | undefined): string => {
-    const raceExt = extensions?.find(
-      (ext) =>
-        ext.url ===
-        "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
-    );
-    return (
-      raceExt?.extension?.find((ext) => ext.url === "text")?.valueString ??
-      "Not provided"
-    );
-  };
-
-  // Helper to extract ethnicity from extensions
-  const getEthnicity = (extensions: FhirExtension[] | undefined): string => {
-    const ethnExt = extensions?.find(
-      (ext) =>
-        ext.url ===
-        "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
-    );
-    return (
-      ethnExt?.extension?.find((ext) => ext.url === "text")?.valueString ??
-      "Not provided"
-    );
-  };
-
-  // Helper to extract birth place from extensions
-  const getBirthPlace = (extensions: FhirExtension[] | undefined): string => {
-    const birthPlaceExt = extensions?.find(
-      (ext) =>
-        ext.url ===
-        "http://hl7.org/fhir/StructureDefinition/patient-birthPlace",
-    );
-    if (!birthPlaceExt?.valueAddress) return "Not provided";
-    const addr = birthPlaceExt.valueAddress;
-    return `${addr.city}, ${addr.state} ${addr.country}`;
-  };
-
-  type FhirNameEntry = NonNullable<PatientResource["name"]>[number];
-
-  // Helper to format name
-  const formatName = (nameObj: FhirNameEntry | undefined): string => {
-    if (!nameObj) return "Not provided";
-    const prefix = nameObj.prefix?.join(" ") || "";
-    const given = nameObj.given?.join(" ") || "";
-    const family = nameObj.family || "";
-    return `${prefix} ${given} ${family}`.trim();
-  };
-
-  type FhirTelecomEntry = NonNullable<PatientResource["telecom"]>[number];
-
-  // Helper to get phone number
-  const getPhone = (telecom: FhirTelecomEntry[] | undefined): string => {
-    const phone = telecom?.find((t) => t.system === "phone");
-    return phone?.value || "Not provided";
-  };
-
-  type FhirAddressEntry = NonNullable<PatientResource["address"]>[number];
-
-  // Helper to format address
-  const formatAddress = (address: FhirAddressEntry[] | undefined): string => {
-    if (!address || address.length === 0) return "Not provided";
-    const addr = address[0];
-    const lines = [
-      addr.line?.join(", ") || "",
-      addr.city || "",
-      [addr.state, addr.postalCode].filter(Boolean).join(" "),
-      addr.country || "",
-    ]
-      .filter(Boolean)
-      .join(", ");
-    return lines || "Not provided";
-  };
+  // ...existing code...
 
   type FhirIdentifierEntry = NonNullable<PatientResource["identifier"]>[number];
 

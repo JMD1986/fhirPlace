@@ -36,6 +36,7 @@ import {
 } from "recharts";
 import type { ClaimResource, EoBResource } from "../../types/fhir";
 import { claimApi, eobApi } from "../../api/fhirApi";
+import { fmtUSD, shortMonth } from "./formatUtils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface BillingDashboardProps {
@@ -62,18 +63,7 @@ const PIE_COLORS = [
   "#0288d1",
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmtUSD = (val: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(val);
-
-const shortMonth = (iso: string) => {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { year: "2-digit", month: "short" });
-};
+// ...existing code...
 
 // ── Custom Tooltip ────────────────────────────────────────────────────────────
 function MoneyTooltip({
