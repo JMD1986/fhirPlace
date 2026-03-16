@@ -33,6 +33,7 @@ import {
   extractNPIFromReference,
 } from "../../hooks/useNPPES";
 import type { NPPESResult } from "../../hooks/hookTypes";
+import type { ResourceListViewProps, NPPESPanelProps } from "./encounterTypes";
 import Grid from "@mui/material/Grid";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { encounterApi } from "../../api/fhirApi";
@@ -187,13 +188,6 @@ function NPPESResultCard({ result }: { result: NPPESResult }) {
 }
 
 // ── NPPES Panel ─────────────────────────────────────────────────────────────────
-interface NPPESPanelProps {
-  practitionerNpi?: string | null;
-  practitionerDisplay?: string | null;
-  orgNpi?: string | null;
-  orgName?: string | null;
-  state?: string | null;
-}
 
 function NPPESPanel({
   practitionerNpi,
@@ -340,13 +334,6 @@ const INLINE_VIEWS: Record<
   Observation: ObservationView,
   MedicationRequest: MedicationRequestView,
 };
-
-interface ResourceListViewProps {
-  group: ResourceGroup;
-  encounterId: string;
-  patientId?: string;
-  onBack: () => void;
-}
 
 function ResourceListView({
   group,
