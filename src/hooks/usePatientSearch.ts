@@ -1,12 +1,18 @@
 import { useState, useRef } from "react";
-import { patientApi } from "../../api/fhirApi";
-import type { Patient } from "../../types/fhir";
-import type { PatientSearchParams } from "../../hooks/hookTypes";
+import { patientApi } from "../api/fhirApi";
+import type { Patient } from "../types/fhir";
 
-export function usePatientSearch(
-  initialParams: PatientSearchParams,
-) {
-  const [searchParams, setSearchParams] = useState<PatientSearchParams>(initialParams);
+const DISPLAY_SIZE = 10;
+const FETCH_SIZE = 20;
+
+const initialParams = {
+  name: "",
+  identifier: "",
+  birthdate: "",
+};
+
+export function usePatientSearch() {
+  const [searchParams, setSearchParams] = useState(initialParams);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,27 +20,17 @@ export function usePatientSearch(
   const [page, setPage] = useState(0);
   const [serverOffset, setServerOffset] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
-  const FETCH_SIZE = 50;
-  const DISPLAY_SIZE = 25;
-
-  const prefetchedBatchRef = useRef<{
-    offset: number;
-    patients: Patient[];
-    total: number;
-  } | null>(null);
+  const prefetchedBatchRef = useRef<Patient[] | null>(null);
 
   const buildPatientParams = (offset: number) => {
-    const params = new URLSearchParams();
-    params.append("_count", String(FETCH_SIZE));
-    params.append("_offset", String(offset));
-    if (searchParams.name) params.append("name", searchParams.name);
-    if (searchParams.familyName) params.append("family", searchParams.familyName);
-    if (searchParams.givenName) params.append("given", searchParams.givenName);
-    if (searchParams.gender) params.append("gender", searchParams.gender);
-    if (searchParams.birthDate) params.append("birthdate", searchParams.birthDate);
-    if (searchParams.phone) params.append("phone", searchParams.phone);
-    if (searchParams.address) params.append("address", searchParams.address);
-    return params;
+    const params: Record<string, string | number> = {
+      _count: FETCH_SIZE,
+      _getpagesoffset: offset,
+    };
+    if (searchParams.name) params["name"] = searchParams.name;
+    if (searchParams.identifier) params["identifier"] = searchParams.identifier;
+    if (searchParams.birthdate) params["birthdate"] = searchParams.birthdate;
+    return new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
   };
 
   const prefetchNextBatch = async (offset: number) => {
@@ -43,11 +39,7 @@ export function usePatientSearch(
       const results: Patient[] = (bundle.entry ?? []).map(
         (e: { resource: Patient }) => e.resource,
       );
-      prefetchedBatchRef.current = {
-        offset,
-        patients: results,
-        total: bundle.total ?? results.length,
-      };
+      prefetchedBatchRef.current = results;
     } catch {
       // Silently ignore
     }

@@ -1,3 +1,6 @@
+// patientUtils.ts
+// Shared FHIR data extraction and formatting helpers for Patient components
+
 // Remove numbers from a string (for display)
 export function stripNums(s: string) {
   return s.replace(/\d+/g, "").trim();
@@ -25,8 +28,7 @@ export function getLanguage(patient: Patient) {
   const c = patient.communication?.[0];
   return c?.language?.text ?? c?.language?.coding?.[0]?.display ?? "—";
 }
-// patientUtils.ts
-// Shared FHIR data extraction and formatting helpers for Patient components
+
 import type { PatientResource, FhirExtension, FhirName, FhirAddress } from "../../types/fhir";
 
 // Extract Patient resource from FHIR Bundle or direct Patient object

@@ -16,7 +16,12 @@ import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
 import type { Patient } from "./patientTypes";
 import { prefetchPatient } from "../../api/fhirApi";
-import { getName, getAddress, getLanguage, stripNums } from "./patientUtils";
+import {
+  getName,
+  getAddress,
+  getLanguage,
+  stripNums,
+} from "../../helpers/patientUtils";
 
 interface SearchResultsProps {
   patients: Patient[];
