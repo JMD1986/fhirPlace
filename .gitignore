@@ -73,3 +73,5 @@ fhirPlace-mirror.git/
 server/Data Source=fhir.db
 server/Data Source=fhir.db-shm
 server/Data Source=fhir.db-wal
+
+fhirPlace/

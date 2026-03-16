@@ -36,7 +36,7 @@ import {
   formatName,
   getPhone,
   formatAddress,
-} from "./patientUtils";
+} from "../../helpers/patientUtils";
 import PatientEncountersPanel, {
   type ResourceGroup,
 } from "./PatientEncountersPanel";

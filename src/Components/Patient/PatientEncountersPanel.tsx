@@ -277,7 +277,7 @@ export default function PatientEncountersPanel({
   return (
     <Box>
       {/* ── Top-3 resource summary ── */}
-      <PanelShell title="Resource Summary">
+      <PanelShell title="Resource test">
         {visibleSummaries.length === 0 ? (
           <Typography
             variant="body2"
