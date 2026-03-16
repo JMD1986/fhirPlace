@@ -31,6 +31,10 @@ const initialMessages: Message[] = [
   },
 ];
 
+
+
+
+
 export default function Chatbot({ patientContext }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
