@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { usePatientSearch } from "./usePatientSearch";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
@@ -13,11 +13,10 @@ import SearchResults from "./SearchResults";
 import type { Patient } from "../../types/fhir";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
-import { patientApi } from "../../api/fhirApi";
+// import { patientApi } from "../../api/fhirApi";
 import type { PatientSearchParams } from "../../hooks/hookTypes";
 import { useAuth } from "../../context/AuthContext";
 
-export default function PatientSearch() {
   const { user } = useAuth();
   const EMPTY_PATIENT_PARAMS: PatientSearchParams = {
     name: "",
@@ -28,113 +27,50 @@ export default function PatientSearch() {
     phone: "",
     address: "",
   };
+  // Session state for search params
   const [searchParams, setSearchParams, clearSearchParams] =
     useSessionState<PatientSearchParams>("patientSearch", EMPTY_PATIENT_PARAMS);
 
+  // Saved searches
   const { searches, save, remove, rename, MAX_SAVED } = useSavedSearches(
     "patient",
     user?.email,
   );
-  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
-  const [page, setPage] = useState(0);
-  const [serverOffset, setServerOffset] = useState(0);
-  const [total, setTotal] = useState<number | null>(null);
-  const FETCH_SIZE = 50;
-  const DISPLAY_SIZE = 25;
 
-  // Holds the speculatively pre-fetched next server batch so page turns
-  // that cross a batch boundary are served instantly without a network wait.
-  const prefetchedBatchRef = useRef<{
-    offset: number;
-    patients: Patient[];
-    total: number;
-  } | null>(null);
+  // Patient search logic (custom hook)
+  const {
+    filteredPatients,
+    setFilteredPatients,
+    loading,
+    error,
+    searched,
+    setSearched,
+    page,
+    setPage,
+    serverOffset,
+    setServerOffset,
+    total,
+    setTotal,
+    handleChange,
+    handleSearch,
+    handleClear,
+    fetchPatientPage,
+    prefetchNextBatch,
+    DISPLAY_SIZE,
+    FETCH_SIZE,
+    prefetchedBatchRef,
+  } = usePatientSearch(searchParams);
 
-  const buildPatientParams = (offset: number) => {
-    const params = new URLSearchParams();
-    params.append("_count", String(FETCH_SIZE));
-    params.append("_offset", String(offset));
-    if (searchParams.name) params.append("name", searchParams.name);
-    if (searchParams.familyName)
-      params.append("family", searchParams.familyName);
-    if (searchParams.givenName) params.append("given", searchParams.givenName);
-    if (searchParams.gender) params.append("gender", searchParams.gender);
-    if (searchParams.birthDate)
-      params.append("birthdate", searchParams.birthDate);
-    if (searchParams.phone) params.append("phone", searchParams.phone);
-    if (searchParams.address) params.append("address", searchParams.address);
-    return params;
+  // Keep searchParams in sync with session state
+  const handleSessionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleChange(e);
+    setSearchParams((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // Background prefetch — fetches the next server batch and stores it in
-  // prefetchedBatchRef without touching any React state.
-  const prefetchNextBatch = async (offset: number) => {
-    try {
-      const bundle = await patientApi.search(buildPatientParams(offset));
-      const results: Patient[] = (bundle.entry ?? []).map(
-        (e: { resource: Patient }) => e.resource,
-      );
-      prefetchedBatchRef.current = {
-        offset,
-        patients: results,
-        total: bundle.total ?? results.length,
-      };
-    } catch {
-      // Silently ignore — the user gets a normal fetch on page turn instead
-    }
-  };
-
-  const fetchPatientPage = async (offset: number) => {
-    setLoading(true);
-    try {
-      const bundle = await patientApi.search(buildPatientParams(offset));
-      const results: Patient[] = (bundle.entry ?? []).map(
-        (e: { resource: Patient }) => e.resource,
-      );
-      setFilteredPatients(results);
-      setTotal(bundle.total ?? results.length);
-      setError(null);
-      // Prefetch the next server batch in the background, but only when
-      // the server reports more results exist beyond this batch.
-      const serverTotal = bundle.total ?? results.length;
-      prefetchedBatchRef.current = null;
-      if (serverTotal > offset + FETCH_SIZE) {
-        prefetchNextBatch(offset + FETCH_SIZE);
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Failed to search patients");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setSearchParams((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearched(true);
-    setPage(0);
-    setServerOffset(0);
-    await fetchPatientPage(0);
-  };
-
-  const handleClear = () => {
+  // Wrap handleClear to also clear session state
+  const handleClearAll = () => {
     clearSearchParams();
-    setFilteredPatients([]);
-    setTotal(null);
-    setSearched(false);
-    setPage(0);
-    setServerOffset(0);
+    handleClear();
   };
 
   return (
@@ -157,7 +93,7 @@ export default function PatientSearch() {
               label="Patient Name"
               name="name"
               value={searchParams.name}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="Enter patient name"
               variant="outlined"
             />
@@ -168,7 +104,7 @@ export default function PatientSearch() {
               label="Family Name"
               name="familyName"
               value={searchParams.familyName}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="Enter family name"
               variant="outlined"
             />
@@ -179,7 +115,7 @@ export default function PatientSearch() {
               label="Given Name"
               name="givenName"
               value={searchParams.givenName}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="Enter given name"
               variant="outlined"
             />
@@ -190,7 +126,7 @@ export default function PatientSearch() {
               label="Gender"
               name="gender"
               value={searchParams.gender}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="e.g. male, female"
               variant="outlined"
             />
@@ -201,7 +137,7 @@ export default function PatientSearch() {
               label="Birth Date"
               name="birthDate"
               value={searchParams.birthDate}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="YYYY-MM-DD"
               variant="outlined"
               type="date"
@@ -214,7 +150,7 @@ export default function PatientSearch() {
               label="Phone"
               name="phone"
               value={searchParams.phone}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="e.g. 555-123-4567"
               variant="outlined"
             />
@@ -250,7 +186,7 @@ export default function PatientSearch() {
               variant="outlined"
               sx={{ height: "56px" }}
               disabled={loading}
-              onClick={handleClear}
+              onClick={handleClearAll}
             >
               Clear
             </Button>
@@ -297,12 +233,10 @@ export default function PatientSearch() {
               if (newPage === firstPageOfNextBatch) {
                 const prefetched = prefetchedBatchRef.current;
                 if (prefetched && prefetched.offset === nextServerOffset) {
-                  // Serve instantly from prefetch — no loading spinner needed
                   setFilteredPatients(prefetched.patients);
                   setTotal(prefetched.total);
                   setServerOffset(nextServerOffset);
                   prefetchedBatchRef.current = null;
-                  // Prefetch the batch after this one if more data exists
                   if (prefetched.total > nextServerOffset + FETCH_SIZE) {
                     prefetchNextBatch(nextServerOffset + FETCH_SIZE);
                   }
