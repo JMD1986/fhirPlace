@@ -1,3 +1,33 @@
+// ── SearchResults-specific types/interfaces ────────────────────────────────
+export interface SearchResultsProps {
+  patients: Patient[];
+  total: number | null;
+  page: number;
+  pageSize: number;
+  onPageChange: (e: unknown, newPage: number) => void;
+  /** called when the user wants to view details for a patient */
+  onView?: (id: string) => void;
+}
+// ── PatientView-specific types/interfaces moved from PatientView.tsx ────────
+
+export interface PatientViewProps {
+  /** identifier used to fetch the patient from the API */
+  patientId?: string;
+}
+
+export type FhirNameEntry = NonNullable<PatientResource["name"]>[number];
+
+export type FhirTelecomEntry = NonNullable<PatientResource["telecom"]>[number];
+
+export type FhirAddressEntry = NonNullable<PatientResource["address"]>[number];
+
+export type FhirIdentifierEntry = NonNullable<PatientResource["identifier"]>[number];
+
+export interface ResourceListViewProps {
+  group: any; // Use ResourceGroup if available in types
+  patientId: string;
+  onBack: () => void;
+}
 // ── Shared types for Patient components ───────────────────────────────────────
 
 export interface FhirExtension {
