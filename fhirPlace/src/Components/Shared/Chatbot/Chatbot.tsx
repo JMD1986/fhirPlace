@@ -16,6 +16,11 @@ import SendIcon from "@mui/icons-material/Send";
 
 
 
+
+
+
+
+
 interface Message {
   id: number;
   sender: "user" | "bot";
