@@ -17,36 +17,22 @@ interface Message {
   sender: "user" | "bot";
   text: string;
 }
+
 interface ChatbotProps {
   patientContext?: string;
 }
 
 const initialMessages: Message[] = [
   { id: 1, sender: "bot", text: "Hello! How can I help you today?" },
-  { id: 2, sender: "user", text: "What is FHIR?" },
-  {
-    id: 3,
-    sender: "bot",
-    text: "FHIR is a standard for exchanging healthcare information electronically.",
-  },
 ];
-
-
-
-
-
-
-
 
 export default function Chatbot({ patientContext }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
-  console.log("Patient Context:", patientContext);
 
   useEffect(() => {
-    // Scroll to bottom on new message
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
@@ -71,7 +57,6 @@ export default function Chatbot({ patientContext }: ChatbotProps) {
         messages: [{ role: "user", content: input }],
       };
 
-      // If we have patient context, add it as a system prompt
       if (patientContext) {
         body.system = `You are a clinical assistant helping healthcare providers review patient records. 
 Answer questions clearly and concisely based on the following patient data.
@@ -94,7 +79,7 @@ ${patientContext}`;
         ...msgs,
         { id: msgs.length + 1, sender: "bot", text: botText },
       ]);
-    } catch (error) {
+    } catch {
       setMessages((msgs) => [
         ...msgs,
         { id: msgs.length + 1, sender: "bot", text: "Error reaching server" },
@@ -115,16 +100,15 @@ ${patientContext}`;
     <Paper
       elevation={3}
       sx={{
-        maxWidth: 400,
         mx: "auto",
         p: 2,
         display: "flex",
         flexDirection: "column",
-        height: 500,
+        height: "100%",
       }}
     >
       <Typography variant="h6" gutterBottom align="center">
-        Chatbot
+        Chat with AIgent
       </Typography>
       <Divider />
       <List ref={listRef} sx={{ flex: 1, overflowY: "auto", my: 2 }}>
@@ -164,6 +148,20 @@ ${patientContext}`;
             />
           </ListItem>
         ))}
+        {loading && (
+          <ListItem sx={{ justifyContent: "flex-start" }}>
+            <ListItemText
+              primary="..."
+              sx={{
+                bgcolor: "grey.200",
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                maxWidth: "75%",
+              }}
+            />
+          </ListItem>
+        )}
       </List>
       <Box sx={{ display: "flex", gap: 1 }}>
         <TextField
@@ -173,11 +171,12 @@ ${patientContext}`;
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleInputKeyDown}
+          disabled={loading}
         />
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={!input.trim()}
+          disabled={!input.trim() || loading}
         >
           <SendIcon />
         </IconButton>
