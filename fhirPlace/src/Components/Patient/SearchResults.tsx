@@ -14,18 +14,8 @@ import {
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useNavigate } from "react-router-dom";
 import Avatar from "boring-avatars";
-import type { Patient } from "./patientTypes";
+import type { Patient, SearchResultsProps } from "./patientTypes";
 import { prefetchPatient } from "../../api/fhirApi";
-
-interface SearchResultsProps {
-  patients: Patient[];
-  total: number | null;
-  page: number;
-  pageSize: number;
-  onPageChange: (e: unknown, newPage: number) => void;
-  /** called when the user wants to view details for a patient */
-  onView?: (id: string) => void;
-}
 
 export default function SearchResults({
   patients,
