@@ -1,4 +1,4 @@
-import { usePatientSearch } from "./usePatientSearch";
+import { usePatientSearch } from "../../hooks/usePatientSearch";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
@@ -59,7 +59,7 @@ import { useAuth } from "../../context/AuthContext";
     DISPLAY_SIZE,
     FETCH_SIZE,
     prefetchedBatchRef,
-  } = usePatientSearch(searchParams);
+  } = usePatientSearch();
 
   // Keep searchParams in sync with session state
   const handleSessionChange = (e: React.ChangeEvent<HTMLInputElement>) => {

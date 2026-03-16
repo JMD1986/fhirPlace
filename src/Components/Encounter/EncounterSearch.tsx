@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEncounterSearch } from "../../hooks/useEncounterSearch";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
@@ -15,10 +15,8 @@ import Alert from "@mui/material/Alert";
 import SearchIcon from "@mui/icons-material/Search";
 import Autocomplete from "@mui/material/Autocomplete";
 import EncounterSearchResults from "./EncounterSearchResults";
-import type { FhirEncounter } from "./encounterTypes";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
-import { encounterApi } from "../../api/fhirApi";
 import type { EncounterSearchParams } from "../../hooks/hookTypes";
 import { useAuth } from "../../context/AuthContext";
 
@@ -34,6 +32,7 @@ export default function EncounterSearch() {
     dateTo: "",
     reason: "",
   };
+  // Session state for search params
   const [searchParams, setSearchParams, clearSearchParams] =
     useSessionState<EncounterSearchParams>(
       "encounterSearch",
@@ -44,123 +43,39 @@ export default function EncounterSearch() {
     "encounter",
     user?.email,
   );
-  const [encounters, setEncounters] = useState<FhirEncounter[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
-  const [total, setTotal] = useState<number | null>(null);
-  const [typeOptions, setTypeOptions] = useState<string[]>([]);
-  const [classOptions, setClassOptions] = useState<string[]>([]);
-  const [snomedReasons, setSnomedReasons] = useState<
-    { code: string; display: string }[]
-  >([]);
 
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50; // rows fetched from server per request
-  const DISPLAY_SIZE = 25; // rows shown per UI page
-  const [serverOffset, setServerOffset] = useState(0); // offset of the batch currently in `encounters`
+  // Encounter search logic (custom hook)
+  const {
+    encounters,
+    loading,
+    error,
+    searched,
+    total,
+    typeOptions,
+    classOptions,
+    snomedReasons,
+    page,
+    setPage,
+    PAGE_SIZE,
+    DISPLAY_SIZE,
+    serverOffset,
+    setServerOffset,
+    handleChange,
+    handleSearch,
+    handlePageChange,
+    handleReset,
+  } = useEncounterSearch(searchParams);
 
-  // Build query params from current search form state
-  const buildParams = (offset: number) => {
-    const params = new URLSearchParams();
-    params.append("_count", String(PAGE_SIZE));
-    params.append("_offset", String(offset));
-
-    for (const [key, value] of Object.entries(searchParams)) {
-      if (!value) continue;
-      switch (key) {
-        case "patient":
-          params.append("patient", value);
-          break;
-        case "status":
-          params.append("status", value);
-          break;
-        case "classCode":
-          params.append("class", value);
-          break;
-        case "type":
-          params.append("type", value);
-          break;
-        case "dateFrom":
-          params.append("date", `ge${value}`);
-          break;
-        case "dateTo":
-          params.append("date", `le${value}`);
-          break;
-        case "reason":
-          params.append("reason", value);
-          break;
-      }
-    }
-
-    return params;
+  // Keep searchParams in sync with session state
+  const handleSessionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleChange(e);
+    setSearchParams((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const fetchPage = async (offset: number) => {
-    setLoading(true);
-    try {
-      const bundle = await encounterApi.search(buildParams(offset));
-      const results: FhirEncounter[] = (bundle.entry ?? []).map(
-        (e) => e.resource as FhirEncounter,
-      );
-      setEncounters(results);
-      setTotal(bundle.total ?? results.length);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError("Search failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch dropdown options + SNOMED reasons on mount
-  useEffect(() => {
-    Promise.all([
-      encounterApi.getTypes(),
-      encounterApi.getClasses(),
-      fetch("/resources/snomed.json").then((r) => r.json()),
-    ])
-      .then(([types, classes, snomed]) => {
-        setTypeOptions(types);
-        setClassOptions(classes);
-        setSnomedReasons(snomed);
-      })
-      .catch(console.error);
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setSearchParams((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearched(true);
-    setPage(0);
-    setServerOffset(0);
-    await fetchPage(0);
-  };
-
-  const handlePageChange = async (_e: unknown, newPage: number) => {
-    setPage(newPage);
-    // Each server fetch covers 2 display pages (50 rows / 25 per page).
-    // When the user moves to the first display-page of the NEXT server batch, fetch it.
-    const nextServerOffset = serverOffset + PAGE_SIZE;
-    const firstPageOfNextBatch = Math.floor(nextServerOffset / DISPLAY_SIZE);
-    if (newPage === firstPageOfNextBatch) {
-      setServerOffset(nextServerOffset);
-      await fetchPage(nextServerOffset);
-    }
-  };
-
-  const handleReset = () => {
+  // Wrap handleReset to also clear session state
+  const handleClearAll = () => {
     clearSearchParams();
-    setSearched(false);
-    setEncounters([]);
-    setTotal(null);
-    setPage(0);
-    setServerOffset(0);
+    handleReset();
   };
 
   return (
@@ -186,7 +101,7 @@ export default function EncounterSearch() {
               label="Patient ID"
               name="patient"
               value={searchParams.patient}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               placeholder="Enter patient UUID"
               variant="outlined"
             />
@@ -198,12 +113,13 @@ export default function EncounterSearch() {
                 label="Status"
                 name="status"
                 value={searchParams.status}
-                onChange={(e) =>
+                onChange={(e) => {
                   setSearchParams((prev) => ({
                     ...prev,
                     status: e.target.value,
-                  }))
-                }
+                  }));
+                  handleChange(e as any);
+                }}
               >
                 <MenuItem value="">
                   <em>Any</em>
@@ -231,12 +147,13 @@ export default function EncounterSearch() {
                 label="Class"
                 name="classCode"
                 value={searchParams.classCode}
-                onChange={(e) =>
+                onChange={(e) => {
                   setSearchParams((prev) => ({
                     ...prev,
                     classCode: e.target.value,
-                  }))
-                }
+                  }));
+                  handleChange(e as any);
+                }}
               >
                 <MenuItem value="">
                   <em>Any</em>
@@ -256,9 +173,13 @@ export default function EncounterSearch() {
                 label="Encounter Type"
                 name="type"
                 value={searchParams.type}
-                onChange={(e) =>
-                  setSearchParams((prev) => ({ ...prev, type: e.target.value }))
-                }
+                onChange={(e) => {
+                  setSearchParams((prev) => ({
+                    ...prev,
+                    type: e.target.value,
+                  }));
+                  handleChange(e as any);
+                }}
               >
                 <MenuItem value="">
                   <em>Any</em>
@@ -277,7 +198,7 @@ export default function EncounterSearch() {
               label="Date From"
               name="dateFrom"
               value={searchParams.dateFrom}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               type="date"
               variant="outlined"
               slotProps={{ inputLabel: { shrink: true } }}
@@ -289,7 +210,7 @@ export default function EncounterSearch() {
               label="Date To"
               name="dateTo"
               value={searchParams.dateTo}
-              onChange={handleChange}
+              onChange={handleSessionChange}
               type="date"
               variant="outlined"
               slotProps={{ inputLabel: { shrink: true } }}
@@ -303,14 +224,20 @@ export default function EncounterSearch() {
                 snomedReasons.find((r) => r.code === searchParams.reason) ??
                 null
               }
-              onChange={(_e, val) =>
+              onChange={(
+                _e: React.SyntheticEvent<Element, Event>,
+                val: { code: string; display: string } | null,
+              ) => {
                 setSearchParams((prev) => ({
                   ...prev,
                   reason: val?.code ?? "",
-                }))
-              }
-              isOptionEqualToValue={(o, v) => o.code === v.code}
-              renderInput={(params) => (
+                }));
+              }}
+              isOptionEqualToValue={(
+                o: { code: string; display: string },
+                v: { code: string; display: string },
+              ) => o.code === v.code}
+              renderInput={(params: any) => (
                 <TextField
                   {...params}
                   label="Reason for Visit"
@@ -338,7 +265,7 @@ export default function EncounterSearch() {
               </Button>
               <Button
                 variant="outlined"
-                onClick={handleReset}
+                onClick={handleClearAll}
                 disabled={loading}
               >
                 Reset
