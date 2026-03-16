@@ -36,6 +36,7 @@ export default function Chatbot({ patientContext }: ChatbotProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
+  console.log("Patient Context:", patientContext);
 
   useEffect(() => {
     // Scroll to bottom on new message
