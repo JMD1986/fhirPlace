@@ -21,6 +21,9 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Restore NuGet packages
+        run: dotnet restore server/
+
       - name: Deploy
         run: flyctl deploy --remote-only
         env:

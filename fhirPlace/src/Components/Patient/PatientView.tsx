@@ -28,11 +28,17 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import Grid from "@mui/material/Grid";
 import Avatar from "boring-avatars";
+import type { ObservationResource } from "../../types/fhir";
 import type {
   PatientResource,
   FhirExtension,
-  ObservationResource,
-} from "../../types/fhir";
+  PatientViewProps,
+  FhirNameEntry,
+  FhirTelecomEntry,
+  FhirAddressEntry,
+  FhirIdentifierEntry,
+  ResourceListViewProps,
+} from "./patientTypes";
 import PatientEncountersPanel, {
   type ResourceGroup,
 } from "./PatientEncountersPanel";
@@ -77,11 +83,6 @@ const MedicationRequestView = lazy(
 const BillingDashboard = lazy(() => import("./BillingDashboard"));
 import { useParams, useNavigate } from "react-router-dom";
 import { patientApi, observationApi } from "../../api/fhirApi";
-
-interface PatientViewProps {
-  /** identifier used to fetch the patient from the API */
-  patientId?: string;
-}
 
 export default function PatientView({ patientId: propId }: PatientViewProps) {
   const params = useParams<{ id: string }>();
@@ -155,55 +156,6 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     if (!birthPlaceExt?.valueAddress) return "Not provided";
     const addr = birthPlaceExt.valueAddress;
     return `${addr.city}, ${addr.state} ${addr.country}`;
-  };
-
-  type FhirNameEntry = NonNullable<PatientResource["name"]>[number];
-
-  // Helper to format name
-  const formatName = (nameObj: FhirNameEntry | undefined): string => {
-    if (!nameObj) return "Not provided";
-    const prefix = nameObj.prefix?.join(" ") || "";
-    const given = nameObj.given?.join(" ") || "";
-    const family = nameObj.family || "";
-    return `${prefix} ${given} ${family}`.trim();
-  };
-
-  type FhirTelecomEntry = NonNullable<PatientResource["telecom"]>[number];
-
-  // Helper to get phone number
-  const getPhone = (telecom: FhirTelecomEntry[] | undefined): string => {
-    const phone = telecom?.find((t) => t.system === "phone");
-    return phone?.value || "Not provided";
-  };
-
-  type FhirAddressEntry = NonNullable<PatientResource["address"]>[number];
-
-  // Helper to format address
-  const formatAddress = (address: FhirAddressEntry[] | undefined): string => {
-    if (!address || address.length === 0) return "Not provided";
-    const addr = address[0];
-    const lines = [
-      addr.line?.join(", ") || "",
-      addr.city || "",
-      [addr.state, addr.postalCode].filter(Boolean).join(" "),
-      addr.country || "",
-    ]
-      .filter(Boolean)
-      .join(", ");
-    return lines || "Not provided";
-  };
-
-  type FhirIdentifierEntry = NonNullable<PatientResource["identifier"]>[number];
-
-  // Helper to get identifier by type
-  const getIdentifier = (
-    identifiers: FhirIdentifierEntry[] | undefined,
-    type: string,
-  ): string => {
-    const id = identifiers?.find(
-      (i) => i.type?.text === type || i.system?.includes(type.toLowerCase()),
-    );
-    return id?.value || "Not provided";
   };
 
   useEffect(() => {
@@ -567,15 +519,8 @@ const fmtDate = (iso?: string | null) =>
       })
     : "—";
 
-function ResourceListView({
-  group,
-  patientId,
-  onBack,
-}: {
-  group: ResourceGroup;
-  patientId: string;
-  onBack: () => void;
-}) {
+function ResourceListView(props: ResourceListViewProps) {
+  const { group, patientId, onBack } = props;
   const PAGE_SIZE = 15;
   const [page, setPage] = useState(0);
   const [obsGroups, setObsGroups] = useState<Map<string, ObsGroup>>(new Map());

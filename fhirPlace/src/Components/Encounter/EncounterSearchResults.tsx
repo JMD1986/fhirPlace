@@ -14,6 +14,7 @@ import Button from "@mui/material/Button";
 import TablePagination from "@mui/material/TablePagination";
 import type { FhirCoding, FhirEncounter } from "./encounterTypes";
 export type { FhirCoding, FhirEncounter };
+import type { EncounterSearchResultsProps as Props } from "./encounterTypes";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const stripNums = (s: string) => s.replace(/\d+/g, "").trim();
@@ -48,13 +49,6 @@ export const statusColor = (
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
-interface Props {
-  encounters: FhirEncounter[];
-  total: number | null;
-  page: number;
-  pageSize: number;
-  onPageChange: (e: unknown, newPage: number) => void;
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
