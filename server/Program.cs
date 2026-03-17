@@ -21,7 +21,7 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
   opts.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
   opts.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
-
+builder.Services.AddHttpClient();
 // ALLOWED_ORIGINS env var lets production deployments (e.g. Fly.io) add extra
 // origins without code changes. Comma-separated, e.g.:
 //   ALLOWED_ORIGINS=https://fhirplace.fly.dev,https://my-frontend.fly.dev
@@ -549,7 +549,73 @@ app.MapGet("/fhir/ExplanationOfBenefit/{id}", async (FhirDbContext db, string id
       ? Results.Json(new { error = "ExplanationOfBenefit not found" }, statusCode: 404)
       : Results.Json(J(json), contentType: FhirContentType);
 });
+// ── Anthropic Chat Proxy ──────────────────────────────────────────────────────
+// app.MapPost("/api/anthropic-chat", async (HttpRequest req) =>
+// {
+//   var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+//   if (string.IsNullOrWhiteSpace(apiKey))
+//     return Results.Json(new { error = "Anthropic API key not configured" }, statusCode: 500);
 
-// â”€â”€ Run â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-Console.WriteLine("ðŸ¥ FhirPlace .NET API running on http://localhost:5001");
+//   using var reader = new StreamReader(req.Body);
+//   var body = await reader.ReadToEndAsync();
+//   if (string.IsNullOrWhiteSpace(body))
+//     return Results.Json(new { error = "Empty request body" }, statusCode: 400);
+
+//   using var http = new HttpClient();
+//   var anthropicReq = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+//   {
+//     Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+//   };
+//   anthropicReq.Headers.Add("x-api-key", apiKey);
+//   anthropicReq.Headers.Add("anthropic-version", "2023-06-01");
+
+//   try
+//   {
+//     var resp = await http.SendAsync(anthropicReq);
+//     var respContent = await resp.Content.ReadAsStringAsync();
+//     return Results.Content(respContent, "application/json");
+//   }
+//   catch (Exception ex)
+//   {
+//     return Results.Json(new { error = "Anthropic proxy error", detail = ex.Message }, statusCode: 502);
+//   }
+// });
+app.MapPost("/api/anthropic-chat", async (HttpRequest req, IHttpClientFactory httpClientFactory) =>
+{
+  var apiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
+               ?? app.Configuration["Anthropic:ApiKey"];
+  if (string.IsNullOrWhiteSpace(apiKey))
+    return Results.Json(new { error = "Anthropic API key not configured" }, statusCode: 500);
+
+  using var reader = new StreamReader(req.Body);
+  var body = await reader.ReadToEndAsync();
+  if (string.IsNullOrWhiteSpace(body))
+    return Results.Json(new { error = "Empty request body" }, statusCode: 400);
+
+  // Use factory instead of new HttpClient()
+  var http = httpClientFactory.CreateClient();
+
+  var anthropicReq = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages")
+  {
+    Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+  };
+  anthropicReq.Headers.Add("x-api-key", apiKey);
+  anthropicReq.Headers.Add("anthropic-version", "2023-06-01");
+
+  try
+  {
+    var resp = await http.SendAsync(anthropicReq);
+    var respContent = await resp.Content.ReadAsStringAsync();
+
+    // Forward Anthropic's actual status code so React can detect errors
+    return Results.Content(respContent, "application/json", statusCode: (int)resp.StatusCode);
+  }
+  catch (Exception ex)
+  {
+    return Results.Json(new { error = "Anthropic proxy error", detail = ex.Message }, statusCode: 502);
+  }
+});
+
+// ── Run ──────────────────────────────────────────────────────────────────────
+Console.WriteLine("🏥 FhirPlace .NET API running on http://localhost:5001");
 app.Run();
