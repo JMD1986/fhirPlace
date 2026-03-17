@@ -93,6 +93,17 @@ export const patientApi = {
   },
 };
 
+/** Trigger a browser download of the patient's CCD XML export. */
+export function downloadCcd(patientId: string): void {
+  const url = `${API_BASE}/api/patients/${encodeURIComponent(patientId)}/ccd`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `CCD_${patientId}.xml`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 /**
  * Fire-and-forget prefetch of a single patient into the in-memory cache.
  * Call this on row hover in search results so the data is ready before

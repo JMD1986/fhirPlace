@@ -549,6 +549,60 @@ app.MapGet("/fhir/ExplanationOfBenefit/{id}", async (FhirDbContext db, string id
       ? Results.Json(new { error = "ExplanationOfBenefit not found" }, statusCode: 404)
       : Results.Json(J(json), contentType: FhirContentType);
 });
+// ── Routes: CCD Export (ONC §170.315(b)(6) Data Export) ───────────────────────
+
+app.MapGet("/api/patients/{id}/ccd", async (FhirDbContext db, string id) =>
+{
+    var patient = await db.Patients
+        .Where(p => p.Id == id)
+        .Select(p => new { p.ResourceJson })
+        .FirstOrDefaultAsync();
+
+    if (patient is null)
+        return Results.Json(new { error = "Patient not found" }, statusCode: 404);
+
+    var conditions = await db.Resources
+        .Where(r => r.ResourceType == "Condition" && r.PatientId == id)
+        .Select(r => r.ResourceJson).ToListAsync();
+
+    var medications = await db.Resources
+        .Where(r => r.ResourceType == "MedicationRequest" && r.PatientId == id)
+        .Select(r => r.ResourceJson).ToListAsync();
+
+    var observations = await db.Resources
+        .Where(r => r.ResourceType == "Observation" && r.PatientId == id)
+        .Select(r => r.ResourceJson).ToListAsync();
+
+    var procedures = await db.Resources
+        .Where(r => r.ResourceType == "Procedure" && r.PatientId == id)
+        .Select(r => r.ResourceJson).ToListAsync();
+
+    var immunizations = await db.Resources
+        .Where(r => r.ResourceType == "Immunization" && r.PatientId == id)
+        .Select(r => r.ResourceJson).ToListAsync();
+
+    var encounters = await db.Encounters
+        .Where(e => e.PatientId == id)
+        .Select(e => e.ResourceJson).ToListAsync();
+
+    var xml = CcdGenerator.Generate(
+        patient.ResourceJson,
+        conditions, medications, observations,
+        procedures, immunizations, encounters);
+
+    return Results.Content(xml, "application/xml");
+});
+
+// Serve CDA.xsl stylesheet so browsers can render CCD exports
+app.MapGet("/api/patients/{id}/CDA.xsl", () =>
+{
+    var xslPath = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "public", "CDA.xsl"));
+    if (!File.Exists(xslPath))
+        return Results.NotFound();
+    return Results.File(xslPath, "text/xsl");
+});
+
 // ── Anthropic Chat Proxy ──────────────────────────────────────────────────────
 // app.MapPost("/api/anthropic-chat", async (HttpRequest req) =>
 // {
