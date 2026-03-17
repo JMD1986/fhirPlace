@@ -20,7 +20,10 @@ import {
   InputAdornment,
   IconButton,
   Skeleton,
+  Drawer,
 } from "@mui/material";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import Chatbot from "../Shared/Chatbot/Chatbot";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PersonIcon from "@mui/icons-material/Person";
 import SearchIcon from "@mui/icons-material/Search";
@@ -95,6 +98,7 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   const [selectedResource, setSelectedResource] =
     useState<ResourceGroup | null>(null);
   const [mainTab, setMainTab] = useState<"overview" | "billing">("overview");
+  const [chatOpen, setChatOpen] = useState(false);
 
   // ...existing code...
 
@@ -351,6 +355,16 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
         <Grid container spacing={3} alignItems="flex-start">
           {/* ── Sidebar ── */}
           <Grid size={{ xs: 12, md: 4 }}>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              startIcon={<SmartToyIcon />}
+              onClick={() => setChatOpen(true)}
+              sx={{ mb: 2 }}
+            >
+              Chat with AIgent
+            </Button>
             <PatientEncountersPanel
               patientId={patientId}
               onSelectResource={setSelectedResource}
@@ -413,6 +427,16 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
           </Grid>
         </Grid>
       )}
+
+      {/* ── Chatbot Drawer ── */}
+      <Drawer
+        anchor="right"
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        PaperProps={{ sx: { width: 420, maxWidth: "100vw", p: 2 } }}
+      >
+        <Chatbot patientContext={JSON.stringify(patient, null, 2)} />
+      </Drawer>
     </Box>
   );
 }

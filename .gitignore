@@ -75,3 +75,4 @@ server/Data Source=fhir.db-shm
 server/Data Source=fhir.db-wal
 
 fhirPlace/
+server/appsettings.Development.json
