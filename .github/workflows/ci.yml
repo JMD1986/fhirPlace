@@ -1,26 +1,3 @@
-# ── Accessibility audit (pa11y-ci) ─────────────────────────────────────────
-accessibility-audit:
-  name: Accessibility Audit
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 20
-        cache: npm
-    - run: npm ci
-    - run: npm run build
-    - run: npm install -g serve
-    - run: serve -s dist -l 4173 &
-    - name: Wait for preview server
-      run: |
-        for i in $(seq 1 20); do
-          curl -sf http://localhost:4173/ && break
-          echo "Waiting for preview server... ($i)"
-          sleep 3
-        done
-        curl -sf http://localhost:4173/ || (echo "Preview server failed to start" && exit 1)
-    - run: npm run a11y:ci
 name: CI
 
 on:
@@ -180,3 +157,27 @@ jobs:
           name: perf-report
           path: perf-reports/
           retention-days: 30
+
+  # ── Accessibility audit (pa11y-ci) ─────────────────────────────────────────
+  accessibility-audit:
+    name: Accessibility Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm install -g serve
+      - run: serve -s dist -l 4173 &
+      - name: Wait for preview server
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:4173/ && break
+            echo "Waiting for preview server... ($i)"
+            sleep 3
+          done
+          curl -sf http://localhost:4173/ || (echo "Preview server failed to start" && exit 1)
+      - run: npm run a11y:ci
