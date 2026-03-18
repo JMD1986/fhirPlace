@@ -10,25 +10,37 @@ export function RouteAnnouncer() {
   const [announcement, setAnnouncement] = useState("");
   const firstRender = useRef(true);
 
+  // Separate effects to avoid cascading state changes and renders.
   useEffect(() => {
-    // Don't announce or move focus on first render (page load)
+    // Don't announce on first render (page load)
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
-    setAnnouncement(document.title || "Navigated");
+    // Update the announcement text based on document title.
+    const timeoutId = setTimeout(
+      () => setAnnouncement(document.title || "Navigated"),
+      0
+    );
 
-    // Move focus to first <h1> in <main> after navigation
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [location]);
+
+  // Move focus to the first <h1> in <main> after announcement updates.
+  useEffect(() => {
+    if (firstRender.current) return;
     const main =
       document.getElementById("main-content") || document.querySelector("main");
     if (main) {
       const h1 = main.querySelector("h1");
-      if (h1 && typeof h1.focus === "function") {
+      if (h1 && typeof (h1 as HTMLElement).focus === "function") {
         h1.setAttribute("tabindex", "-1");
-        h1.focus();
+        (h1 as HTMLElement).focus();
       }
     }
-  }, [location]);
+  }, [announcement]);
 
   return (
     <div

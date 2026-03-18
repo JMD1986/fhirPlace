@@ -329,6 +329,7 @@ ${patientContext}`;
   const handleReset = () => {
     setMessages(initialMessages);
     setConversationHistory([]);
+    console.info("[Chatbot] Conversation reset by user."); // Log reset action for debugging
   };
 
   return (

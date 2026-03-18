@@ -1,4 +1,6 @@
+import * as React from "react";
 import { StrictMode } from "react";
+import * as ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -11,13 +13,8 @@ import { reportWebVitals } from "./reportWebVitals";
 if (import.meta.env.DEV) {
   // Dynamically import and mount axe for live a11y logging in dev
   import("@axe-core/react").then((axe) => {
-    axe.default(
-      // React, ReactDOM, 1000ms interval, config
-      require("react"),
-      require("react-dom"),
-      1000,
-      {}, // config: see https://github.com/dequelabs/axe-core-npm/blob/develop/packages/react/README.md
-    );
+    // Pass the imported React and ReactDOM objects instead of using require().
+    axe.default(React, ReactDOM, 1000, {});
     // eslint-disable-next-line no-console
     console.info(
       "[a11y] axe-core/react mounted: live accessibility violations will be logged in the console.",

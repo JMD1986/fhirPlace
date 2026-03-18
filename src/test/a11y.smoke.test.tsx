@@ -1,14 +1,3 @@
-// Mock fetch globally to prevent network errors in PatientView/AuditLogPage
-if (typeof global.fetch === "undefined") {
-  global.fetch = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    }),
-  );
-}
 import React from "react";
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
@@ -20,34 +9,39 @@ import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 import { TestProviders } from "./TestProviders";
 import { vi } from "vitest";
 
-// Mock localStorage for Node test environment (jsdom-compatible)
-if (typeof global.localStorage === "undefined") {
+// Ensure localStorage is available (jsdom may not provide it in all setups)
+if (
+  typeof localStorage === "undefined" ||
+  typeof localStorage.getItem !== "function"
+) {
   const store: Record<string, string> = {};
-  global.localStorage = Object.create({
-    getItem(key: string) {
-      return Object.prototype.hasOwnProperty.call(store, key)
-        ? store[key]
-        : null;
-    },
-    setItem(key: string, value: string) {
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) =>
+      Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
+    setItem: (key: string, value: string) => {
       store[key] = value;
     },
-    removeItem(key: string) {
+    removeItem: (key: string) => {
       delete store[key];
     },
-    clear() {
-      for (const key in store) {
-        delete store[key];
-      }
+    clear: () => {
+      for (const key in store) delete store[key];
     },
-    key(index: number) {
-      return Object.keys(store)[index] || null;
-    },
+    key: (index: number) => Object.keys(store)[index] || null,
     get length() {
       return Object.keys(store).length;
     },
   });
 }
+
+// Mock audit API to prevent network calls and provide valid default data
+vi.mock("../api/auditApi", () => ({
+  queryAuditEvents: vi.fn().mockResolvedValue({ events: [], total: 0 }),
+  getAuditStats: vi
+    .fn()
+    .mockResolvedValue({ totalEvents: 0, actionCounts: {} }),
+  logAuditEvent: vi.fn().mockResolvedValue({ status: "ok", id: 1 }),
+}));
 
 // Mock FHIR.oauth2.ready for AuthProvider (Vitest)
 vi.mock("fhirclient", () => ({
@@ -73,6 +67,20 @@ describe("a11y smoke tests", () => {
       </TestProviders>,
     );
     const results = await axe(container);
+    if (results.violations.length > 0) {
+      console.error(
+        "SearchContainer a11y violations:",
+        JSON.stringify(
+          results.violations.map((v) => ({
+            id: v.id,
+            description: v.description,
+            nodes: v.nodes.map((n) => n.html),
+          })),
+          null,
+          2,
+        ),
+      );
+    }
     expect(results.violations.length).toBe(0);
   });
 
@@ -93,6 +101,21 @@ describe("a11y smoke tests", () => {
       </TestProviders>,
     );
     const results = await axe(container);
+    if (results.violations.length > 0) {
+      console.error(
+        "AuditLogPage a11y violations:",
+        JSON.stringify(
+          results.violations.map((v) => ({
+            id: v.id,
+            description: v.description,
+            impact: v.impact,
+            nodes: v.nodes.map((n) => n.html.substring(0, 200)),
+          })),
+          null,
+          2,
+        ),
+      );
+    }
     expect(results.violations.length).toBe(0);
   });
 

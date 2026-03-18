@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import React from "react";
 import {
   Box,
   Paper,
@@ -190,7 +191,11 @@ export default function AuditLogPage() {
     <Box sx={{ p: 3, maxWidth: 1400, mx: "auto" }}>
       {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 3, gap: 2 }}>
-        <IconButton onClick={() => navigate(-1)} size="small">
+        <IconButton
+          onClick={() => navigate(-1)}
+          size="small"
+          aria-label="Go back"
+        >
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" sx={{ fontWeight: 600, flexGrow: 1 }}>
@@ -409,7 +414,19 @@ export default function AuditLogPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell component="th" scope="col" width={40} />
+              <TableCell component="th" scope="col" width={40}>
+                <span
+                  style={{
+                    position: "absolute",
+                    width: 1,
+                    height: 1,
+                    overflow: "hidden",
+                    clip: "rect(0,0,0,0)",
+                  }}
+                >
+                  Details
+                </span>
+              </TableCell>
               <TableCell component="th" scope="col">
                 Time
               </TableCell>
@@ -437,7 +454,10 @@ export default function AuditLogPage() {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                  <CircularProgress size={24} />
+                  <CircularProgress
+                    size={24}
+                    aria-label="Loading audit events"
+                  />
                 </TableCell>
               </TableRow>
             ) : events.length === 0 ? (
@@ -452,7 +472,7 @@ export default function AuditLogPage() {
               </TableRow>
             ) : (
               events.map((evt) => (
-                <>
+                <React.Fragment key={evt.id}>
                   <TableRow
                     key={evt.id}
                     hover
@@ -462,7 +482,12 @@ export default function AuditLogPage() {
                     sx={{ cursor: "pointer" }}
                   >
                     <TableCell>
-                      <IconButton size="small">
+                      <IconButton
+                        size="small"
+                        aria-label={
+                          expandedId === evt.id ? "Collapse row" : "Expand row"
+                        }
+                      >
                         {expandedId === evt.id ? (
                           <ExpandLessIcon fontSize="small" />
                         ) : (
@@ -611,7 +636,7 @@ export default function AuditLogPage() {
                       </Collapse>
                     </TableCell>
                   </TableRow>
-                </>
+                </React.Fragment>
               ))
             )}
           </TableBody>
