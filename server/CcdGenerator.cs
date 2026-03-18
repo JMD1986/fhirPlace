@@ -45,7 +45,7 @@ public static class CcdGenerator
             conditionJsons, medicationJsons, observationJsons,
             procedureJsons, immunizationJsons, encounterJsons));
 
-    return doc.Declaration?.ToString() + Environment.NewLine + doc.ToString();
+    return doc.Declaration?.ToString() + Environment.NewLine + doc;
   }
 
   // ── Root element ───────────────────────────────────────────────────────────
