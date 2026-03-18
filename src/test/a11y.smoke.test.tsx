@@ -9,20 +9,6 @@ import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 import { TestProviders } from "./TestProviders";
 import { vi } from "vitest";
 
-import React from "react";
-import { render } from "@testing-library/react";
-import { axe } from "jest-axe";
-import "@testing-library/jest-dom";
-import SearchContainer from "../Components/MainSearch/SearchContainer";
-import PatientView from "../Components/Patient/PatientView";
-import AuditLogPage from "../Components/Audit/AuditLogPage";
-import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
-import { TestProviders } from "./TestProviders";
-import { vi } from "vitest";
-
-
-}
-
 // Ensure localStorage is available (jsdom may not provide it in all setups)
 if (
   typeof localStorage === "undefined" ||
@@ -48,14 +34,6 @@ if (
   });
 }
 
-import { render } from "@testing-library/react";
-import { axe } from "jest-axe";
-import "@testing-library/jest-dom";
-import SearchContainer from "../Components/MainSearch/SearchContainer";
-import PatientView from "../Components/Patient/PatientView";
-import AuditLogPage from "../Components/Audit/AuditLogPage";
-import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
-import { TestProviders } from "./TestProviders";
 // Mock audit API to prevent network calls and provide valid default data
 vi.mock("../api/auditApi", () => ({
   queryAuditEvents: vi.fn().mockResolvedValue({ events: [], total: 0 }),
