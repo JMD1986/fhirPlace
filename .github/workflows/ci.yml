@@ -38,6 +38,19 @@ jobs:
       - run: npm ci
       - run: npx eslint src
 
+  # ── Accessibility lint (eslint-plugin-jsx-a11y) ─────────────────────────────
+  a11y:
+    name: Accessibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src --max-warnings 0
+
   # ── Unit tests (no server required) ────────────────────────────────────────
   test:
     name: Test

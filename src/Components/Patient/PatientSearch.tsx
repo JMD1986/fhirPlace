@@ -10,7 +10,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import SearchResults from "./SearchResults";
-import type { Patient } from "../../types/fhir";
 import SavedSearchBar from "../MainSearch/SavedSearchBar";
 import { useSavedSearches } from "../../hooks/useSavedSearches";
 // import { patientApi } from "../../api/fhirApi";
@@ -46,7 +45,6 @@ function PatientSearch() {
     loading,
     error,
     searched,
-    setSearched,
     page,
     setPage,
     serverOffset,

@@ -55,11 +55,8 @@ export default function EncounterSearch() {
     classOptions,
     snomedReasons,
     page,
-    setPage,
-    PAGE_SIZE,
     DISPLAY_SIZE,
     serverOffset,
-    setServerOffset,
     handleChange,
     handleSearch,
     handlePageChange,
@@ -118,7 +115,9 @@ export default function EncounterSearch() {
                     ...prev,
                     status: e.target.value,
                   }));
-                  handleChange(e as any);
+                  handleChange(
+                    e as unknown as React.ChangeEvent<HTMLInputElement>,
+                  );
                 }}
               >
                 <MenuItem value="">
@@ -152,7 +151,9 @@ export default function EncounterSearch() {
                     ...prev,
                     classCode: e.target.value,
                   }));
-                  handleChange(e as any);
+                  handleChange(
+                    e as unknown as React.ChangeEvent<HTMLInputElement>,
+                  );
                 }}
               >
                 <MenuItem value="">
@@ -178,7 +179,9 @@ export default function EncounterSearch() {
                     ...prev,
                     type: e.target.value,
                   }));
-                  handleChange(e as any);
+                  handleChange(
+                    e as unknown as React.ChangeEvent<HTMLInputElement>,
+                  );
                 }}
               >
                 <MenuItem value="">
@@ -237,7 +240,7 @@ export default function EncounterSearch() {
                 o: { code: string; display: string },
                 v: { code: string; display: string },
               ) => o.code === v.code}
-              renderInput={(params: any) => (
+              renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Reason for Visit"

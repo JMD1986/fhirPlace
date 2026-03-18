@@ -42,6 +42,7 @@ export function useInactivityTimeout({
   const [secondsLeft, setSecondsLeft] = useState(0);
 
   // Mutable refs so the event handler closures always see the latest values.
+  // eslint-disable-next-line react-hooks/purity -- useRef initializer runs once at mount; Date.now() is safe here
   const lastActivity = useRef(Date.now());
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
