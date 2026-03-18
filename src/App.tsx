@@ -8,6 +8,7 @@ import AlertTitle from "@mui/material/AlertTitle";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
+import { RouteAnnouncer } from "./Components/Shared/RouteAnnouncer";
 
 // ── Lazy-loaded route components ──────────────────────────────────────────────
 // Each route is split into its own JS chunk. The browser only downloads a
@@ -77,7 +78,11 @@ function ErrorFallback({
 // Shown while the lazy chunk is downloading
 function RouteLoader() {
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", pt: 10 }}>
+    <Box
+      sx={{ display: "flex", justifyContent: "center", pt: 10 }}
+      role="status"
+      aria-label="Loading..."
+    >
       <CircularProgress />
     </Box>
   );
@@ -97,8 +102,16 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        {/* Route change announcer for screen readers */}
+        <RouteAnnouncer />
+        {/* Skip to main content link for accessibility */}
+        <a href="#main-content" className="sr-only skip-link">
+          Skip to main content
+        </a>
         <Box
           component="main"
+          id="main-content"
+          tabIndex={-1}
           sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
         >
           <Routes>

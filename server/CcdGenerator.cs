@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Xml.Linq;
-using System.Linq;
 
 namespace FhirPlace.Server;
 
@@ -46,7 +45,7 @@ public static class CcdGenerator
             conditionJsons, medicationJsons, observationJsons,
             procedureJsons, immunizationJsons, encounterJsons));
 
-    return doc.Declaration?.ToString() + Environment.NewLine + doc;
+    return doc.Declaration?.ToString() + Environment.NewLine + doc.ToString();
   }
 
   // ── Root element ───────────────────────────────────────────────────────────
@@ -257,18 +256,10 @@ public static class CcdGenerator
   // ── Problems (Conditions) ──────────────────────────────────────────────────
   static XElement ProblemsSection(IReadOnlyList<string> conditions)
   {
-    var rows = conditions.Select(json =>
-    {
-      using var doc = JsonDocument.Parse(json);
-      var r = doc.RootElement;
-      var coding = CodeableConcept(r, "code");
-      var onset = Str(r, "onsetDateTime");
-      var abatement = Str(r, "abatementDateTime");
-      var status = StrCoding(r, "clinicalStatus") ?? "active";
-      return Tr(coding.display, status, FmtDate(onset), FmtDate(abatement));
-    }).ToList();
+    var rows = new List<XElement>();
+    var entries = new List<XElement>();
 
-    var entries = conditions.Select(json =>
+    foreach (var json in conditions)
     {
       using var doc = JsonDocument.Parse(json);
       var r = doc.RootElement;
@@ -277,7 +268,9 @@ public static class CcdGenerator
       var abatement = Str(r, "abatementDateTime");
       var status = StrCoding(r, "clinicalStatus") ?? "active";
 
-      return new XElement(Hl7 + "entry", new XAttribute("typeCode", "DRIV"),
+      rows.Add(Tr(coding.display, status, FmtDate(onset), FmtDate(abatement)));
+
+      entries.Add(new XElement(Hl7 + "entry", new XAttribute("typeCode", "DRIV"),
           new XElement(Hl7 + "act",
               new XAttribute("classCode", "ACT"), new XAttribute("moodCode", "EVN"),
               TemplateId("2.16.840.1.113883.10.20.22.4.3"),
@@ -298,8 +291,8 @@ public static class CcdGenerator
                           new XAttribute("displayName", "Condition")),
                       new XElement(Hl7 + "statusCode", new XAttribute("code", "completed")),
                       EffectiveTime(onset, abatement),
-                      CdaCodedValue(coding, OidSnomed)))));
-    }).ToList();
+                      CdaCodedValue(coding, OidSnomed))))));
+    }
 
     return Section("2.16.840.1.113883.10.20.22.2.5.1",
         "11450-4", "Problem List",
@@ -307,13 +300,10 @@ public static class CcdGenerator
         entries, conditions.Count == 0);
   }
 
-    foreach (var med in medications.Select(json =>
-             {
-               using var doc = JsonDocument.Parse(json);
-               return new { Root = doc.RootElement };
-             }))
+  // ── Medications ────────────────────────────────────────────────────────────
   static XElement MedicationsSection(IReadOnlyList<string> medications)
-      var r = med.Root;
+  {
+    var rows = new List<XElement>();
     var entries = new List<XElement>();
 
     foreach (var json in medications)
@@ -344,29 +334,25 @@ public static class CcdGenerator
     return Section("2.16.840.1.113883.10.20.22.2.1.1",
         "10160-0", "Medications",
         HtmlTable(new[] { "Medication", "Status", "Date" }, rows),
-    var labItems = labs.Select(json =>
+        entries, medications.Count == 0);
   }
 
   // ── Results (Lab Observations) ─────────────────────────────────────────────
   static XElement ResultsSection(IReadOnlyList<string> labs)
   {
     var rows = new List<XElement>();
-      return new { r, coding, effDate, val, unit };
-    });
     var entries = new List<XElement>();
-    foreach (var item in labItems)
-    {
-      rows.Add(Tr(item.coding.display, $"{item.val} {item.unit}".Trim(), FmtDate(item.effDate)));
+
     foreach (var json in labs)
     {
       using var doc = JsonDocument.Parse(json);
       var r = doc.RootElement;
       var coding = CodeableConcept(r, "code");
       var effDate = Str(r, "effectiveDateTime");
-              new XElement(Hl7 + "code", CdaCodeAttrs(item.coding, OidLoinc)),
+      var (val, unit) = ObservationValue(r);
 
       rows.Add(Tr(coding.display, $"{val} {unit}".Trim(), FmtDate(effDate)));
-                  ObservationEntry(item.r, item.coding, item.effDate, item.val, item.unit)))));
+
       entries.Add(new XElement(Hl7 + "entry", new XAttribute("typeCode", "DRIV"),
           new XElement(Hl7 + "organizer",
               new XAttribute("classCode", "CLUSTER"), new XAttribute("moodCode", "EVN"),
@@ -484,7 +470,7 @@ public static class CcdGenerator
                       TemplateId("2.16.840.1.113883.10.20.22.4.54"),
                       new XElement(Hl7 + "manufacturedMaterial",
                           CdaCode(coding, OidCvx)))))));
-    foreach (var encounter in encounters.Select(json =>
+    }
 
     return Section("2.16.840.1.113883.10.20.22.2.2.1",
         "11369-6", "Immunizations",
@@ -494,27 +480,15 @@ public static class CcdGenerator
 
   // ── Encounters ─────────────────────────────────────────────────────────────
   static XElement EncountersSection(IReadOnlyList<string> encounters)
-      return new
-      {
-        typeCoding,
-        periodStart,
-        periodEnd,
-        status
-      };
-    }))
-    {
-      rows.Add(Tr(encounter.typeCoding.display,
-                  encounter.status,
-                  FmtDate(encounter.periodStart),
-                  FmtDate(encounter.periodEnd)));
+  {
     var rows = new List<XElement>();
     var entries = new List<XElement>();
 
     foreach (var json in encounters)
     {
       using var doc = JsonDocument.Parse(json);
-              CdaCode(encounter.typeCoding, OidSnomed),
-              EffectiveTime(encounter.periodStart, encounter.periodEnd))));
+      var r = doc.RootElement;
+
       var typeCoding = EncounterTypeCoding(r);
       var periodStart = NestedStr(r, "period", "start");
       var periodEnd = NestedStr(r, "period", "end");

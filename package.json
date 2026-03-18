@@ -19,7 +19,8 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --reporter=verbose tests",
-    "perf:audit": "npm run build:perf && node scripts/perf-audit.js"
+    "perf:audit": "npm run build:perf && node scripts/perf-audit.js",
+    "a11y:ci": "npx pa11y-ci --config pa11y-ci.json"
   },
   "dependencies": {
     "@emotion/css": "^11.13.5",
@@ -40,6 +41,7 @@
     "web-vitals": "^5.1.0"
   },
   "devDependencies": {
+    "@axe-core/react": "^4.11.1",
     "@eslint/js": "^9.39.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -53,14 +55,17 @@
     "@types/supertest": "^7.2.0",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/ui": "^4.0.18",
+    "axe-core": "^4.11.1",
     "concurrently": "^9.2.1",
     "eslint": "^9.39.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jest-axe": "^10.0.0",
     "jsdom": "^28.1.0",
     "msw": "^2.12.10",
+    "pa11y-ci": "^4.1.0",
     "playwright": "^1.58.2",
     "supertest": "^7.2.2",
     "typescript": "~5.9.3",

@@ -26,9 +26,16 @@ export default function SessionTimeoutWarning({
       : `${seconds}s`;
 
   return (
-    <Dialog open={open} disableEscapeKeyDown>
-      <DialogTitle>Session Expiring</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={open}
+      disableEscapeKeyDown
+      aria-labelledby="session-timeout-dialog-title"
+      aria-describedby="session-timeout-dialog-content"
+    >
+      <DialogTitle id="session-timeout-dialog-title">
+        Session Expiring
+      </DialogTitle>
+      <DialogContent id="session-timeout-dialog-content">
         <DialogContentText>
           Your session will expire due to inactivity in{" "}
           <strong>{timeDisplay}</strong>. Do you want to stay logged in?

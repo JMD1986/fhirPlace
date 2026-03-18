@@ -253,7 +253,11 @@ function NPPESPanel({
             )}
           </Typography>
           {practitioner.loading && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              role="status"
+              aria-label="Loading..."
+            >
               <CircularProgress size={14} />
               <Typography variant="caption" color="text.secondary">
                 Searching NPPES…
@@ -295,7 +299,11 @@ function NPPESPanel({
             )}
           </Typography>
           {org.loading && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              role="status"
+              aria-label="Loading..."
+            >
               <CircularProgress size={14} />
               <Typography variant="caption" color="text.secondary">
                 Searching NPPES…
@@ -597,7 +605,11 @@ export default function EncounterView() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+      <Box
+        sx={{ display: "flex", justifyContent: "center", py: 6 }}
+        role="status"
+        aria-label="Loading..."
+      >
         <CircularProgress />
       </Box>
     );

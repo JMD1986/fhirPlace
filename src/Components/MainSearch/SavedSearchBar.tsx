@@ -246,9 +246,11 @@ export default function SavedSearchBar<
         onClose={() => setSaveOpen(false)}
         maxWidth="xs"
         fullWidth
+        aria-labelledby="save-search-dialog-title"
+        aria-describedby="save-search-dialog-content"
       >
-        <DialogTitle>Save Search</DialogTitle>
-        <DialogContent>
+        <DialogTitle id="save-search-dialog-title">Save Search</DialogTitle>
+        <DialogContent id="save-search-dialog-content">
           {searches.length >= maxSaved && (
             <Typography variant="body2" color="warning.main" sx={{ mb: 1.5 }}>
               You have reached the {maxSaved}-search limit. Delete one to save a
@@ -287,9 +289,11 @@ export default function SavedSearchBar<
         onClose={() => setRenameId(null)}
         maxWidth="xs"
         fullWidth
+        aria-labelledby="rename-search-dialog-title"
+        aria-describedby="rename-search-dialog-content"
       >
-        <DialogTitle>Rename Search</DialogTitle>
-        <DialogContent>
+        <DialogTitle id="rename-search-dialog-title">Rename Search</DialogTitle>
+        <DialogContent id="rename-search-dialog-content">
           <TextField
             fullWidth
             label="New name"

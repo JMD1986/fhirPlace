@@ -7,6 +7,24 @@ import App from "./App.tsx";
 import { theme } from "./theme";
 import { reportWebVitals } from "./reportWebVitals";
 
+// ── Accessibility: Mount axe-core/react in development ─────────────
+if (import.meta.env.DEV) {
+  // Dynamically import and mount axe for live a11y logging in dev
+  import("@axe-core/react").then((axe) => {
+    axe.default(
+      // React, ReactDOM, 1000ms interval, config
+      require("react"),
+      require("react-dom"),
+      1000,
+      {}, // config: see https://github.com/dequelabs/axe-core-npm/blob/develop/packages/react/README.md
+    );
+    // eslint-disable-next-line no-console
+    console.info(
+      "[a11y] axe-core/react mounted: live accessibility violations will be logged in the console.",
+    );
+  });
+}
+
 // ── HTTPS enforcement (HIPAA/SOC 2) ──────────────────────────────────────────
 // In production, VITE_API_BASE must be an HTTPS URL. A non-HTTPS base would
 // transmit PHI in plaintext, violating HIPAA technical safeguard requirements.

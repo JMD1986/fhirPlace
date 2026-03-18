@@ -106,13 +106,26 @@ export default function SearchContainer() {
               },
             }}
           >
-            <MenuItem onClick={displayPatients}>Patient Search</MenuItem>
-            <MenuItem onClick={displayEncounters}>Encounter Search</MenuItem>
+            <MenuItem
+              onClick={displayPatients}
+              aria-current={displayPatientSearch ? "page" : undefined}
+            >
+              Patient Search
+            </MenuItem>
+            <MenuItem
+              onClick={displayEncounters}
+              aria-current={displayEncounterSearch ? "page" : undefined}
+            >
+              Encounter Search
+            </MenuItem>
             <MenuItem
               onClick={() => {
                 setAnchorEl(null);
                 navigate("/audit");
               }}
+              aria-current={
+                window.location.pathname === "/audit" ? "page" : undefined
+              }
             >
               Audit Log
             </MenuItem>

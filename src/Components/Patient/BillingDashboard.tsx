@@ -36,7 +36,7 @@ import {
 } from "recharts";
 import type { ClaimResource, EoBResource } from "../../types/fhir";
 import { claimApi, eobApi } from "../../api/fhirApi";
-import { fmtUSD, shortMonth } from "./formatUtils";
+import { fmtUSD, shortMonth } from "../../helpers/formatUtils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface BillingDashboardProps {
