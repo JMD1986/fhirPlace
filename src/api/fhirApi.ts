@@ -24,6 +24,7 @@ import type {
   PatientResource,
   ProcedureResource,
 } from "../types/fhir";
+import { logAuditEvent } from "./auditApi";
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 // Set VITE_API_BASE in your .env file. Defaults to localhost for development.
@@ -116,7 +117,8 @@ export const patientApi = {
   },
 };
 
-/** Trigger a browser download of the patient's CCD XML export. */
+/** Trigger a browser download of the patient's CCD XML export.
+ *  Logs an audit event per ONC §170.315(d)(11) — Accounting of Disclosures. */
 export function downloadCcd(patientId: string): void {
   const url = `${API_BASE}/api/patients/${encodeURIComponent(patientId)}/ccd`;
   const a = document.createElement("a");
@@ -125,6 +127,16 @@ export function downloadCcd(patientId: string): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
+
+  // (d)(11) — record the disclosure
+  logAuditEvent({
+    action: "disclosure",
+    resourceType: "Patient",
+    resourceId: patientId,
+    patientId,
+    requestPath: `/api/patients/${patientId}/ccd`,
+    detail: "CCD document exported/downloaded by user",
+  }).catch(() => {});
 }
 
 /**
