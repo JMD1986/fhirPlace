@@ -350,7 +350,11 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
       {mainTab === "billing" && (
         <Suspense
           fallback={
-            <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "center", pt: 4 }}
+              role="status"
+              aria-label="Loading..."
+            >
               <CircularProgress />
             </Box>
           }
@@ -578,7 +582,11 @@ function ResourceListView({
         </Button>
         <Suspense
           fallback={
-            <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "center", pt: 4 }}
+              role="status"
+              aria-label="Loading..."
+            >
               <CircularProgress />
             </Box>
           }

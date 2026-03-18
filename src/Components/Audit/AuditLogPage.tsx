@@ -409,14 +409,28 @@ export default function AuditLogPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell width={40} />
-              <TableCell>Time</TableCell>
-              <TableCell>Action</TableCell>
-              <TableCell>Resource</TableCell>
-              <TableCell>Patient</TableCell>
-              <TableCell>User</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Outcome</TableCell>
+              <TableCell component="th" scope="col" width={40} />
+              <TableCell component="th" scope="col">
+                Time
+              </TableCell>
+              <TableCell component="th" scope="col">
+                Action
+              </TableCell>
+              <TableCell component="th" scope="col">
+                Resource
+              </TableCell>
+              <TableCell component="th" scope="col">
+                Patient
+              </TableCell>
+              <TableCell component="th" scope="col">
+                User
+              </TableCell>
+              <TableCell component="th" scope="col">
+                Status
+              </TableCell>
+              <TableCell component="th" scope="col">
+                Outcome
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

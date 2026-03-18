@@ -235,6 +235,32 @@ fhirPlace targets **WCAG 2.1 Level AA** compliance and **Section 508** of the Re
 - All interactive elements are keyboard-accessible
 - Form inputs include associated labels
 
+### Accessibility Toolchain
+- **eslint-plugin-jsx-a11y**: Lints JSX for accessibility issues at development time
+- **jest-axe**: Automated accessibility tests for React components
+- **@axe-core/react**: Live accessibility violation logging in the browser during development
+- **pa11y-ci**: Automated accessibility CI checks on key routes (`/`, `/patient/:id`, `/audit`)
+- **Lighthouse**: Manual and automated accessibility audits for overall conformance
+
+### WCAG 2.1 AA Criteria Addressed
+- 1.1.1 Non-text Content: All icons/images have `alt` text or are decorative
+- 1.3.1 Info and Relationships: Semantic HTML, ARIA roles, table headers
+- 1.3.2 Meaningful Sequence: DOM order matches visual order
+- 1.4.3 Contrast (Minimum): All text and UI elements meet 4.5:1/3:1 contrast
+- 2.1.1 Keyboard: All functionality is keyboard accessible
+- 2.4.1 Bypass Blocks: Skip-to-main-content link
+- 2.4.3 Focus Order: Focus managed on route change
+- 2.4.4 Link Purpose: All links have clear, descriptive text
+- 2.4.7 Focus Visible: Custom focus indicator styles
+- 3.3.2 Labels or Instructions: All form fields have accessible labels
+- 4.1.2 Name, Role, Value: Proper ARIA labeling for dialogs, widgets
+- 4.1.3 Status Messages: Live regions for route changes and loading states
+
+### Known Gaps / Exceptions
+- Some dynamic content (e.g., custom modals, tables) may require further manual ARIA review
+- Automated tools may not catch all color contrast issues in custom-styled components
+- Accessibility is an ongoing process; user feedback and periodic audits are used to identify and address new issues
+
 ---
 
 ## §170.315(g)(7) — Application Access: Patient Selection

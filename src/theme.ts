@@ -6,7 +6,17 @@ export const theme = createTheme({
       main: '#1565c0', // darkened from #1976d2 → WCAG AA contrast ≥ 4.5:1 on #f5f5f5
     },
     secondary: {
-      main: '#dc004e',
+      main: '#b00036', // darkened for contrast (was #dc004e)
+      contrastText: '#fff',
+    },
+    text: {
+      primary: '#1a1a1a',
+      secondary: '#444', // darker for better contrast
+      disabled: '#757575', // darker for better contrast
+    },
+    action: {
+      disabled: '#bdbdbd', // slightly darker
+      disabledBackground: '#e0e0e0',
     },
     background: {
       default: '#f5f5f5',
@@ -48,6 +58,10 @@ export const theme = createTheme({
         root: {
           '& .MuiOutlinedInput-root': {
             backgroundColor: '#fff',
+            '& input::placeholder': {
+              color: '#757575', // darker placeholder for contrast
+              opacity: 1,
+            },
           },
         },
       },

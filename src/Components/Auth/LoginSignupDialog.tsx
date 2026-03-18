@@ -46,14 +46,24 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      aria-labelledby="login-signup-dialog-title"
+      aria-describedby="login-signup-dialog-content"
+    >
+      <DialogTitle id="login-signup-dialog-title">
         <Typography variant="h6" fontWeight={600}>
           Connect to FHIRPlace
         </Typography>
       </DialogTitle>
 
-      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <DialogContent
+        id="login-signup-dialog-content"
+        sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+      >
         {authError && <Alert severity="error">{authError}</Alert>}
 
         <Alert severity="info">

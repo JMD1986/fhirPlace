@@ -104,28 +104,8 @@ app.Use(async (ctx, next) =>
   {
     using var scope = scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
-    try
-    {
-      await AuditService.LogAsync(db, evt);
-    }
-    catch (OperationCanceledException)
-    {
-      // Ignore cancellation: background audit task was cancelled, not a real failure.
-    }
-    catch (Exception ex)
-    {
-      Console.Error.WriteLine($"[Audit] write failed: {ex}");
-    }
-      await AuditService.LogAsync(db, evt);
-    }
-    catch (OperationCanceledException)
-    {
-      // Ignore cancellation: background audit task was cancelled, not a real failure.
-    }
-    catch (Exception ex)
-    {
-      Console.Error.WriteLine($"[Audit] write failed: {ex}");
-    }
+    try { await AuditService.LogAsync(db, evt); }
+    catch (Exception ex) { Console.Error.WriteLine($"[Audit] write failed: {ex.Message}"); }
   });
 });
 
@@ -646,7 +626,7 @@ app.MapGet("/api/patients/{id}/ccd", async (FhirDbContext db, string id) =>
       .Where(r => r.ResourceType == "Procedure" && r.PatientId == id)
       .Select(r => r.ResourceJson).ToListAsync();
 
-      Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "public", "CDA.xsl"));
+  var immunizations = await db.Resources
       .Where(r => r.ResourceType == "Immunization" && r.PatientId == id)
       .Select(r => r.ResourceJson).ToListAsync();
 
