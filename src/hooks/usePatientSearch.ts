@@ -20,7 +20,13 @@ export function usePatientSearch() {
   const [page, setPage] = useState(0);
   const [serverOffset, setServerOffset] = useState(0);
   const [total, setTotal] = useState<number | null>(null);
-  const prefetchedBatchRef = useRef<Patient[] | null>(null);
+  type PrefetchedBatch = {
+    offset: number;
+    patients: Patient[];
+    total: number;
+  };
+
+  const prefetchedBatchRef = useRef<PrefetchedBatch | null>(null);
 
   const buildPatientParams = (offset: number) => {
     const params: Record<string, string | number> = {
@@ -39,7 +45,7 @@ export function usePatientSearch() {
       const results: Patient[] = (bundle.entry ?? []).map(
         (e: { resource: Patient }) => e.resource,
       );
-      prefetchedBatchRef.current = results;
+      prefetchedBatchRef.current = { offset, patients: results, total: bundle.total ?? results.length };
     } catch {
       // Silently ignore
     }

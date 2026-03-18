@@ -1,15 +1,4 @@
-// Mock fetch globally to prevent network errors in PatientView/AuditLogPage
-if (typeof global.fetch === "undefined") {
-  global.fetch = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    }),
-  );
-}
-import React from "react";
+import { vi } from "vitest";
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
 import "@testing-library/jest-dom";
@@ -20,6 +9,17 @@ import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 import { TestProviders } from "./TestProviders";
 import { vi } from "vitest";
 
+// Mock fetch globally to prevent network errors in PatientView/AuditLogPage
+if (typeof global.fetch === "undefined") {
+  global.fetch = vi.fn(
+    async () =>
+      // Use a real Response object so .json()/.text() behave like fetch
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+  );
+}
 // Mock localStorage for Node test environment (jsdom-compatible)
 if (typeof global.localStorage === "undefined") {
   const store: Record<string, string> = {};
