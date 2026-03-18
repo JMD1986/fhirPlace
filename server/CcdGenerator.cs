@@ -306,10 +306,13 @@ public static class CcdGenerator
         entries, conditions.Count == 0);
   }
 
-  // ── Medications ────────────────────────────────────────────────────────────
+    foreach (var med in medications.Select(json =>
+             {
+               using var doc = JsonDocument.Parse(json);
+               return new { Root = doc.RootElement };
+             }))
   static XElement MedicationsSection(IReadOnlyList<string> medications)
-  {
-    var rows = new List<XElement>();
+      var r = med.Root;
     var entries = new List<XElement>();
 
     foreach (var json in medications)
