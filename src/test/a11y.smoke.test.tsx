@@ -9,16 +9,17 @@ import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 import { TestProviders } from "./TestProviders";
 import { vi } from "vitest";
 
-// Mock fetch globally to prevent network errors in PatientView/AuditLogPage
-if (typeof global.fetch === "undefined") {
-  global.fetch = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-      text: async () => "",
-    }),
-  );
+import React from "react";
+import { render } from "@testing-library/react";
+import { axe } from "jest-axe";
+import "@testing-library/jest-dom";
+import SearchContainer from "../Components/MainSearch/SearchContainer";
+import PatientView from "../Components/Patient/PatientView";
+import AuditLogPage from "../Components/Audit/AuditLogPage";
+import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
+import { TestProviders } from "./TestProviders";
+import { vi } from "vitest";
+
 }
 
 // Ensure localStorage is available (jsdom may not provide it in all setups)
