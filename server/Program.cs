@@ -104,8 +104,18 @@ app.Use(async (ctx, next) =>
   {
     using var scope = scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
-    try { await AuditService.LogAsync(db, evt); }
-    catch (Exception ex) { Console.Error.WriteLine($"[Audit] write failed: {ex.Message}"); }
+    try
+    {
+      await AuditService.LogAsync(db, evt);
+    }
+    catch (OperationCanceledException)
+    {
+      // Ignore cancellation: background audit task was cancelled, not a real failure.
+    }
+    catch (Exception ex)
+    {
+      Console.Error.WriteLine($"[Audit] write failed: {ex}");
+    }
   });
 });
 
