@@ -56,7 +56,6 @@ import { TestProviders } from "./TestProviders";
 // Mock audit API to prevent network calls and provide valid default data
 vi.mock("../api/auditApi", () => ({
   queryAuditEvents: vi.fn().mockResolvedValue({ events: [], total: 0 }),
-vi.mock("../api/auditApi", () => ({
   verifyAuditChain: vi.fn().mockResolvedValue({ valid: true, totalEvents: 0 }),
   getAuditStats: vi
     .fn()
