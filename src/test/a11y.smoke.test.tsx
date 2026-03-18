@@ -2,12 +2,13 @@ import { vi } from "vitest";
 
 // Mock fetch globally to prevent network errors in PatientView/AuditLogPage
 if (typeof global.fetch === "undefined") {
-  global.fetch = vi.fn(async () =>
-    // Use a real Response object so .json()/.text() behave like fetch
-    new Response(JSON.stringify({}), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }),
+  global.fetch = vi.fn(
+    async () =>
+      // Use a real Response object so .json()/.text() behave like fetch
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
   );
 }
 import { render } from "@testing-library/react";

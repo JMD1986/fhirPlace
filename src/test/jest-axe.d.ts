@@ -15,7 +15,8 @@ declare global {
 
 export {};
 declare module 'jest-axe' {
+  import type { AxeResults } from 'axe-core';
   import { MatcherFunction } from 'expect';
-  export const axe: any;
+  export const axe: (html: string) => Promise<AxeResults>;
   export const toHaveNoViolations: MatcherFunction;
 }

@@ -18,13 +18,14 @@ export function RouteAnnouncer() {
       return;
     }
     // Update the announcement text based on document title.
-    setAnnouncement(document.title || "Navigated");
+    setTimeout(() => setAnnouncement(document.title || "Navigated"), 0);
   }, [location]);
 
   // Move focus to the first <h1> in <main> after announcement updates.
   useEffect(() => {
     if (firstRender.current) return;
-    const main = document.getElementById("main-content") || document.querySelector("main");
+    const main =
+      document.getElementById("main-content") || document.querySelector("main");
     if (main) {
       const h1 = main.querySelector("h1");
       if (h1 && typeof (h1 as HTMLElement).focus === "function") {
