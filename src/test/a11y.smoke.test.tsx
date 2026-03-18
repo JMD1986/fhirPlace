@@ -1,3 +1,13 @@
+import { vi } from "vitest";
+import { render } from "@testing-library/react";
+import { axe } from "jest-axe";
+import "@testing-library/jest-dom";
+import SearchContainer from "../Components/MainSearch/SearchContainer";
+import PatientView from "../Components/Patient/PatientView";
+import AuditLogPage from "../Components/Audit/AuditLogPage";
+import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
+import { TestProviders } from "./TestProviders";
+
 // Mock fetch globally to prevent network errors in PatientView/AuditLogPage
 if (typeof global.fetch === "undefined") {
   global.fetch = vi.fn(
@@ -9,15 +19,6 @@ if (typeof global.fetch === "undefined") {
       }),
   );
 }
-import { render } from "@testing-library/react";
-import { axe } from "jest-axe";
-import "@testing-library/jest-dom";
-import SearchContainer from "../Components/MainSearch/SearchContainer";
-import PatientView from "../Components/Patient/PatientView";
-import AuditLogPage from "../Components/Audit/AuditLogPage";
-import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
-import { TestProviders } from "./TestProviders";
-
 // Mock localStorage for Node test environment (jsdom-compatible)
 if (typeof global.localStorage === "undefined") {
   const store: Record<string, string> = {};
