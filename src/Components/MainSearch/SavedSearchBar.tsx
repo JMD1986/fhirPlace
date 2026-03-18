@@ -256,7 +256,6 @@ export default function SavedSearchBar<
             </Typography>
           )}
           <TextField
-            autoFocus
             fullWidth
             label="Search name"
             value={saveName}
@@ -292,7 +291,6 @@ export default function SavedSearchBar<
         <DialogTitle>Rename Search</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
             fullWidth
             label="New name"
             value={renameName}

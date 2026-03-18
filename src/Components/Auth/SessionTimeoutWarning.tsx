@@ -38,7 +38,7 @@ export default function SessionTimeoutWarning({
         <Button onClick={onLogout} color="inherit">
           Log out
         </Button>
-        <Button onClick={onStayLoggedIn} variant="contained" autoFocus>
+        <Button onClick={onStayLoggedIn} variant="contained">
           Stay logged in
         </Button>
       </DialogActions>
