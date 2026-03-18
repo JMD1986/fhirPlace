@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Xml.Linq;
+using System.Linq;
 
 namespace FhirPlace.Server;
 
@@ -343,25 +344,29 @@ public static class CcdGenerator
     return Section("2.16.840.1.113883.10.20.22.2.1.1",
         "10160-0", "Medications",
         HtmlTable(new[] { "Medication", "Status", "Date" }, rows),
-        entries, medications.Count == 0);
+    var labItems = labs.Select(json =>
   }
 
   // ── Results (Lab Observations) ─────────────────────────────────────────────
   static XElement ResultsSection(IReadOnlyList<string> labs)
   {
     var rows = new List<XElement>();
+      return new { r, coding, effDate, val, unit };
+    });
     var entries = new List<XElement>();
-
+    foreach (var item in labItems)
+    {
+      rows.Add(Tr(item.coding.display, $"{item.val} {item.unit}".Trim(), FmtDate(item.effDate)));
     foreach (var json in labs)
     {
       using var doc = JsonDocument.Parse(json);
       var r = doc.RootElement;
       var coding = CodeableConcept(r, "code");
       var effDate = Str(r, "effectiveDateTime");
-      var (val, unit) = ObservationValue(r);
+              new XElement(Hl7 + "code", CdaCodeAttrs(item.coding, OidLoinc)),
 
       rows.Add(Tr(coding.display, $"{val} {unit}".Trim(), FmtDate(effDate)));
-
+                  ObservationEntry(item.r, item.coding, item.effDate, item.val, item.unit)))));
       entries.Add(new XElement(Hl7 + "entry", new XAttribute("typeCode", "DRIV"),
           new XElement(Hl7 + "organizer",
               new XAttribute("classCode", "CLUSTER"), new XAttribute("moodCode", "EVN"),
