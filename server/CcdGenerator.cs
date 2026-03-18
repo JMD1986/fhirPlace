@@ -256,10 +256,18 @@ public static class CcdGenerator
   // ── Problems (Conditions) ──────────────────────────────────────────────────
   static XElement ProblemsSection(IReadOnlyList<string> conditions)
   {
-    var rows = new List<XElement>();
-    var entries = new List<XElement>();
+    var rows = conditions.Select(json =>
+    {
+      using var doc = JsonDocument.Parse(json);
+      var r = doc.RootElement;
+      var coding = CodeableConcept(r, "code");
+      var onset = Str(r, "onsetDateTime");
+      var abatement = Str(r, "abatementDateTime");
+      var status = StrCoding(r, "clinicalStatus") ?? "active";
+      return Tr(coding.display, status, FmtDate(onset), FmtDate(abatement));
+    }).ToList();
 
-    foreach (var json in conditions)
+    var entries = conditions.Select(json =>
     {
       using var doc = JsonDocument.Parse(json);
       var r = doc.RootElement;
@@ -268,9 +276,7 @@ public static class CcdGenerator
       var abatement = Str(r, "abatementDateTime");
       var status = StrCoding(r, "clinicalStatus") ?? "active";
 
-      rows.Add(Tr(coding.display, status, FmtDate(onset), FmtDate(abatement)));
-
-      entries.Add(new XElement(Hl7 + "entry", new XAttribute("typeCode", "DRIV"),
+      return new XElement(Hl7 + "entry", new XAttribute("typeCode", "DRIV"),
           new XElement(Hl7 + "act",
               new XAttribute("classCode", "ACT"), new XAttribute("moodCode", "EVN"),
               TemplateId("2.16.840.1.113883.10.20.22.4.3"),
@@ -291,8 +297,8 @@ public static class CcdGenerator
                           new XAttribute("displayName", "Condition")),
                       new XElement(Hl7 + "statusCode", new XAttribute("code", "completed")),
                       EffectiveTime(onset, abatement),
-                      CdaCodedValue(coding, OidSnomed))))));
-    }
+                      CdaCodedValue(coding, OidSnomed)))));
+    }).ToList();
 
     return Section("2.16.840.1.113883.10.20.22.2.5.1",
         "11450-4", "Problem List",
