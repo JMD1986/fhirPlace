@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { patientApi } from "../api/fhirApi";
-import type { PatientResource as Patient } from "../types/fhir";
+import type { Patient } from "../types/fhir";
 
 const DISPLAY_SIZE = 10;
 const FETCH_SIZE = 20;

@@ -1,5 +1,3 @@
-import { vi } from "vitest";
-
 // Mock fetch globally to prevent network errors in PatientView/AuditLogPage
 if (typeof global.fetch === "undefined") {
   global.fetch = vi.fn(

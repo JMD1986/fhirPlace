@@ -2,6 +2,7 @@
 // Shared FHIR data extraction and formatting helpers for Patient components
 
 import type {
+  Patient,
   PatientResource,
   FhirExtension,
   FhirName,
@@ -14,7 +15,7 @@ export function stripNums(s: string) {
 }
 
 // Get display name for a Patient
-export function getName(patient: PatientResource) {
+export function getName(patient: Patient) {
   const n = patient.name?.[0];
   const given = n?.given?.map(stripNums).join(" ") ?? "";
   const family = stripNums(n?.family ?? "");
@@ -22,7 +23,7 @@ export function getName(patient: PatientResource) {
 }
 
 // Get address for a Patient
-export function getAddress(patient: PatientResource) {
+export function getAddress(patient: Patient) {
   const a = patient.address?.[0];
   if (!a) return "—";
   return [a.line?.join(" "), a.city, a.state, a.postalCode]
@@ -31,7 +32,7 @@ export function getAddress(patient: PatientResource) {
 }
 
 // Get language for a Patient
-export function getLanguage(patient: PatientResource) {
+export function getLanguage(patient: Patient) {
   const c = patient.communication?.[0];
   return c?.language?.text ?? c?.language?.coding?.[0]?.display ?? "—";
 }
