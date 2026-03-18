@@ -1,4 +1,5 @@
 // Mock fetch globally to prevent network errors in PatientView/AuditLogPage
+import { vi } from "vitest";
 vi.stubGlobal(
   "fetch",
   vi.fn(
@@ -43,10 +44,10 @@ import PatientView from "../Components/Patient/PatientView";
 import AuditLogPage from "../Components/Audit/AuditLogPage";
 import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 import { TestProviders } from "./TestProviders";
-
 // Mock audit API to prevent network calls and provide valid default data
 vi.mock("../api/auditApi", () => ({
   queryAuditEvents: vi.fn().mockResolvedValue({ events: [], total: 0 }),
+vi.mock("../api/auditApi", () => ({
   verifyAuditChain: vi.fn().mockResolvedValue({ valid: true, totalEvents: 0 }),
   getAuditStats: vi
     .fn()
