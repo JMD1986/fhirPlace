@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import React from "react";
 import {
   Box,
   Paper,
@@ -471,7 +472,7 @@ export default function AuditLogPage() {
               </TableRow>
             ) : (
               events.map((evt) => (
-                <>
+                <React.Fragment key={evt.id}>
                   <TableRow
                     key={evt.id}
                     hover
@@ -635,7 +636,7 @@ export default function AuditLogPage() {
                       </Collapse>
                     </TableCell>
                   </TableRow>
-                </>
+                </React.Fragment>
               ))
             )}
           </TableBody>
