@@ -331,6 +331,8 @@ ${patientContext}`;
     setConversationHistory([]);
   };
 
+
+  
   return (
     <Paper
       elevation={3}
