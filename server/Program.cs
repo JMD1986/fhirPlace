@@ -116,6 +116,16 @@ app.Use(async (ctx, next) =>
     {
       Console.Error.WriteLine($"[Audit] write failed: {ex}");
     }
+      await AuditService.LogAsync(db, evt);
+    }
+    catch (OperationCanceledException)
+    {
+      // Ignore cancellation: background audit task was cancelled, not a real failure.
+    }
+    catch (Exception ex)
+    {
+      Console.Error.WriteLine($"[Audit] write failed: {ex}");
+    }
   });
 });
 
