@@ -12,6 +12,8 @@ import type Client from "fhirclient/lib/Client";
 import { scrubFhirClientState } from "../lib/smartStorage";
 import { setAuditUser } from "../api/fhirApi";
 import { setAuditHeaders, logAuditEvent } from "../api/auditApi";
+import { useInactivityTimeout } from "../hooks/useInactivityTimeout";
+import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type UserRole = "patient" | "provider";
@@ -229,6 +231,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // ── (d)(5) Automatic Access Timeout ──────────────────────────────────────
+  const { showWarning, secondsLeft, stayLoggedIn } = useInactivityTimeout({
+    timeoutMs: 15 * 60 * 1000, // 15 minutes
+    warningBeforeMs: 2 * 60 * 1000, // warn at 2 min remaining
+    onTimeout: () => {
+      logAuditEvent({
+        action: "logout",
+        detail: "Session timed out due to inactivity",
+      }).catch(() => {});
+      logout();
+    },
+    enabled: !!user,
+  });
+
   return (
     <AuthContext.Provider
       value={{
@@ -243,6 +259,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      <SessionTimeoutWarning
+        open={showWarning}
+        secondsLeft={secondsLeft}
+        onStayLoggedIn={stayLoggedIn}
+        onLogout={logout}
+      />
     </AuthContext.Provider>
   );
 }
