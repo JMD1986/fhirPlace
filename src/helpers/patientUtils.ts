@@ -1,13 +1,20 @@
 // patientUtils.ts
 // Shared FHIR data extraction and formatting helpers for Patient components
 
+import type {
+  PatientResource,
+  FhirExtension,
+  FhirName,
+  FhirAddress,
+} from "../types/fhir";
+
 // Remove numbers from a string (for display)
 export function stripNums(s: string) {
   return s.replace(/\d+/g, "").trim();
 }
 
 // Get display name for a Patient
-export function getName(patient: Patient) {
+export function getName(patient: PatientResource) {
   const n = patient.name?.[0];
   const given = n?.given?.map(stripNums).join(" ") ?? "";
   const family = stripNums(n?.family ?? "");
@@ -15,7 +22,7 @@ export function getName(patient: Patient) {
 }
 
 // Get address for a Patient
-export function getAddress(patient: Patient) {
+export function getAddress(patient: PatientResource) {
   const a = patient.address?.[0];
   if (!a) return "—";
   return [a.line?.join(" "), a.city, a.state, a.postalCode]
@@ -24,12 +31,10 @@ export function getAddress(patient: Patient) {
 }
 
 // Get language for a Patient
-export function getLanguage(patient: Patient) {
+export function getLanguage(patient: PatientResource) {
   const c = patient.communication?.[0];
   return c?.language?.text ?? c?.language?.coding?.[0]?.display ?? "—";
 }
-
-import type { PatientResource, FhirExtension, FhirName, FhirAddress } from "../../types/fhir";
 
 // Extract Patient resource from FHIR Bundle or direct Patient object
 export function extractPatientFromBundle(data: Record<string, unknown>): PatientResource | null {
@@ -48,17 +53,23 @@ export function extractPatientFromBundle(data: Record<string, unknown>): Patient
 // Extract race from FHIR extensions
 export function getRace(extensions: FhirExtension[] | undefined): string {
   const raceExt = extensions?.find(
-    (ext) => ext.url === "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+    (ext) => ext.url === "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race",
   );
-  return raceExt?.extension?.find((ext) => ext.url === "text")?.valueString ?? "Not provided";
+  return (
+    raceExt?.extension?.find((ext: FhirExtension) => ext.url === "text")?.valueString ??
+    "Not provided"
+  );
 }
 
 // Extract ethnicity from FHIR extensions
 export function getEthnicity(extensions: FhirExtension[] | undefined): string {
   const ethnExt = extensions?.find(
-    (ext) => ext.url === "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+    (ext) => ext.url === "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity",
   );
-  return ethnExt?.extension?.find((ext) => ext.url === "text")?.valueString ?? "Not provided";
+  return (
+    ethnExt?.extension?.find((ext: FhirExtension) => ext.url === "text")?.valueString ??
+    "Not provided"
+  );
 }
 
 // Extract birth place from FHIR extensions

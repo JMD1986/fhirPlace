@@ -2,15 +2,16 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import EncounterSearchResults, {
+import EncounterSearchResults from "../Components/Encounter/EncounterSearchResults";
+import {
   getType,
   getPatientDisplay,
   getPractitioner,
   getLocation,
   formatDate,
   statusColor,
-} from "../Components/Encounter/EncounterSearchResults";
-import type { FhirEncounter } from "../Components/Encounter/EncounterSearchResults";
+} from "../helpers/encounterUtils";
+import type { FhirEncounter } from "../Components/Encounter/encounterTypes";
 
 // ── Mock react-router navigate ────────────────────────────────────────────────
 

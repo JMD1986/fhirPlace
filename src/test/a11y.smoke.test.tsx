@@ -1,15 +1,15 @@
+import { vi } from "vitest";
+
 // Mock fetch globally to prevent network errors in PatientView/AuditLogPage
 if (typeof global.fetch === "undefined") {
-  global.fetch = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
+  global.fetch = vi.fn(async () =>
+    // Use a real Response object so .json()/.text() behave like fetch
+    new Response(JSON.stringify({}), {
       status: 200,
-      json: async () => ({}),
-      text: async () => "",
+      headers: { "Content-Type": "application/json" },
     }),
   );
 }
-import React from "react";
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
 import "@testing-library/jest-dom";
@@ -49,7 +49,6 @@ if (typeof global.localStorage === "undefined") {
 }
 
 // Mock FHIR.oauth2.ready for AuthProvider (Vitest)
-import { vi } from "vitest";
 vi.mock("fhirclient", () => ({
   __esModule: true,
   default: {
