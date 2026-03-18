@@ -18,7 +18,14 @@ export function RouteAnnouncer() {
       return;
     }
     // Update the announcement text based on document title.
-    setTimeout(() => setAnnouncement(document.title || "Navigated"), 0);
+    const timeoutId = setTimeout(
+      () => setAnnouncement(document.title || "Navigated"),
+      0
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [location]);
 
   // Move focus to the first <h1> in <main> after announcement updates.
