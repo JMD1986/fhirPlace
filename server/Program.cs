@@ -646,7 +646,7 @@ app.MapGet("/api/patients/{id}/ccd", async (FhirDbContext db, string id) =>
       .Where(r => r.ResourceType == "Procedure" && r.PatientId == id)
       .Select(r => r.ResourceJson).ToListAsync();
 
-  var immunizations = await db.Resources
+      Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "public", "CDA.xsl"));
       .Where(r => r.ResourceType == "Immunization" && r.PatientId == id)
       .Select(r => r.ResourceJson).ToListAsync();
 
