@@ -102,11 +102,11 @@ export function getPhone(telecom: { system?: string; value?: string }[] | undefi
 export function formatAddress(address: FhirAddress[] | undefined): string {
   if (!address || address.length === 0) return "Not provided";
   const addr = address[0];
+  const stateZip = [addr.state, addr.postalCode].filter(Boolean).join(" ");
   const lines = [
     addr.line?.join(", ") || "",
     addr.city,
-    addr.state,
-    addr.postalCode,
+    stateZip,
     addr.country,
   ].filter(Boolean);
   return lines.length ? lines.join(", ") : "Not provided";
