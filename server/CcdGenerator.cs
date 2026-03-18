@@ -484,7 +484,7 @@ public static class CcdGenerator
                       TemplateId("2.16.840.1.113883.10.20.22.4.54"),
                       new XElement(Hl7 + "manufacturedMaterial",
                           CdaCode(coding, OidCvx)))))));
-    }
+    foreach (var encounter in encounters.Select(json =>
 
     return Section("2.16.840.1.113883.10.20.22.2.2.1",
         "11369-6", "Immunizations",
@@ -494,15 +494,27 @@ public static class CcdGenerator
 
   // ── Encounters ─────────────────────────────────────────────────────────────
   static XElement EncountersSection(IReadOnlyList<string> encounters)
-  {
+      return new
+      {
+        typeCoding,
+        periodStart,
+        periodEnd,
+        status
+      };
+    }))
+    {
+      rows.Add(Tr(encounter.typeCoding.display,
+                  encounter.status,
+                  FmtDate(encounter.periodStart),
+                  FmtDate(encounter.periodEnd)));
     var rows = new List<XElement>();
     var entries = new List<XElement>();
 
     foreach (var json in encounters)
     {
       using var doc = JsonDocument.Parse(json);
-      var r = doc.RootElement;
-
+              CdaCode(encounter.typeCoding, OidSnomed),
+              EffectiveTime(encounter.periodStart, encounter.periodEnd))));
       var typeCoding = EncounterTypeCoding(r);
       var periodStart = NestedStr(r, "period", "start");
       var periodEnd = NestedStr(r, "period", "end");
