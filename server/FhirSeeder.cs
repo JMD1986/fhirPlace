@@ -15,6 +15,39 @@ public static class FhirSeeder
     // ── Schema: create tables if they don't exist ─────────────────────────
     await db.Database.EnsureCreatedAsync();
 
+    // Ensure AuditEvents table exists even on pre-existing databases
+    // (EnsureCreated is a no-op when the DB file already exists)
+    await db.Database.ExecuteSqlRawAsync(@"
+      CREATE TABLE IF NOT EXISTS AuditEvents (
+        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+        Timestamp TEXT NOT NULL DEFAULT '',
+        Action TEXT NOT NULL DEFAULT '',
+        ResourceType TEXT NOT NULL DEFAULT '',
+        ResourceId TEXT,
+        PatientId TEXT,
+        UserId TEXT NOT NULL DEFAULT '',
+        UserName TEXT NOT NULL DEFAULT '',
+        UserRole TEXT NOT NULL DEFAULT '',
+        HttpMethod TEXT NOT NULL DEFAULT '',
+        RequestPath TEXT NOT NULL DEFAULT '',
+        QueryString TEXT,
+        StatusCode INTEGER NOT NULL DEFAULT 0,
+        ClientIp TEXT,
+        Outcome TEXT NOT NULL DEFAULT 'success',
+        Detail TEXT,
+        IntegrityHash TEXT NOT NULL DEFAULT ''
+      )");
+    await db.Database.ExecuteSqlRawAsync(
+      "CREATE INDEX IF NOT EXISTS IX_AuditEvents_Timestamp ON AuditEvents (Timestamp)");
+    await db.Database.ExecuteSqlRawAsync(
+      "CREATE INDEX IF NOT EXISTS IX_AuditEvents_UserId ON AuditEvents (UserId)");
+    await db.Database.ExecuteSqlRawAsync(
+      "CREATE INDEX IF NOT EXISTS IX_AuditEvents_PatientId ON AuditEvents (PatientId)");
+    await db.Database.ExecuteSqlRawAsync(
+      "CREATE INDEX IF NOT EXISTS IX_AuditEvents_Action ON AuditEvents (Action)");
+    await db.Database.ExecuteSqlRawAsync(
+      "CREATE INDEX IF NOT EXISTS IX_AuditEvents_ResourceType ON AuditEvents (ResourceType)");
+
     if (await db.Patients.AnyAsync())
     {
       var patCount = await db.Patients.CountAsync();

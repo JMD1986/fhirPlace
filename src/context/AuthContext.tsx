@@ -10,6 +10,8 @@ import {
 import FHIR from "fhirclient";
 import type Client from "fhirclient/lib/Client";
 import { scrubFhirClientState } from "../lib/smartStorage";
+import { setAuditUser } from "../api/fhirApi";
+import { setAuditHeaders, logAuditEvent } from "../api/auditApi";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export type UserRole = "patient" | "provider";
@@ -144,8 +146,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .ready()
       .then((fhirClient) => {
         setClient(fhirClient);
-        setUser(deriveUser(fhirClient));
+        const derived = deriveUser(fhirClient);
+        setUser(derived);
+        const auditIdentity = {
+          userId: derived.email,
+          userName: derived.username,
+          userRole: derived.role,
+        };
+        setAuditUser(auditIdentity);
+        setAuditHeaders(auditIdentity);
         scheduleRefresh(fhirClient);
+        logAuditEvent({
+          action: "login",
+          detail: "Session restored from sessionStorage",
+        }).catch(() => {});
       })
       .catch(() => {
         // No existing session — normal for a fresh visit.
@@ -158,9 +172,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const _receiveClient = useCallback(
     (fhirClient: Client) => {
       setClient(fhirClient);
-      setUser(deriveUser(fhirClient));
+      const derived = deriveUser(fhirClient);
+      setUser(derived);
+      const auditIdentity = {
+        userId: derived.email,
+        userName: derived.username,
+        userRole: derived.role,
+      };
+      setAuditUser(auditIdentity);
+      setAuditHeaders(auditIdentity);
       scheduleRefresh(fhirClient);
       setError(null);
+      logAuditEvent({
+        action: "login",
+        detail: "SMART on FHIR launch completed",
+      }).catch(() => {});
     },
     [scheduleRefresh],
   );
@@ -184,11 +210,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    logAuditEvent({ action: "logout", detail: "User initiated logout" }).catch(
+      () => {},
+    );
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     scrubFhirClientState(); // Belt-and-suspenders: scrub any lingering SMART sessionStorage
     setUser(null);
     setClient(null);
     setError(null);
+    setAuditUser(null);
+    setAuditHeaders(null);
   }, []);
 
   const updateUser = useCallback(

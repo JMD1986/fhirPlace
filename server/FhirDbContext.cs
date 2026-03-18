@@ -10,6 +10,7 @@ public class FhirDbContext(DbContextOptions<FhirDbContext> options) : DbContext(
   public DbSet<DocRefEncounterLink> DocRefEncounterLinks { get; set; }
   public DbSet<ClaimEncounterLink> ClaimEncounterLinks { get; set; }
   public DbSet<EobEncounterLink> EobEncounterLinks { get; set; }
+  public DbSet<AuditEvent> AuditEvents { get; set; }
 
   protected override void OnModelCreating(ModelBuilder mb)
   {
@@ -37,5 +38,12 @@ public class FhirDbContext(DbContextOptions<FhirDbContext> options) : DbContext(
     mb.Entity<DocRefEncounterLink>().HasIndex(l => l.EncounterId);
     mb.Entity<ClaimEncounterLink>().HasIndex(l => l.EncounterId);
     mb.Entity<EobEncounterLink>().HasIndex(l => l.EncounterId);
+
+    // ── Audit event indexes (ONC §170.315(d)(2)) ─────────────────────────
+    mb.Entity<AuditEvent>().HasIndex(a => a.Timestamp);
+    mb.Entity<AuditEvent>().HasIndex(a => a.UserId);
+    mb.Entity<AuditEvent>().HasIndex(a => a.PatientId);
+    mb.Entity<AuditEvent>().HasIndex(a => a.Action);
+    mb.Entity<AuditEvent>().HasIndex(a => a.ResourceType);
   }
 }

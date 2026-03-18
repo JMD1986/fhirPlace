@@ -30,11 +30,25 @@ import type {
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5001";
 
+// ── Audit identity (ONC §170.315(d)(2)) ───────────────────────────────────────
+// Module-level user info injected by AuthContext so every API call carries
+// audit headers identifying who is making the request.
+let _auditUser: { userId: string; userName: string; userRole: string } | null =
+  null;
+
+/** Called by AuthContext when user logs in/out to attach identity to API calls. */
+export function setAuditUser(
+  user: { userId: string; userName: string; userRole: string } | null,
+): void {
+  _auditUser = user;
+}
+
 // ── Core HTTP helper ──────────────────────────────────────────────────────────
 
 /**
  * Wraps fetch with base URL prepending and standard error handling.
  * Throws an Error with the HTTP status message on non-2xx responses.
+ * Injects X-Audit-User-* headers for ONC (d)(2) audit logging.
  */
 const HTTP_STATUS_TEXT: Record<number, string> = {
   400: "Bad Request",
@@ -50,7 +64,16 @@ const HTTP_STATUS_TEXT: Record<number, string> = {
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
-  const res = await fetch(url, init);
+
+  // Inject audit identity headers for ONC §170.315(d)(2)
+  const headers = new Headers(init?.headers);
+  if (_auditUser) {
+    headers.set("X-Audit-User-Id", _auditUser.userId);
+    headers.set("X-Audit-User-Name", _auditUser.userName);
+    headers.set("X-Audit-User-Role", _auditUser.userRole);
+  }
+
+  const res = await fetch(url, { ...init, headers });
   if (!res.ok) {
     const text = res.statusText || HTTP_STATUS_TEXT[res.status] || "Error";
     throw new Error(`HTTP ${res.status}: ${text}`);
@@ -92,6 +115,17 @@ export const patientApi = {
     );
   },
 };
+
+/** Trigger a browser download of the patient's CCD XML export. */
+export function downloadCcd(patientId: string): void {
+  const url = `${API_BASE}/api/patients/${encodeURIComponent(patientId)}/ccd`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `CCD_${patientId}.xml`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
 /**
  * Fire-and-forget prefetch of a single patient into the in-memory cache.

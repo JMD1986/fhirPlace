@@ -48,6 +48,7 @@ const MedicationRequestView = lazy(
 const UserProfilePage = lazy(() => import("./Components/Auth/UserProfilePage"));
 const LaunchPage = lazy(() => import("./Components/Auth/LaunchPage"));
 const CallbackPage = lazy(() => import("./Components/Auth/CallbackPage"));
+const AuditLogPage = lazy(() => import("./Components/Audit/AuditLogPage"));
 
 function ErrorFallback({
   error,
@@ -218,6 +219,14 @@ function App() {
               element={
                 <RouteWrapper>
                   <CallbackPage />
+                </RouteWrapper>
+              }
+            />
+            <Route
+              path="/audit"
+              element={
+                <RouteWrapper>
+                  <AuditLogPage />
                 </RouteWrapper>
               }
             />

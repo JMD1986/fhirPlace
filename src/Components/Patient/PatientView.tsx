@@ -23,6 +23,7 @@ import {
   Drawer,
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import Chatbot from "../Shared/Chatbot/Chatbot";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PersonIcon from "@mui/icons-material/Person";
@@ -81,7 +82,7 @@ const MedicationRequestView = lazy(
 );
 const BillingDashboard = lazy(() => import("./BillingDashboard"));
 import { useParams, useNavigate } from "react-router-dom";
-import { patientApi, observationApi } from "../../api/fhirApi";
+import { patientApi, observationApi, downloadCcd } from "../../api/fhirApi";
 
 interface PatientViewProps {
   /** identifier used to fetch the patient from the API */
@@ -301,9 +302,17 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
   ];
   return (
     <Box sx={{ p: 3, mt: 2 }}>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        &larr; Back to search
-      </Button>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+        <Button onClick={() => navigate(-1)}>&larr; Back to search</Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<FileDownloadIcon />}
+          onClick={() => downloadCcd(patientId)}
+        >
+          Export CCD
+        </Button>
+      </Box>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
         <Avatar size={80} name={displayName} />

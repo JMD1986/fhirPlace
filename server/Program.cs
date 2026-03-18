@@ -60,6 +60,75 @@ app.Use(async (ctx, next) =>
   await next();
 });
 
+// ── ONC §170.315(d)(2) — Audit logging middleware ─────────────────────────────
+// Records who accessed EHI, what was accessed, when, and the outcome.
+// Runs after security headers so it can capture response status codes.
+app.Use(async (ctx, next) =>
+{
+  var path = ctx.Request.Path.Value ?? "";
+
+  if (!AuditService.ShouldAudit(path))
+  {
+    await next();
+    return;
+  }
+
+  await next(); // Let the request complete so we capture the status code
+
+  // Fire-and-forget audit write using a new scope (original may be disposed)
+  var scopeFactory = ctx.RequestServices.GetRequiredService<IServiceScopeFactory>();
+  var (action, resourceType, resourceId, patientId) =
+      AuditService.ParseRequest(path, ctx.Request.QueryString.ToString());
+  var (userId, userName, userRole) = AuditService.ExtractUser(ctx.Request);
+
+  var evt = new AuditEvent
+  {
+    Timestamp = DateTime.UtcNow.ToString("o"),
+    Action = action,
+    ResourceType = resourceType,
+    ResourceId = resourceId,
+    PatientId = patientId,
+    UserId = userId,
+    UserName = userName,
+    UserRole = userRole,
+    HttpMethod = ctx.Request.Method,
+    RequestPath = path,
+    QueryString = ctx.Request.QueryString.ToString().TrimStart('?'),
+    StatusCode = ctx.Response.StatusCode,
+    ClientIp = ctx.Connection.RemoteIpAddress?.ToString(),
+    Outcome = ctx.Response.StatusCode < 400 ? "success" : "failure",
+  };
+
+  // Write in background so latency isn't added to the response
+  _ = Task.Run(async () =>
+  {
+    using var scope = scopeFactory.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
+    try
+    {
+      await AuditService.LogAsync(db, evt);
+    }
+    catch (OperationCanceledException)
+    {
+      // Ignore cancellation: background audit task was cancelled, not a real failure.
+    }
+    catch (Exception ex)
+    {
+      Console.Error.WriteLine($"[Audit] write failed: {ex}");
+    }
+      await AuditService.LogAsync(db, evt);
+    }
+    catch (OperationCanceledException)
+    {
+      // Ignore cancellation: background audit task was cancelled, not a real failure.
+    }
+    catch (Exception ex)
+    {
+      Console.Error.WriteLine($"[Audit] write failed: {ex}");
+    }
+  });
+});
+
 // â”€â”€ Startup: seed DB from Synthea files (no-op on subsequent restarts) â”€â”€â”€â”€â”€â”€â”€â”€
 using (var scope = app.Services.CreateScope())
 {
@@ -549,6 +618,60 @@ app.MapGet("/fhir/ExplanationOfBenefit/{id}", async (FhirDbContext db, string id
       ? Results.Json(new { error = "ExplanationOfBenefit not found" }, statusCode: 404)
       : Results.Json(J(json), contentType: FhirContentType);
 });
+// ── Routes: CCD Export (ONC §170.315(b)(6) Data Export) ───────────────────────
+
+app.MapGet("/api/patients/{id}/ccd", async (FhirDbContext db, string id) =>
+{
+  var patient = await db.Patients
+      .Where(p => p.Id == id)
+      .Select(p => new { p.ResourceJson })
+      .FirstOrDefaultAsync();
+
+  if (patient is null)
+    return Results.Json(new { error = "Patient not found" }, statusCode: 404);
+
+  var conditions = await db.Resources
+      .Where(r => r.ResourceType == "Condition" && r.PatientId == id)
+      .Select(r => r.ResourceJson).ToListAsync();
+
+  var medications = await db.Resources
+      .Where(r => r.ResourceType == "MedicationRequest" && r.PatientId == id)
+      .Select(r => r.ResourceJson).ToListAsync();
+
+  var observations = await db.Resources
+      .Where(r => r.ResourceType == "Observation" && r.PatientId == id)
+      .Select(r => r.ResourceJson).ToListAsync();
+
+  var procedures = await db.Resources
+      .Where(r => r.ResourceType == "Procedure" && r.PatientId == id)
+      .Select(r => r.ResourceJson).ToListAsync();
+
+      Path.Join(AppContext.BaseDirectory, "..", "..", "..", "..", "public", "CDA.xsl"));
+      .Where(r => r.ResourceType == "Immunization" && r.PatientId == id)
+      .Select(r => r.ResourceJson).ToListAsync();
+
+  var encounters = await db.Encounters
+      .Where(e => e.PatientId == id)
+      .Select(e => e.ResourceJson).ToListAsync();
+
+  var xml = CcdGenerator.Generate(
+      patient.ResourceJson,
+      conditions, medications, observations,
+      procedures, immunizations, encounters);
+
+  return Results.Content(xml, "application/xml");
+});
+
+// Serve CDA.xsl stylesheet so browsers can render CCD exports
+app.MapGet("/api/patients/{id}/CDA.xsl", () =>
+{
+  var xslPath = Path.GetFullPath(
+      Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "public", "CDA.xsl"));
+  if (!File.Exists(xslPath))
+    return Results.NotFound();
+  return Results.File(xslPath, "text/xsl");
+});
+
 // ── Anthropic Chat Proxy ──────────────────────────────────────────────────────
 // app.MapPost("/api/anthropic-chat", async (HttpRequest req) =>
 // {
@@ -614,6 +737,135 @@ app.MapPost("/api/anthropic-chat", async (HttpRequest req, IHttpClientFactory ht
   {
     return Results.Json(new { error = "Anthropic proxy error", detail = ex.Message }, statusCode: 502);
   }
+});
+
+// ── Routes: Audit Log (ONC §170.315(d)(2) & (d)(3)) ──────────────────────────
+
+// Query audit events with filtering and pagination
+app.MapGet("/api/audit", async (
+    FhirDbContext db, HttpRequest req,
+    string? userId, string? patientId, string? action,
+    string? resourceType, string? startDate, string? endDate,
+    string? outcome,
+    int _count = 50, int _offset = 0) =>
+{
+  var q = db.AuditEvents.AsNoTracking().AsQueryable();
+
+  if (userId is not null) q = q.Where(a => a.UserId == userId);
+  if (patientId is not null) q = q.Where(a => a.PatientId == patientId);
+  if (action is not null) q = q.Where(a => a.Action == action);
+  if (resourceType is not null) q = q.Where(a => a.ResourceType == resourceType);
+  if (outcome is not null) q = q.Where(a => a.Outcome == outcome);
+  if (startDate is not null) q = q.Where(a => string.Compare(a.Timestamp, startDate) >= 0);
+  if (endDate is not null) q = q.Where(a => string.Compare(a.Timestamp, endDate) <= 0);
+
+  var total = await q.CountAsync();
+  var cap = Math.Min(_count, 500);
+  var events = await q
+      .OrderByDescending(a => a.Id)
+      .Skip(_offset)
+      .Take(cap)
+      .ToListAsync();
+
+  // Log the audit query itself
+  var (auditUserId, auditUserName, auditUserRole) = AuditService.ExtractUser(req);
+  var auditEvt = new AuditEvent
+  {
+    Timestamp = DateTime.UtcNow.ToString("o"),
+    Action = "audit_query",
+    ResourceType = "AuditEvent",
+    UserId = auditUserId,
+    UserName = auditUserName,
+    UserRole = auditUserRole,
+    HttpMethod = "GET",
+    RequestPath = "/api/audit",
+    QueryString = req.QueryString.ToString().TrimStart('?'),
+    StatusCode = 200,
+    ClientIp = req.HttpContext.Connection.RemoteIpAddress?.ToString(),
+    Outcome = "success",
+  };
+  _ = Task.Run(async () =>
+  {
+    using var scope = app.Services.CreateScope();
+    var auditDb = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
+    try { await AuditService.LogAsync(auditDb, auditEvt); }
+    catch { /* best-effort */ }
+  });
+
+  return Results.Json(new
+  {
+    total,
+    offset = _offset,
+    count = events.Count,
+    events,
+  });
+});
+
+// Log frontend-initiated events (login, logout, navigation)
+app.MapPost("/api/audit", async (HttpRequest req, FhirDbContext db) =>
+{
+  using var reader = new StreamReader(req.Body);
+  var body = await reader.ReadToEndAsync();
+  if (string.IsNullOrWhiteSpace(body))
+    return Results.Json(new { error = "Empty request body" }, statusCode: 400);
+
+  var payload = JsonSerializer.Deserialize<JsonElement>(body);
+  var (userId, userName, userRole) = AuditService.ExtractUser(req);
+
+  var evt = new AuditEvent
+  {
+    Timestamp = DateTime.UtcNow.ToString("o"),
+    Action = payload.TryGetProperty("action", out var a) ? a.GetString() ?? "unknown" : "unknown",
+    ResourceType = payload.TryGetProperty("resourceType", out var rt) ? rt.GetString() ?? "" : "Session",
+    ResourceId = payload.TryGetProperty("resourceId", out var ri) ? ri.GetString() : null,
+    PatientId = payload.TryGetProperty("patientId", out var pid) ? pid.GetString() : null,
+    UserId = userId,
+    UserName = userName,
+    UserRole = userRole,
+    HttpMethod = "POST",
+    RequestPath = payload.TryGetProperty("requestPath", out var rp) ? rp.GetString() ?? "" : "",
+    Detail = payload.TryGetProperty("detail", out var d) ? d.GetString() : null,
+    StatusCode = 200,
+    ClientIp = req.HttpContext.Connection.RemoteIpAddress?.ToString(),
+    Outcome = "success",
+  };
+
+  await AuditService.LogAsync(db, evt);
+  return Results.Json(new { status = "recorded", id = evt.Id });
+});
+
+// Verify audit log integrity (tamper detection)
+app.MapGet("/api/audit/verify", async (FhirDbContext db) =>
+{
+  var (isValid, brokenAtId) = await AuditService.VerifyChainAsync(db);
+  return Results.Json(new
+  {
+    integrityValid = isValid,
+    chainLength = await db.AuditEvents.CountAsync(),
+    brokenAtId,
+    verifiedAt = DateTime.UtcNow.ToString("o"),
+  });
+});
+
+// Summary statistics for audit dashboard
+app.MapGet("/api/audit/stats", async (FhirDbContext db) =>
+{
+  var total = await db.AuditEvents.CountAsync();
+  var byAction = await db.AuditEvents
+      .GroupBy(a => a.Action)
+      .Select(g => new { action = g.Key, count = g.Count() })
+      .ToListAsync();
+  var byResourceType = await db.AuditEvents
+      .GroupBy(a => a.ResourceType)
+      .Select(g => new { resourceType = g.Key, count = g.Count() })
+      .ToListAsync();
+  var byUser = await db.AuditEvents
+      .GroupBy(a => a.UserId)
+      .Select(g => new { userId = g.Key, count = g.Count() })
+      .ToListAsync();
+  var failures = await db.AuditEvents.CountAsync(a => a.Outcome == "failure");
+
+  return Results.Json(new { total, failures, byAction, byResourceType, byUser });
 });
 
 // ── Run ──────────────────────────────────────────────────────────────────────

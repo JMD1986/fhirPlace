@@ -108,6 +108,14 @@ export default function SearchContainer() {
           >
             <MenuItem onClick={displayPatients}>Patient Search</MenuItem>
             <MenuItem onClick={displayEncounters}>Encounter Search</MenuItem>
+            <MenuItem
+              onClick={() => {
+                setAnchorEl(null);
+                navigate("/audit");
+              }}
+            >
+              Audit Log
+            </MenuItem>
           </Menu>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {searchTitle}
