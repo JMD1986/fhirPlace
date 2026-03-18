@@ -18,6 +18,7 @@ import PatientView from "../Components/Patient/PatientView";
 import AuditLogPage from "../Components/Audit/AuditLogPage";
 import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
 import { TestProviders } from "./TestProviders";
+import { vi } from "vitest";
 
 // Mock localStorage for Node test environment (jsdom-compatible)
 if (typeof global.localStorage === "undefined") {
@@ -49,7 +50,6 @@ if (typeof global.localStorage === "undefined") {
 }
 
 // Mock FHIR.oauth2.ready for AuthProvider (Vitest)
-import { vi } from "vitest";
 vi.mock("fhirclient", () => ({
   __esModule: true,
   default: {
