@@ -1,0 +1,6 @@
+# For raw IP usage, Caddy serves HTTP on port 80.
+# When you add a domain later, replace :80 with your domain name
+# and Caddy will auto-provision HTTPS via Let's Encrypt.
+:80 {
+	reverse_proxy api:5001
+}

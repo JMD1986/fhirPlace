@@ -22,9 +22,9 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
   opts.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 builder.Services.AddHttpClient();
-// ALLOWED_ORIGINS env var lets production deployments (e.g. Fly.io) add extra
-// origins without code changes. Comma-separated, e.g.:
-//   ALLOWED_ORIGINS=https://fhirplace.fly.dev,https://my-frontend.fly.dev
+// ALLOWED_ORIGINS env var lets production deployments (e.g. Oracle Cloud) add
+// extra origins without code changes. Comma-separated, e.g.:
+//   ALLOWED_ORIGINS=http://129.153.x.x,https://fhirplace.example.com
 var extraOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS") ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 var allowedOrigins = new[] { "http://localhost:5173", "http://localhost:3000" }
@@ -38,7 +38,7 @@ builder.Services.AddCors(opts =>
          .AllowAnyHeader()
          .AllowAnyMethod()));
 
-// In production (Docker/Fly.io) ASPNETCORE_URLS env var controls the listen
+// In production (Docker/Oracle Cloud) ASPNETCORE_URLS env var controls the listen
 // address (http://+:5001).  In local dev the default (http://localhost:5001)
 // is fine — do NOT call UseUrls() here as it would override the env var.
 

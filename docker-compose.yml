@@ -1,9 +1,12 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      platforms:
+        - linux/arm64
     image: fhirplace:latest
-    ports:
-      - "5001:5001"
+    expose:
+      - "5001"
     environment:
       FHIRPLACE_DB_PATH: /data/fhir.db
       ASPNETCORE_URLS: http://+:5001
@@ -16,5 +19,21 @@ services:
       - ./public/synthea:/public/synthea:ro
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   fhirplace_db:
+  caddy_data:
+  caddy_config:

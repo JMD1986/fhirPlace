@@ -134,7 +134,7 @@ All data exchange in fhirPlace occurs over encrypted, integrity-protected connec
 
 - **FHIR API calls**: All requests to the EHR's FHIR server use HTTPS/TLS 1.2+
 - **OAuth flow**: The SMART on FHIR authorization flow requires TLS — Epic's authorization endpoints reject non-HTTPS requests
-- **Production deployment**: fhirPlace is deployed behind TLS termination (Fly.io), ensuring all client-to-server traffic is encrypted end-to-end
+- **Production deployment**: fhirPlace is deployed behind TLS termination (Caddy reverse proxy on Oracle Cloud), ensuring all client-to-server traffic is encrypted end-to-end
 - **No plaintext fallback**: The application does not support or fall back to unencrypted HTTP connections in production
 
 ---
@@ -209,7 +209,7 @@ fhirPlace uses the following quality management processes:
 - Git-based version control with feature branches
 - CI/CD pipeline for build verification
 - Docker containerization for consistent deployment environments
-- Fly.io deployment with health checks
+- Oracle Cloud deployment with Docker Compose and Caddy reverse proxy
 
 ### Configuration Management
 - Environment variables for all deployment-specific settings (documented in `docs/environment-variables.md`)

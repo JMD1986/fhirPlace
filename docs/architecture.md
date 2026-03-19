@@ -41,15 +41,14 @@ fhirPlace is a two-tier web application that lets clinicians and hospital IT tea
 | Express API server | 5001 | `npm run server` |
 | Both together | — | `npm run dev:all` |
 
-### Production layout (Docker)
+### Production layout (Docker + Caddy on Oracle Cloud ARM)
 
 ```
-Internet ──► Reverse proxy / CDN (443)
-                 ├── /          ──► Static SPA (dist/)
-                 └── /api/ /fhir/ ──► API container (5001)
+Internet ──► Caddy reverse proxy (80/443)
+                 └── all traffic ──► API container (5001)
 ```
 
-The Dockerfile uses a two-stage build: only `server.js`, `node_modules` (production deps), and `public/synthea/` are included in the final image.
+The Dockerfile uses a two-stage build targeting `linux/arm64` (Oracle Cloud Ampere A1).
 
 ---
 
