@@ -31,6 +31,12 @@ import { logAuditEvent } from "./auditApi";
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:5001";
 
+/** Build an absolute API URL from a path (e.g. `/api/anthropic-chat`). */
+export function apiUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${normalized}`;
+}
+
 // ── Audit identity (ONC §170.315(d)(2)) ───────────────────────────────────────
 // Module-level user info injected by AuthContext so every API call carries
 // audit headers identifying who is making the request.

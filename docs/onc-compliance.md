@@ -137,6 +137,18 @@ All data exchange in fhirPlace occurs over encrypted, integrity-protected connec
 - **Production deployment**: fhirPlace is deployed behind TLS termination (Fly.io), ensuring all client-to-server traffic is encrypted end-to-end
 - **No plaintext fallback**: The application does not support or fall back to unencrypted HTTP connections in production
 
+### Communications Security (TLS)
+
+All exchange of production data is secured using TLS:
+
+| Control | Implementation |
+|---|---|
+| Edge TLS | Fly.io `force_https` on `[http_service]`; reverse proxy terminates TLS on port 443 |
+| SPA API URLs | `src/lib/productionSecurity.ts` requires `VITE_API_BASE` (and optional `VITE_*` URLs when set) to use `https://` before the app loads in production |
+| SPA hosting | Production builds refuse to run when served over non-HTTPS (except `localhost` / `127.0.0.1` for local smoke tests) |
+| Centralized HTTP client | All backend calls use `fhirApi.ts` / `auditApi.ts` (`apiUrl()` helper); CI `npm run check:tls` blocks hardcoded `http://localhost:5001` in source |
+| API server | ASP.NET Core `ForwardedHeaders` + production middleware returns 403 for cleartext requests; `Strict-Transport-Security` on HTTPS responses; `GET /api/health` exempt for container probes |
+
 ---
 
 ## §170.315(d)(11) — Accounting of Disclosures
