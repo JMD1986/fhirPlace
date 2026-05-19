@@ -95,6 +95,8 @@ export function useInactivityTimeout({
     if (!enabled) {
       clearAllTimers();
       showWarningRef.current = false;
+      setShowWarning(false);
+      setSecondsLeft(0);
       return;
     }
 
