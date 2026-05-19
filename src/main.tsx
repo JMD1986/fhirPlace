@@ -15,7 +15,6 @@ if (import.meta.env.DEV) {
   import("@axe-core/react").then((axe) => {
     // Pass the imported React and ReactDOM objects instead of using require().
     axe.default(React, ReactDOM, 1000, {});
-    // eslint-disable-next-line no-console
     console.info(
       "[a11y] axe-core/react mounted: live accessibility violations will be logged in the console.",
     );
