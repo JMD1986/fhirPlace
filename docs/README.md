@@ -9,6 +9,7 @@ Technical documentation for hospital IT teams evaluating or deploying fhirPlace.
 | Document | What it covers |
 |----------|---------------|
 | [Architecture](./architecture.md) | System components, data flow, SMART on FHIR auth sequence, security controls |
+| [Timekeeping design system](./timekeeping-design-system.md) | HL7-aligned rules for timestamps, audit time, display formats, and NTP deployment |
 | [API Reference](./api-reference.md) | Every HTTP endpoint, query parameters, response shapes, required FHIR scopes |
 | [Environment Variables](./environment-variables.md) | All `VITE_*` variables — type, default, production requirements |
 | [Network Requirements](./network-requirements.md) | Ports, outbound domains to allowlist, CSP and CORS settings |

@@ -17,6 +17,7 @@ fhirPlace is a React 19 + TypeScript + Vite SPA with an ASP.NET Core 9 API, synt
 - **Server env vars** (not exposed to the browser): `FHIRPLACE_DB_PATH`, `ALLOWED_ORIGINS`, `ASPNETCORE_URLS`. See `server/Program.cs` and `docker-compose.yml`.
 - **Synthea data:** not in git (`public/synthea/fhir/*.json` is gitignored). Generate locally: `npm run synthea:setup`, `npm run synthea:run -- -p <count> -o public/synthea/fhir`, then `npm run synthea:manifest`. Java 11+ required.
 - **Health check** before integration work: `curl http://localhost:5001/api/health` or `docker compose up -d` (see [`docker-compose.yml`](./docker-compose.yml)).
+- **Timekeeping:** follow [`docs/timekeeping-design-system.md`](./docs/timekeeping-design-system.md). Authoritative timestamps are server-only (`server/Timekeeping.cs`); client display uses `src/lib/timekeeping.ts` — do not add ad-hoc `new Date()` for audit or clinical display.
 - **Key paths:**
   - UI components: `src/Components/`
   - Hooks: `src/hooks/`

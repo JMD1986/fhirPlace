@@ -36,7 +36,7 @@ public static class CcdGenerator
     using var patDoc = JsonDocument.Parse(patientJson);
     var pat = patDoc.RootElement;
 
-    var now = DateTime.UtcNow;
+    var now = Timekeeping.UtcNow();
     var docId = Guid.NewGuid().ToString();
 
     var doc = new XDocument(

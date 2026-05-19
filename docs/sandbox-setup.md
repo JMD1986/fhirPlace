@@ -107,7 +107,7 @@ curl "https://hapi.fhir.org/baseR4/Patient?_count=5&_format=json"
 Use these curl commands to confirm the local Express server is working correctly before connecting the React app.
 
 ```sh
-# Health check
+# Health check (includes serverTimeUtc for NTP verification)
 curl http://localhost:5001/api/health
 
 # List patients (first 3)

@@ -158,6 +158,43 @@ describe("useInactivityTimeout — stayLoggedIn", () => {
   });
 });
 
+// ── Monotonic clock (wall-clock skew) ─────────────────────────────────────────
+
+describe("useInactivityTimeout — monotonic clock", () => {
+  it("warning countdown ignores wall-clock jumps", () => {
+    const onTimeout = vi.fn();
+    const { result } = renderHook(() =>
+      useInactivityTimeout({
+        enabled: true,
+        onTimeout,
+        timeoutMs: TIMEOUT_MS,
+        warningBeforeMs: WARNING_BEFORE_MS,
+      }),
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(TIMEOUT_MS - WARNING_BEFORE_MS + 10);
+    });
+
+    expect(result.current.showWarning).toBe(true);
+    const secondsAtWarning = result.current.secondsLeft;
+    expect(secondsAtWarning).toBeGreaterThan(0);
+
+    let fakeWall = 1_000_000;
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => fakeWall);
+
+    act(() => {
+      fakeWall += 60 * 60 * 1000;
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(result.current.secondsLeft).toBeGreaterThan(0);
+    expect(result.current.secondsLeft).toBeLessThanOrEqual(secondsAtWarning);
+
+    dateSpy.mockRestore();
+  });
+});
+
 // ── Cleanup ───────────────────────────────────────────────────────────────────
 
 describe("useInactivityTimeout — cleanup on unmount", () => {

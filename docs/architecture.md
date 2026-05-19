@@ -112,9 +112,10 @@ SearchResults renders patient cards
 
 | Control | Mechanism |
 |---------|-----------|
-| HTTP security headers | `helmet` (CSP, HSTS, X-Frame-Options, Referrer-Policy) applied in both `server.js` and Vite dev server config |
-| CORS | Explicit allowlist (`http://localhost:5173`, `http://localhost:3000`); update for production origin |
+| Time keeping (HL7) | Server UTC via `Timekeeping.cs`; NTP on deploy hosts; see [Timekeeping design system](./timekeeping-design-system.md) |
+| HTTP security headers | ASP.NET Core middleware + Vite dev headers (CSP, X-Frame-Options, Referrer-Policy) |
+| CORS | Explicit allowlist (`http://localhost:5173`, `http://localhost:3000`); `ALLOWED_ORIGINS` for production |
 | Authentication | SMART on FHIR (OAuth 2.0 + PKCE) via `fhirclient` library |
-| Non-root container | Docker `USER node` directive |
+| Non-root container | Docker `USER $APP_UID` (see Dockerfile) |
 | Dependency scanning | `npm audit --audit-level=high` runs in CI on every PR |
 | Secret management | All secrets in `.env` (git-ignored); never baked into the image |

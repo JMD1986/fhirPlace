@@ -60,10 +60,13 @@ beforeAll(async () => {
 
 // ── /api/health ───────────────────────────────────────────────────────────────
 describe("GET /api/health", () => {
-  it("returns { status: 'ok' }", async () => {
+  it("returns { status: 'ok' } and authoritative serverTimeUtc", async () => {
     const { status, body } = await get("/api/health");
     expect(status).toBe(200);
     expect(body.status).toBe("ok");
+    expect(typeof body.serverTimeUtc).toBe("string");
+    expect(Number.isNaN(Date.parse(body.serverTimeUtc as string))).toBe(false);
+    expect(body.serverTimeUtc as string).toMatch(/Z$/);
   });
 });
 

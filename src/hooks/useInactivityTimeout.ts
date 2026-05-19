@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { monotonicNow } from "../lib/timekeeping";
 
 /** Milliseconds of inactivity before the session times out. Default: 15 min. */
 const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000;
@@ -40,10 +41,10 @@ export function useInactivityTimeout({
 }: UseInactivityTimeoutOptions): InactivityTimeoutState {
   const [showWarning, setShowWarning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const showWarningRef = useRef(false);
 
   // Mutable refs so the event handler closures always see the latest values.
-  // eslint-disable-next-line react-hooks/purity -- useRef initializer runs once at mount; Date.now() is safe here
-  const lastActivity = useRef(Date.now());
+  const lastActivity = useRef(monotonicNow());
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -59,17 +60,19 @@ export function useInactivityTimeout({
 
   const resetTimers = useCallback(() => {
     clearAllTimers();
+    showWarningRef.current = false;
     setShowWarning(false);
-    lastActivity.current = Date.now();
+    lastActivity.current = monotonicNow();
 
     // Schedule the warning
     warningTimer.current = setTimeout(() => {
+      showWarningRef.current = true;
       setShowWarning(true);
       setSecondsLeft(Math.round(warningBeforeMs / 1000));
 
       // Start a 1-second countdown for the UI
       countdownInterval.current = setInterval(() => {
-        const elapsed = Date.now() - lastActivity.current;
+        const elapsed = monotonicNow() - lastActivity.current;
         const remaining = Math.max(
           0,
           Math.round((timeoutMs - elapsed) / 1000),
@@ -81,6 +84,7 @@ export function useInactivityTimeout({
     // Schedule the actual timeout
     timeoutTimer.current = setTimeout(() => {
       clearAllTimers();
+      showWarningRef.current = false;
       setShowWarning(false);
       onTimeout();
     }, timeoutMs);
@@ -90,19 +94,22 @@ export function useInactivityTimeout({
   useEffect(() => {
     if (!enabled) {
       clearAllTimers();
+      showWarningRef.current = false;
       setShowWarning(false);
+      setSecondsLeft(0);
       return;
     }
 
     const handleActivity = () => {
       // If the warning is showing, don't reset on incidental activity —
       // the user must explicitly click "Stay logged in".
-      if (!showWarning) {
+      if (!showWarningRef.current) {
         resetTimers();
       }
     };
 
-    // Kick off the initial timer
+    // Kick off the initial timer (schedules timeouts; resets warning UI state)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- bootstrap on mount / when enabled
     resetTimers();
 
     for (const evt of ACTIVITY_EVENTS) {
@@ -115,7 +122,7 @@ export function useInactivityTimeout({
       }
       clearAllTimers();
     };
-  }, [enabled, resetTimers, clearAllTimers, showWarning]);
+  }, [enabled, resetTimers, clearAllTimers]);
 
   /** User acknowledged the warning — reset the full inactivity window. */
   const stayLoggedIn = useCallback(() => {

@@ -93,6 +93,24 @@ origin: ["https://fhirplace.example.com"]
 
 ---
 
+## Time synchronization (NTP / SNTP)
+
+fhirPlace does not run an in-container NTP daemon. All authoritative audit and export timestamps use the **API host** UTC clock via `GET /api/health` → `serverTimeUtc`. Clinician workstations must also keep correct time for SMART OAuth token validity.
+
+| Environment | Guidance |
+|-------------|----------|
+| Linux API host | `chronyd` or `systemd-timesyncd`; verify with `timedatectl status` |
+| Windows server | Windows Time service (`w32tm`); check with `w32tm /query /status` |
+| Docker | Container inherits the **host** clock — sync the host, not the container |
+| Cloud (Azure / AWS / GCP) | Use provider hypervisor time sync |
+| Clinician browsers | Workstation OS time sync (SMART `exp` / `nbf` rely on correct client clock) |
+
+Self-managed NTP on the API host may require outbound **UDP port 123** to your time source. Cloud VMs often sync via the hypervisor without opening UDP 123.
+
+**Ops check:** Compare `curl http://localhost:5001/api/health` → `serverTimeUtc` with your NTP source. See [Timekeeping design system](./timekeeping-design-system.md) for application rules (server-authoritative audit time, monotonic session timeout).
+
+---
+
 ## TLS / HTTPS requirements
 
 | Requirement | Notes |
