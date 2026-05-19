@@ -20,7 +20,8 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --reporter=verbose tests",
     "perf:audit": "npm run build:perf && node scripts/perf-audit.js",
-    "a11y:ci": "npx pa11y-ci --config pa11y-ci.json"
+    "a11y:ci": "npx pa11y-ci --config pa11y-ci.json",
+    "check:tls": "node scripts/check-tls-urls.mjs"
   },
   "dependencies": {
     "@emotion/css": "^11.13.5",

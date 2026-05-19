@@ -24,6 +24,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm run check:tls
+      - name: Production build with HTTPS API base
+        run: VITE_API_BASE=https://api.example.test npm run build
 
   # ── Lint ────────────────────────────────────────────────────────────────────
   lint:
@@ -152,7 +155,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run build:perf
+      - run: VITE_API_BASE=https://api.example.test npm run build:perf
       - name: Run perf audit
         run: node scripts/perf-audit.js
         env:
@@ -176,7 +179,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: VITE_API_BASE=https://api.example.test npm run build
       - run: npm install -g serve
       - run: serve -s dist -l 4173 &
       - name: Wait for preview server

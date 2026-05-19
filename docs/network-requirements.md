@@ -11,7 +11,7 @@ This page lists every port and external domain that must be reachable for fhirPl
 | Port | Direction | Protocol | Purpose |
 |------|-----------|----------|---------|
 | **5173** | Inbound (workstation) | HTTP | Vite dev server — React SPA hot-reload |
-| **5001** | Inbound (workstation) | HTTP | Express API server |
+| **5001** | Inbound (workstation) | HTTP | ASP.NET Core API (local dev only) |
 
 ### Production
 
@@ -19,7 +19,7 @@ This page lists every port and external domain that must be reachable for fhirPl
 |------|-----------|----------|---------|
 | **443** | Inbound | HTTPS | Reverse proxy / load balancer (SPA + API) |
 | **80** | Inbound | HTTP | Optional redirect to 443 |
-| **5001** | Internal only | HTTP | Express API container — do **not** expose publicly; traffic should flow through the reverse proxy |
+| **5001** | Internal only | HTTP | API container (Kestrel) — do **not** expose publicly; traffic should flow through the reverse proxy |
 
 > The container's `EXPOSE 5001` directive is informational. Bind it to `127.0.0.1:5001` (or a private network) on the host and route `/api` and `/fhir` via the reverse proxy.
 
@@ -55,7 +55,7 @@ If `VITE_VITALS_ENDPOINT` is configured, the browser will POST to that custom do
 
 ## Content Security Policy
 
-The server enforces the following CSP in both development (Vite headers) and production (Helmet):
+The API enforces the following CSP in production (`server/Program.cs`); the Vite dev server applies equivalent headers locally:
 
 ```
 default-src 'self';
@@ -85,7 +85,7 @@ http://localhost:5173
 http://localhost:3000
 ```
 
-For production, edit the `corsOptions.origin` array in `server.js` (or inject via environment variable) to include your production SPA origin. Example:
+For production, set the `ALLOWED_ORIGINS` environment variable to include your production SPA origin (comma-separated). Example:
 
 ```js
 origin: ["https://fhirplace.example.com"]
@@ -115,7 +115,12 @@ Self-managed NTP on the API host may require outbound **UDP port 123** to your t
 
 | Requirement | Notes |
 |---|---|
-| Production API must use HTTPS | `VITE_API_BASE` must be an `https://` URL; the app blocks startup otherwise |
+| Production API must use HTTPS | `VITE_API_BASE` must be set to an `https://` URL; the SPA throws at startup if missing or non-HTTPS (`src/lib/productionSecurity.ts`) |
+| Production SPA | Must be served over HTTPS (browser `location.protocol`); localhost exempt for local preview |
+| API edge | Reverse proxy / Fly.io terminates TLS; Kestrel listens on HTTP internally with `X-Forwarded-Proto` |
+| API HSTS | `Strict-Transport-Security: max-age=31536000; includeSubDomains` on HTTPS responses in Production |
+| Cleartext API requests | Production returns 403 except `GET /api/health` (container health probes) |
 | Redirect URI must match registration | The OAuth callback URL must exactly match what is registered with the EHR |
 | Self-signed certificates | Not supported in production; the `fhirclient` library performs standard TLS validation |
-| Minimum TLS version | TLS 1.2 (enforced by Node.js 20 defaults) |
+| Minimum TLS version | TLS 1.2+ at the edge proxy / load balancer (Fly.io, nginx, CDN) |
+| CI guard | `npm run check:tls` — no hardcoded `http://localhost:5001` in `src/` (excluding tests) |

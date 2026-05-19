@@ -23,9 +23,9 @@ cp .env.example .env
 | Default | `http://localhost:5001` |
 | Example (production) | `https://api.fhirplace.example.com` |
 
-The base URL of the Express API server. All requests from `fhirApi.ts` are prepended with this value.
+The base URL of the ASP.NET Core API. All requests from `fhirApi.ts` are prepended with this value.
 
-**Production requirement:** This value **must** use `https://` in production. The app prints a console warning and may refuse to start if it detects a non-HTTPS URL in a production build.
+**Production requirement:** This value **must** be set and use `https://` in production. The app throws at startup if it is missing or non-HTTPS (`src/lib/productionSecurity.ts`).
 
 ```dotenv
 VITE_API_BASE=http://localhost:5001
@@ -124,11 +124,14 @@ VITE_VITALS_ENDPOINT=https://analytics.example.com/vitals
 
 ## Server-side variables (not VITE_)
 
-The Express server reads the following environment variables at startup. These are **not** prefixed with `VITE_` and are never exposed to the browser.
+The ASP.NET Core API reads the following environment variables at startup. These are **not** prefixed with `VITE_` and are never exposed to the browser.
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `5001` | Port the Express server listens on. Override via `PORT=8080 node server.js`. |
+| `ASPNETCORE_URLS` | `http://localhost:5001` (dev) / `http://+:5001` (Docker) | Kestrel listen URLs. TLS terminates at the reverse proxy in production. |
+| `FHIRPLACE_DB_PATH` | `fhir.db` | SQLite database file path |
+| `ALLOWED_ORIGINS` | *(none)* | Comma-separated extra CORS origins for production SPA URLs (e.g. `https://fhirplace.example.com`) |
+| `ASPNETCORE_ENVIRONMENT` | `Development` | Set to `Production` in deployed containers |
 
 ---
 

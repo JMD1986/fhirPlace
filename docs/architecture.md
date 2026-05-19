@@ -13,20 +13,20 @@ fhirPlace is a two-tier web application that lets clinicians and hospital IT tea
 │   │  PatientSearch  EncounterView  BillingDashboard  AdditionalPanel  │   │
 │   │         └── fhirApi.ts (centralised HTTP client)                  │   │
 │   └──────────────────────────┬────────────────────────────────────────┘   │
-│                               │  HTTP / JSON                               │
+│                               │  HTTPS / JSON (production)                 │
 └───────────────────────────────┼────────────────────────────────────────────┘
                                 │
           ┌─────────────────────▼──────────────────────┐
-          │          Express API Server (port 5001)      │
-          │  server.js – Node.js 20, ESM                │
-          │                                             │
-          │  • In-memory FHIR resource cache            │
-          │  • /fhir/* – FHIR R4–style search routes   │
-          │  • /api/*  – convenience & proxy routes     │
-          │  • Helmet (CSP, HSTS, X-Frame-Options)      │
-          │  • CORS whitelist                           │
-          └─────────────────────┬───────────────────────┘
-                                │  reads on startup
+          │     ASP.NET Core 9 API (Kestrel, port 5001)    │
+          │     server/Program.cs                          │
+          │                                                │
+          │  • SQLite FHIR store (EF Core)                 │
+          │  • /fhir/* – FHIR R4–style search routes      │
+          │  • /api/*  – convenience & proxy routes        │
+          │  • CSP, HSTS, X-Frame-Options (production)     │
+          │  • CORS whitelist + ALLOWED_ORIGINS            │
+          └─────────────────────┬──────────────────────────┘
+                                │  seeds from on first run
           ┌─────────────────────▼───────────────────────┐
           │         public/synthea/fhir/*.json           │
           │  FHIR R4 Transaction Bundles (Synthea)       │
@@ -38,18 +38,18 @@ fhirPlace is a two-tier web application that lets clinicians and hospital IT tea
 | Process | Default port | Started by |
 |---------|-------------|-----------|
 | Vite dev server (React SPA) | 5173 | `npm run dev` |
-| Express API server | 5001 | `npm run server` |
+| ASP.NET Core API | 5001 | `npm run server` |
 | Both together | — | `npm run dev:all` |
 
 ### Production layout (Docker)
 
 ```
-Internet ──► Reverse proxy / CDN (443)
+Internet ──► Reverse proxy / CDN (443, TLS)
                  ├── /          ──► Static SPA (dist/)
-                 └── /api/ /fhir/ ──► API container (5001)
+                 └── /api/ /fhir/ ──► API container (5001, HTTP + X-Forwarded-Proto)
 ```
 
-The Dockerfile uses a two-stage build: only `server.js`, `node_modules` (production deps), and `public/synthea/` are included in the final image.
+The Dockerfile publishes the .NET API (`dotnet publish`) and includes Synthea seed files under `/public/synthea/fhir`. TLS terminates at the edge (Fly.io `force_https` or your load balancer).
 
 ---
 

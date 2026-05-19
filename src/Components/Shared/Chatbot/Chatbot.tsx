@@ -197,6 +197,7 @@ import {
   Divider,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import { apiUrl } from "../../../api/fhirApi";
 
 interface Message {
   id: number;
@@ -271,7 +272,7 @@ PATIENT DATA:
 ${patientContext}`;
       }
 
-      const response = await fetch("http://localhost:5001/api/anthropic-chat", {
+      const response = await fetch(apiUrl("/api/anthropic-chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

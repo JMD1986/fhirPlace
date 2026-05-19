@@ -4,10 +4,14 @@ import * as ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { assertProductionTlsConfigFromImportMeta } from "./lib/productionSecurity";
 import "./index.css";
 import App from "./App.tsx";
 import { theme } from "./theme";
 import { reportWebVitals } from "./reportWebVitals";
+
+// ── Communications Security: TLS enforcement (production only) ───────────────
+assertProductionTlsConfigFromImportMeta();
 
 // ── Accessibility: Mount axe-core/react in development ─────────────
 if (import.meta.env.DEV) {
@@ -19,20 +23,6 @@ if (import.meta.env.DEV) {
       "[a11y] axe-core/react mounted: live accessibility violations will be logged in the console.",
     );
   });
-}
-
-// ── HTTPS enforcement (HIPAA/SOC 2) ──────────────────────────────────────────
-// In production, VITE_API_BASE must be an HTTPS URL. A non-HTTPS base would
-// transmit PHI in plaintext, violating HIPAA technical safeguard requirements.
-if (import.meta.env.PROD) {
-  const apiBase = import.meta.env.VITE_API_BASE as string | undefined;
-  if (apiBase && !apiBase.startsWith("https://")) {
-    throw new Error(
-      `[SECURITY] VITE_API_BASE must use HTTPS in production. ` +
-        `Received: "${apiBase}". ` +
-        `Transmitting PHI over non-HTTPS violates HIPAA technical safeguard requirements.`,
-    );
-  }
 }
 
 createRoot(document.getElementById("root")!).render(

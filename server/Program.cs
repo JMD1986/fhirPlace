@@ -2,6 +2,7 @@
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using FhirPlace.Server;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 // â”€â”€ Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -22,6 +23,14 @@ builder.Services.ConfigureHttpJsonOptions(opts =>
   opts.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 builder.Services.AddHttpClient();
+
+builder.Services.Configure<ForwardedHeadersOptions>(opts =>
+{
+  opts.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+  opts.KnownNetworks.Clear();
+  opts.KnownProxies.Clear();
+});
+
 // ALLOWED_ORIGINS env var lets production deployments (e.g. Fly.io) add extra
 // origins without code changes. Comma-separated, e.g.:
 //   ALLOWED_ORIGINS=https://fhirplace.fly.dev,https://my-frontend.fly.dev
@@ -44,6 +53,34 @@ builder.Services.AddCors(opts =>
 
 // â”€â”€ App pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var app = builder.Build();
+
+app.UseForwardedHeaders();
+
+// Communications Security — reject cleartext client requests in production.
+// /api/health is exempt for direct container health probes (no X-Forwarded-Proto).
+if (app.Environment.IsProduction())
+{
+  app.Use(async (ctx, next) =>
+  {
+    var path = ctx.Request.Path.Value ?? "";
+    var isHealth = path.Equals("/api/health", StringComparison.OrdinalIgnoreCase);
+
+    if (!isHealth && !ctx.Request.IsHttps)
+    {
+      ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+      await ctx.Response.WriteAsync("HTTPS is required.");
+      return;
+    }
+
+    await next();
+
+    if (ctx.Request.IsHttps)
+    {
+      ctx.Response.Headers["Strict-Transport-Security"] =
+          "max-age=31536000; includeSubDomains";
+    }
+  });
+}
 
 app.UseCors();
 
