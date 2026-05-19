@@ -90,6 +90,7 @@ This app targets hospital IT evaluation and ONC-related criteria documented in [
 - **FHIR R4** resource shapes live in `src/types/fhir.ts`. Follow existing view/panel patterns under `src/Components/`.
 - **SMART on FHIR:** OAuth 2.0 + PKCE via `fhirclient` in `AuthContext.tsx`. Do not add parallel auth flows.
 - **ONC audit (§170.315(d)(2)):** User identity is attached to API calls through `setAuditUser` and `fhirApi` audit headers. Server-side logging is in `server/AuditService.cs`. Do not skip audit headers for FHIR read/search routes.
+- **Access control (§170.315(d)(1)):** Patient-role sessions are scoped to `linkedPatientId` via `src/lib/accessControl.ts` and `server/AccessControlService.cs`. Include `linkedPatientId` in `setAuditUser` so `X-Audit-Patient-Context` is sent. Do not add routes that bypass patient-scope checks for patient-role users.
 - **CCD export:** server-side `server/CcdGenerator.cs`; triggered from Patient View.
 - **Session timeout:** `useInactivityTimeout` + `SessionTimeoutWarning` — see compliance doc before changing timeout behavior.
 - **Accessibility is required:** new UI must pass ESLint jsx-a11y rules and should be covered by unit a11y tests where routes are affected. Prefer semantic HTML, labels, and keyboard support consistent with existing MUI usage.

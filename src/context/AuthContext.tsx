@@ -155,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           userId: derived.email,
           userName: derived.username,
           userRole: derived.role,
+          linkedPatientId: derived.linkedPatientId,
         };
         setAuditUser(auditIdentity);
         setAuditHeaders(auditIdentity);
@@ -181,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: derived.email,
         userName: derived.username,
         userRole: derived.role,
+        linkedPatientId: derived.linkedPatientId,
       };
       setAuditUser(auditIdentity);
       setAuditHeaders(auditIdentity);

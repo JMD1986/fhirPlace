@@ -29,6 +29,9 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { canAccessAuditLog } from "../../lib/accessControl";
+import AccessDenied from "../Auth/AccessDenied";
 import {
   queryAuditEvents,
   verifyAuditChain,
@@ -83,6 +86,7 @@ const actionColors: Record<
 
 export default function AuditLogPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Filters
   const [userId, setUserId] = useState("");
@@ -179,6 +183,21 @@ export default function AuditLogPage() {
     }
     setShowStats(!showStats);
   };
+
+  if (
+    user &&
+    !canAccessAuditLog({
+      role: user.role,
+      linkedPatientId: user.linkedPatientId,
+    })
+  ) {
+    return (
+      <AccessDenied
+        message="The audit log is available only to provider-role users. Patient-role sessions cannot query operational audit records."
+        onBack={() => navigate("/")}
+      />
+    );
+  }
 
   return (
     <Box sx={{ p: 3, maxWidth: 1400, mx: "auto" }}>

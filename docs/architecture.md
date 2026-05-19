@@ -113,6 +113,7 @@ SearchResults renders patient cards
 | Control | Mechanism |
 |---------|-----------|
 | Time keeping (HL7) | Server UTC via `Timekeeping.cs`; NTP on deploy hosts; see [Timekeeping design system](./timekeeping-design-system.md) |
+| Access control (RBAC) | SMART scopes + launch context; `AccessControlService.cs` / `accessControl.ts` for patient vs provider on synthetic API and UI |
 | HTTP security headers | ASP.NET Core middleware + Vite dev headers (CSP, X-Frame-Options, Referrer-Policy) |
 | CORS | Explicit allowlist (`http://localhost:5173`, `http://localhost:3000`); `ALLOWED_ORIGINS` for production |
 | Authentication | SMART on FHIR (OAuth 2.0 + PKCE) via `fhirclient` library |

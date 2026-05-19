@@ -65,7 +65,12 @@ export interface AuditQueryParams {
 let _auditHeaders: Record<string, string> = {};
 
 export function setAuditHeaders(
-  user: { userId: string; userName: string; userRole: string } | null,
+  user: {
+    userId: string;
+    userName: string;
+    userRole: string;
+    linkedPatientId?: string;
+  } | null,
 ): void {
   if (user) {
     _auditHeaders = {
@@ -73,6 +78,9 @@ export function setAuditHeaders(
       "X-Audit-User-Name": user.userName,
       "X-Audit-User-Role": user.userRole,
     };
+    if (user.linkedPatientId) {
+      _auditHeaders["X-Audit-Patient-Context"] = user.linkedPatientId;
+    }
   } else {
     _auditHeaders = {};
   }

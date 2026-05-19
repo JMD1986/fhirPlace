@@ -14,8 +14,9 @@ import {
   Chip,
   CircularProgress,
 } from "@mui/material";
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { canSearchPatients } from "../../lib/accessControl";
 import PatientSearch from "../Patient/PatientSearch";
 // EncounterSearch is the non-default panel — lazy-load so users who only ever
 // use patient search never download its chunk.
@@ -31,6 +32,17 @@ type SearchType = "patient" | "encounter";
 export default function SearchContainer() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user || canSearchPatients({ role: user.role, linkedPatientId: user.linkedPatientId })) {
+      return;
+    }
+    if (user.linkedPatientId) {
+      navigate(`/patient/${user.linkedPatientId}`, { replace: true });
+    } else {
+      navigate("/profile", { replace: true });
+    }
+  }, [user, navigate]);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -118,17 +130,19 @@ export default function SearchContainer() {
             >
               Encounter Search
             </MenuItem>
-            <MenuItem
-              onClick={() => {
-                setAnchorEl(null);
-                navigate("/audit");
-              }}
-              aria-current={
-                window.location.pathname === "/audit" ? "page" : undefined
-              }
-            >
-              Audit Log
-            </MenuItem>
+            {(!user || user.role === "provider") && (
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null);
+                  navigate("/audit");
+                }}
+                aria-current={
+                  window.location.pathname === "/audit" ? "page" : undefined
+                }
+              >
+                Audit Log
+              </MenuItem>
+            )}
           </Menu>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {searchTitle}

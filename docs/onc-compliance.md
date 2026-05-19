@@ -28,7 +28,7 @@ The export is generated server-side by `CcdGenerator.cs`, which assembles FHIR r
 
 ## §170.315(d)(1) — Authentication, Access Control, Authorization
 
-**Status: Satisfied (delegated to EHR)**
+**Status: Satisfied (EHR authorization + application RBAC)**
 
 fhirPlace uses **SMART on FHIR** with OAuth 2.0 for authentication and authorization:
 
@@ -38,6 +38,34 @@ fhirPlace uses **SMART on FHIR** with OAuth 2.0 for authentication and authoriza
 - **Role determination**: The application distinguishes between `patient` and `provider` roles based on whether a patient context is supplied in the launch.
 
 The SMART on FHIR launch flow is implemented in `AuthContext.tsx` using the `fhirclient` library. See `docs/architecture.md` for the full authentication flow.
+
+### FHIR access control models (RBAC and ABAC)
+
+Correct identification of people, devices, and organizations underpins all security decisions. fhirPlace does not communicate clinical data unless the requesting party is authorized to the satisfaction of the data holder:
+
+| Layer | Mechanism |
+|---|---|
+| **Live EHR FHIR** | SMART OAuth 2.0 scopes, launch context, and the EHR authorization server enforce who may read which resources. fhirPlace is read-only and does not issue tokens. |
+| **Bundled synthetic API** | Role-based access control (RBAC) in `AccessControlService.cs` and `src/lib/accessControl.ts` |
+| **UI routing** | Patient-role users are redirected to their launch-context patient; cross-patient routes show an access-denied state |
+
+**Role-Based Access Control (RBAC):** FHIR resource types map to object types; CRUD operations map to permissions. fhirPlace implements RBAC as:
+
+| Role | FHIR operations (synthetic API + UI) |
+|---|---|
+| `provider` | Read/search patients and clinical resources; query audit log |
+| `patient` | Read only the `Patient` resource ID from the SMART launch context (`linkedPatientId`); no cross-patient search or audit log |
+
+**Attribute-Based Access Control (ABAC):** FHIR resources may carry security labels, confidentiality tags, and consent metadata. fhirPlace displays data as returned by the EHR and does not strip or override those attributes. Attribute-driven policies (purpose of use, sensitivity, patient relationship, token scope, transport security) are evaluated by the **EHR authorization server** before data is released; search/read responses may be redacted or filtered upstream.
+
+**Policy inputs** considered in the overall security design:
+
+- **Client**: user identity (`fhirUser`, `sub`), role (`patient` / `provider`), OAuth scopes, TLS
+- **Resource**: FHIR type, patient linkage, EHR-supplied security metadata
+- **Patient**: launch-context patient ID, patient–user relationship from the EHR
+- **Context**: SMART launch token, session timeout, audit headers (`X-Audit-User-*`, `X-Audit-Patient-Context`)
+
+Implementation: `server/AccessControlService.cs`, `src/lib/accessControl.ts`, audit headers in `fhirApi.ts`.
 
 ---
 

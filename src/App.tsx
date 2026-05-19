@@ -1,7 +1,9 @@
 import "./App.css";
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { BrowserRouter, Routes, Route, useParams, useNavigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import AccessDenied from "./Components/Auth/AccessDenied";
+import { canReadPatient } from "./lib/accessControl";
 import { ErrorBoundary } from "react-error-boundary";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
@@ -251,10 +253,27 @@ function App() {
 }
 
 function PatientViewWrapper() {
-  // separate component so hooks can be used inside
   const { id } = useParams<{ id: string }>();
-  // if id is undefined, you could render an error or redirect
-  return id ? <PatientView patientId={id} /> : null;
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  if (!id) return null;
+
+  if (
+    !canReadPatient(
+      user ? { role: user.role, linkedPatientId: user.linkedPatientId } : null,
+      id,
+    )
+  ) {
+    return (
+      <AccessDenied
+        message="You are not authorized to view this patient's record. Patient-role sessions are limited to your own health information from the EHR launch context."
+        onBack={() => navigate(user?.linkedPatientId ? `/patient/${user.linkedPatientId}` : "/profile")}
+      />
+    );
+  }
+
+  return <PatientView patientId={id} />;
 }
 
 export default App;

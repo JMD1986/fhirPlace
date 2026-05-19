@@ -84,6 +84,25 @@ if (app.Environment.IsProduction())
 
 app.UseCors();
 
+// RBAC — patient-role sessions limited to SMART launch patient context.
+app.Use(async (ctx, next) =>
+{
+  if (AccessControlService.IsPatientRole(ctx.Request) &&
+      AuditService.ShouldAudit(ctx.Request.Path.Value ?? ""))
+  {
+    await using var scope = ctx.RequestServices.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<FhirDbContext>();
+    var denial = await AccessControlService.GetDenialReasonAsync(ctx.Request, db);
+    if (denial is not null)
+    {
+      ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+      await ctx.Response.WriteAsJsonAsync(new { error = denial });
+      return;
+    }
+  }
+  await next();
+});
+
 app.Use(async (ctx, next) =>
 {
   var h = ctx.Response.Headers;

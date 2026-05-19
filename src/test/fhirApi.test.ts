@@ -119,6 +119,22 @@ describe("audit headers via setAuditUser", () => {
     expect(headers.get("X-Audit-User-Role")).toBe("clinician");
   });
 
+  it("adds X-Audit-Patient-Context when linkedPatientId is set", async () => {
+    vi.mocked(fetch).mockResolvedValue(okResponse({ resourceType: "Bundle", entry: [] }) as Response);
+
+    setAuditUser({
+      userId: "u1",
+      userName: "Pat",
+      userRole: "patient",
+      linkedPatientId: "Patient/abc",
+    });
+    await patientApi.search(new URLSearchParams());
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit?];
+    const headers = init?.headers as Headers;
+    expect(headers.get("X-Audit-Patient-Context")).toBe("Patient/abc");
+  });
+
   it("omits audit headers when no audit user is set", async () => {
     vi.mocked(fetch).mockResolvedValue(okResponse({ resourceType: "Bundle", entry: [] }) as Response);
 

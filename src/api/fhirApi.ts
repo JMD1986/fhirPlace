@@ -40,13 +40,18 @@ export function apiUrl(path: string): string {
 // ── Audit identity (ONC §170.315(d)(2)) ───────────────────────────────────────
 // Module-level user info injected by AuthContext so every API call carries
 // audit headers identifying who is making the request.
-let _auditUser: { userId: string; userName: string; userRole: string } | null =
-  null;
+export interface AuditUserIdentity {
+  userId: string;
+  userName: string;
+  userRole: string;
+  /** SMART launch patient id — sent as X-Audit-Patient-Context for RBAC. */
+  linkedPatientId?: string;
+}
+
+let _auditUser: AuditUserIdentity | null = null;
 
 /** Called by AuthContext when user logs in/out to attach identity to API calls. */
-export function setAuditUser(
-  user: { userId: string; userName: string; userRole: string } | null,
-): void {
+export function setAuditUser(user: AuditUserIdentity | null): void {
   _auditUser = user;
 }
 
@@ -78,6 +83,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("X-Audit-User-Id", _auditUser.userId);
     headers.set("X-Audit-User-Name", _auditUser.userName);
     headers.set("X-Audit-User-Role", _auditUser.userRole);
+    if (_auditUser.linkedPatientId) {
+      headers.set("X-Audit-Patient-Context", _auditUser.linkedPatientId);
+    }
   }
 
   const res = await fetch(url, { ...init, headers });
