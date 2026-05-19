@@ -49,7 +49,7 @@ fhirPlace maintains a server-side audit log that records all actions on Electron
 
 - **Who**: User identity (userId, userName, userRole) captured from the authenticated SMART session and sent via custom headers on every API request.
 - **What**: Action type (read, search, login, logout, disclosure, export), resource type, resource ID, HTTP method, request path, and query parameters.
-- **When**: Server-generated UTC timestamp for each event.
+- **When**: Server-generated UTC timestamp for each event (see [Timekeeping design system](./timekeeping-design-system.md) — `AuthoritativeSecurityTime`; clients cannot override audit timestamps). Clock synchronization (NTP/SNTP) on API hosts and workstations is an infrastructure control; the application uses server UTC for audit evidence and a monotonic client clock for session timeout so a wrong workstation clock cannot shorten or extend the inactivity window.
 
 **Tamper-resistance**: Each audit log entry includes an integrity hash computed from the event data and the previous entry's hash, forming a hash chain. Any modification to a historical entry breaks the chain, which can be detected via the `/api/audit/verify` endpoint.
 

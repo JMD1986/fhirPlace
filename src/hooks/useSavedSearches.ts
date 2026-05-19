@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { clientMetadataNowIso } from "../lib/timekeeping";
 import type {
   PatientSearchParams,
   EncounterSearchParams,
@@ -73,7 +74,7 @@ export function useSavedSearches(kind: SearchKind, userEmail?: string) {
           updated[existingIdx] = {
             ...updated[existingIdx],
             params,
-            createdAt: new Date().toISOString(),
+            createdAt: clientMetadataNowIso(),
           } as AnySearch;
           next = [...others, ...updated];
         } else {
@@ -82,7 +83,7 @@ export function useSavedSearches(kind: SearchKind, userEmail?: string) {
             name: name.trim(),
             kind,
             params,
-            createdAt: new Date().toISOString(),
+            createdAt: clientMetadataNowIso(),
           } as AnySearch;
           // Enforce max: drop the oldest if already at limit
           const trimmed = same.length >= MAX_SAVED ? same.slice(0, MAX_SAVED - 1) : same;

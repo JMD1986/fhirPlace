@@ -10,6 +10,7 @@ import {
 import FHIR from "fhirclient";
 import type Client from "fhirclient/lib/Client";
 import { scrubFhirClientState } from "../lib/smartStorage";
+import { clientMetadataNowIso } from "../lib/timekeeping";
 import { setAuditUser } from "../api/fhirApi";
 import { setAuditHeaders, logAuditEvent } from "../api/auditApi";
 import { useInactivityTimeout } from "../hooks/useInactivityTimeout";
@@ -104,7 +105,7 @@ function deriveUser(fhirClient: Client): AppUser {
   return {
     username,
     email,
-    createdAt: new Date().toISOString(),
+    createdAt: clientMetadataNowIso(),
     role: patientId ? "patient" : "provider",
     linkedPatientId: patientId,
     fhirUser,
@@ -260,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
       <SessionTimeoutWarning
-        open={showWarning}
+        open={showWarning && !!user}
         secondsLeft={secondsLeft}
         onStayLoggedIn={stayLoggedIn}
         onLogout={logout}

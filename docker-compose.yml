@@ -1,3 +1,4 @@
+# Container clock follows the Docker host — enable NTP/SNTP on the host, not inside the container.
 services:
   api:
     build: .

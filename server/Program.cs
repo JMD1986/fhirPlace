@@ -83,7 +83,7 @@ app.Use(async (ctx, next) =>
 
   var evt = new AuditEvent
   {
-    Timestamp = DateTime.UtcNow.ToString("o"),
+    Timestamp = Timekeeping.UtcNowIso(),
     Action = action,
     ResourceType = resourceType,
     ResourceId = resourceId,
@@ -195,7 +195,7 @@ static async Task<IResult> SimpleResourceSearch(
 // â”€â”€ Routes: utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.MapGet("/", () => Results.Json(new { status = "ok", service = "FhirPlace .NET API" }));
-app.MapGet("/api/health", () => Results.Json(new { status = "ok" }));
+app.MapGet("/api/health", () => Results.Json(new { status = "ok", serverTimeUtc = Timekeeping.UtcNowIso() }));
 
 // â”€â”€ Routes: /api/patients â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -751,7 +751,7 @@ app.MapGet("/api/audit", async (
   var (auditUserId, auditUserName, auditUserRole) = AuditService.ExtractUser(req);
   var auditEvt = new AuditEvent
   {
-    Timestamp = DateTime.UtcNow.ToString("o"),
+    Timestamp = Timekeeping.UtcNowIso(),
     Action = "audit_query",
     ResourceType = "AuditEvent",
     UserId = auditUserId,
@@ -791,10 +791,11 @@ app.MapPost("/api/audit", async (HttpRequest req, FhirDbContext db) =>
 
   var payload = JsonSerializer.Deserialize<JsonElement>(body);
   var (userId, userName, userRole) = AuditService.ExtractUser(req);
+  // Client-supplied timestamp is ignored; authoritative time is server-only.
 
   var evt = new AuditEvent
   {
-    Timestamp = DateTime.UtcNow.ToString("o"),
+    Timestamp = Timekeeping.UtcNowIso(),
     Action = payload.TryGetProperty("action", out var a) ? a.GetString() ?? "unknown" : "unknown",
     ResourceType = payload.TryGetProperty("resourceType", out var rt) ? rt.GetString() ?? "" : "Session",
     ResourceId = payload.TryGetProperty("resourceId", out var ri) ? ri.GetString() : null,
@@ -823,7 +824,7 @@ app.MapGet("/api/audit/verify", async (FhirDbContext db) =>
     integrityValid = isValid,
     chainLength = await db.AuditEvents.CountAsync(),
     brokenAtId,
-    verifiedAt = DateTime.UtcNow.ToString("o"),
+    verifiedAt = Timekeeping.UtcNowIso(),
   });
 });
 

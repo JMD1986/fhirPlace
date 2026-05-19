@@ -37,6 +37,10 @@ import {
   type AuditVerifyResponse,
   type AuditStatsResponse,
 } from "../../api/auditApi";
+import {
+  auditFilterRangeToUtc,
+  formatAuditDateTime,
+} from "../../lib/timekeeping";
 
 const ACTIONS = [
   "",
@@ -122,10 +126,7 @@ export default function AuditLogPage() {
         action: action || undefined,
         resourceType: resourceType || undefined,
         outcome: outcome || undefined,
-        startDate: startDate ? new Date(startDate).toISOString() : undefined,
-        endDate: endDate
-          ? new Date(endDate + "T23:59:59").toISOString()
-          : undefined,
+        ...auditFilterRangeToUtc(startDate, endDate),
         _count: rowsPerPage,
         _offset: page * rowsPerPage,
       });
@@ -161,7 +162,7 @@ export default function AuditLogPage() {
         integrityValid: false,
         chainLength: 0,
         brokenAtId: -1,
-        verifiedAt: new Date().toISOString(),
+        verifiedAt: "",
       });
     } finally {
       setVerifying(false);
@@ -177,14 +178,6 @@ export default function AuditLogPage() {
       }
     }
     setShowStats(!showStats);
-  };
-
-  const formatTimestamp = (ts: string) => {
-    try {
-      return new Date(ts).toLocaleString();
-    } catch {
-      return ts;
-    }
   };
 
   return (
@@ -232,7 +225,9 @@ export default function AuditLogPage() {
           {verifyResult.integrityValid
             ? `Audit chain integrity verified — ${verifyResult.chainLength} records, no tampering detected.`
             : `INTEGRITY VIOLATION: Tamper detected at record #${verifyResult.brokenAtId}. Chain length: ${verifyResult.chainLength}.`}{" "}
-          Verified at {formatTimestamp(verifyResult.verifiedAt)}.
+          {verifyResult.verifiedAt
+            ? `Verified at ${formatAuditDateTime(verifyResult.verifiedAt)}.`
+            : "Verification time unavailable."}
         </Alert>
       )}
 
@@ -498,7 +493,7 @@ export default function AuditLogPage() {
                     <TableCell
                       sx={{ whiteSpace: "nowrap", fontSize: "0.8rem" }}
                     >
-                      {formatTimestamp(evt.timestamp)}
+                      {formatAuditDateTime(evt.timestamp)}
                     </TableCell>
                     <TableCell>
                       <Chip

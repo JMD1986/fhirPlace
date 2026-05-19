@@ -12,17 +12,18 @@ Individual-resource endpoints return the raw FHIR JSON object.
 
 ### `GET /api/health`
 
-Returns the server status and basic cache statistics.
+Returns the server status and authoritative UTC clock for ops checks (compare against NTP). See [Timekeeping design system](./timekeeping-design-system.md).
 
 **Response**
 
 ```json
 {
   "status": "ok",
-  "patients": 150,
-  "encounters": 4823
+  "serverTimeUtc": "2026-05-18T12:00:00.0000000Z"
 }
 ```
+
+`serverTimeUtc` is ISO 8601 UTC from `Timekeeping.UtcNowIso()` — use it to verify host clock sync; the app does not call external NTP servers.
 
 ---
 
