@@ -6,10 +6,11 @@ A React + TypeScript + Vite application for browsing and analysing synthetic FHI
 
 ## Documentation
 
-Full integration and deployment documentation lives in the [`docs/`](./docs/README.md) folder.
+Full integration and deployment documentation lives in the [`docs/`](./docs/README.md) folder. **Agent guidance** for Cursor and other coding assistants: [AGENTS.md](./AGENTS.md).
 
 | Document | Description |
 |----------|-------------|
+| [AGENTS.md](./AGENTS.md) | Dev setup, testing, FHIR/ONC constraints, and PR checklist for coding agents |
 | [Architecture](./docs/architecture.md) | System diagram, data flow, SMART auth sequence, security controls |
 | [API Reference](./docs/api-reference.md) | All HTTP endpoints, query params, FHIR resource types, required scopes |
 | [Environment Variables](./docs/environment-variables.md) | Every `VITE_*` variable with type, default, and production requirements |
@@ -60,8 +61,8 @@ npm run synthea:run -- -p 1000     # generate 1000 patients with default setting
 java -jar synthea/synthea-with-dependencies.jar --help
 ```
 
-Generated files will appear in the current directory by default; you can add
-`-o public/synthea/fhir` or similar to align with this project’s structure.
+Generated files are written to `public/synthea/fhir/` (use `-o public/synthea/fhir`).
+Patient JSON is **gitignored** — run setup + generate after clone.
 
 ### Notes
 
@@ -69,6 +70,8 @@ Generated files will appear in the current directory by default; you can add
   execute the setup script via `node`.
 - After you generate FHIR files, run `npm run synthea:manifest` to refresh the
   manifest used by the front end.
+- Docker images and CI integration tests expect data under `public/synthea/fhir/`;
+  generate locally before `docker build` if you have not already.
 
 ---
 

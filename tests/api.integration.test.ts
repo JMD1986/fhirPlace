@@ -14,9 +14,10 @@ import { describe, it, expect, beforeAll } from "vitest";
 
 const BASE = process.env.API_BASE ?? "http://localhost:5001";
 
-// Known patient seeded from the first 100 Synthea files (stable sort order).
-const KNOWN_PATIENT_ID = "01bf996b-88bc-ddae-0fe2-34f5bd82fa74";
-const KNOWN_ENCOUNTER_ID = "01bf996b-88bc-ddae-0314-95cefc765c0c";
+// Resolved from seeded Synthea data at runtime (IDs vary per dataset).
+let KNOWN_PATIENT_ID = "";
+let KNOWN_ENCOUNTER_ID = "";
+let KNOWN_FAMILY = "";
 
 async function get(path: string) {
   const res = await fetch(`${BASE}${path}`);
@@ -32,6 +33,28 @@ beforeAll(async () => {
     throw new Error(
       `\n\nServer not reachable at ${BASE}.\nRun: docker compose up -d\n`
     );
+  }
+
+  const patients = (await get("/api/patients")).body as Array<{
+    id: string;
+    family: string;
+  }>;
+  if (!patients.length) {
+    throw new Error(
+      "\n\nNo patients in DB. Generate Synthea data:\n" +
+        "  npm run synthea:setup && npm run synthea:run -- -p 20 -o public/synthea/fhir\n" +
+        "Then restart the API server.\n",
+    );
+  }
+  KNOWN_PATIENT_ID = patients[0].id;
+  KNOWN_FAMILY = patients[0].family;
+
+  const encounters = (
+    await get(`/fhir/Encounter?patient=${KNOWN_PATIENT_ID}&_count=1`)
+  ).body as { entry?: Array<{ resource: { id: string } }> };
+  KNOWN_ENCOUNTER_ID = encounters.entry?.[0]?.resource.id ?? "";
+  if (!KNOWN_ENCOUNTER_ID) {
+    throw new Error(`No encounters found for patient ${KNOWN_PATIENT_ID}`);
   }
 });
 
@@ -64,10 +87,12 @@ describe("GET /api/patients", () => {
   });
 
   it("filters by family name", async () => {
-    const { status, body } = await get("/api/patients?family=Walker");
+    const { status, body } = await get(`/api/patients?family=${encodeURIComponent(KNOWN_FAMILY)}`);
     expect(status).toBe(200);
     expect(body.length).toBeGreaterThan(0);
-    expect(body.every((p: { family: string }) => p.family.includes("Walker"))).toBe(true);
+    expect(
+      body.every((p: { family: string }) => p.family.includes(KNOWN_FAMILY)),
+    ).toBe(true);
   });
 
   it("filters by gender", async () => {

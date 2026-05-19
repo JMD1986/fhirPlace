@@ -19,7 +19,7 @@ The fastest way to get started. No external connectivity required.
    npm run synthea:manifest       # rebuild the manifest file
    ```
 
-   Pre-generated patient files are already included in `public/synthea/fhir/`. You can skip the above if they are present.
+   Patient JSON under `public/synthea/fhir/` is not committed — run the steps above after clone.
 
 2. **Start both servers:**
 

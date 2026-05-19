@@ -196,7 +196,7 @@ Then update your reverse proxy to forward to port 5002.
 
 ### The Docker build step in CI fails
 
-Check that `public/synthea/fhir/` contains at least one `.json` file before the `docker build` command runs. The CI workflow does not generate Synthea data — pre-generated files must be committed (or fetched from a release artifact) before the image is built.
+Check that `public/synthea/fhir/` contains at least one `.json` file before the `docker build` command runs. Patient JSON is gitignored — run `npm run synthea:setup`, `npm run synthea:run -- -p <count> -o public/synthea/fhir`, and `npm run synthea:manifest` first.
 
 ---
 

@@ -78,6 +78,13 @@ jobs:
         with:
           dotnet-version: 9.x
       - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm run synthea:setup
+      - run: npm run synthea:run -- -p 20 -o public/synthea/fhir
+      - run: npm run synthea:manifest
       - run: dotnet build server/ --no-restore -c Release
         env:
           DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
