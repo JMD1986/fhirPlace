@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonGroup,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,6 +14,12 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import {
+  EPIC_SANDBOX_ISS_DEFAULT,
+  getDefaultSmartIss,
+  issForPreset,
+  type SmartIssPreset,
+} from "../../lib/smartConfig";
 
 interface Props {
   open: boolean;
@@ -31,9 +38,11 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
   const { launchStandalone, error: authError } = useAuth();
   const navigate = useNavigate();
 
-  const [iss, setIss] = useState(
-    import.meta.env.VITE_SMART_ISS ?? "https://r4.smarthealthit.org",
-  );
+  const [iss, setIss] = useState(getDefaultSmartIss());
+
+  const applyPreset = (preset: SmartIssPreset) => {
+    setIss(issForPreset(preset));
+  };
 
   const handleLaunch = () => {
     onClose();
@@ -67,14 +76,26 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
         {authError && <Alert severity="error">{authError}</Alert>}
 
         <Alert severity="info">
-          FHIRPlace uses <strong>SMART on FHIR</strong> for authentication.
+          FHIRPlace uses <strong>SMART on FHIR</strong>. After sign-in, patient
+          and chart data come from the FHIR server you choose (not local Synthea).
           <br />
-          <strong>EHR launch:</strong> your EHR navigates to{" "}
-          <code>/launch</code> automatically.
-          <br />
-          <strong>Standalone:</strong> enter a SMART-enabled FHIR server URL and
-          click <em>Launch</em>.
+          <strong>Epic:</strong> register at fhir.epic.com, then set{" "}
+          <code>VITE_SMART_CLIENT_ID</code> in <code>.env</code>.
         </Alert>
+
+        <ButtonGroup
+          fullWidth
+          variant="outlined"
+          size="small"
+          aria-label="FHIR server preset"
+        >
+          <Button onClick={() => applyPreset("smart-health-it")}>
+            SMART Health IT
+          </Button>
+          <Button onClick={() => applyPreset("epic-sandbox")}>
+            Epic sandbox
+          </Button>
+        </ButtonGroup>
 
         <TextField
           label="FHIR Server URL (ISS)"
@@ -82,8 +103,8 @@ export default function LoginSignupDialog({ open, onClose }: Props) {
           onChange={(e) => setIss(e.target.value)}
           fullWidth
           size="small"
-          placeholder="https://launch.smarthealthit.org/v/r4/fhir"
-          helperText="Standalone: use r4.smarthealthit.org — for EHR launch use the portal at launch.smarthealthit.org"
+          placeholder={EPIC_SANDBOX_ISS_DEFAULT}
+          helperText="Epic ISS after registration: interconnect-fhir-oauth R4 base URL"
         />
 
         <Divider />

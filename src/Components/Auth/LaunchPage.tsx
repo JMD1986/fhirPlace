@@ -4,10 +4,20 @@ import {
   Alert,
   Box,
   Button,
+  ButtonGroup,
   CircularProgress,
   TextField,
   Typography,
 } from "@mui/material";
+import {
+  EPIC_SANDBOX_ISS_DEFAULT,
+  getDefaultSmartIss,
+  getSmartClientId,
+  getSmartRedirectUri,
+  getSmartScopes,
+  issForPreset,
+  type SmartIssPreset,
+} from "../../lib/smartConfig";
 
 /**
  * EHR Launch entry-point  (/launch)
@@ -25,28 +35,27 @@ export default function LaunchPage() {
   // ── EHR launch: fire immediately ──────────────────────────────────────────
   useEffect(() => {
     if (!issFromUrl) return;
-    // EHR-initiated: the server provides a `launch` token, so we need the
-    // launch/patient scope to get a patient context injected.
     FHIR.oauth2.authorize({
-      clientId: import.meta.env.VITE_SMART_CLIENT_ID ?? "fhirplace-dev",
-      scope: "openid fhirUser launch/patient patient/*.read offline_access",
-      redirectUri: `${window.location.origin}/callback`,
+      clientId: getSmartClientId(),
+      scope: getSmartScopes({ iss: issFromUrl, embedded: true }),
+      redirectUri: getSmartRedirectUri(),
     });
   }, [issFromUrl]);
 
   // ── Standalone launch ─────────────────────────────────────────────────────
-  const [iss, setIss] = useState(
-    import.meta.env.VITE_SMART_ISS ?? "https://r4.smarthealthit.org",
-  );
+  const [iss, setIss] = useState(getDefaultSmartIss());
+
+  const applyPreset = (preset: SmartIssPreset) => {
+    setIss(issForPreset(preset));
+  };
 
   const handleStandalone = () => {
-    // Standalone launch: no EHR-provided `launch` token, so we must NOT
-    // include launch/patient — instead we request patient/*.read directly.
+    const serverUrl = iss.trim();
     FHIR.oauth2.authorize({
-      clientId: import.meta.env.VITE_SMART_CLIENT_ID ?? "fhirplace-dev",
-      scope: "openid fhirUser patient/*.read offline_access",
-      redirectUri: `${window.location.origin}/callback`,
-      iss: iss.trim(),
+      clientId: getSmartClientId(),
+      scope: getSmartScopes({ iss: serverUrl, embedded: false }),
+      redirectUri: getSmartRedirectUri(),
+      iss: serverUrl,
     });
   };
 
@@ -85,13 +94,14 @@ export default function LaunchPage() {
       </Typography>
 
       <Alert severity="info" sx={{ maxWidth: 520, width: "100%" }}>
-        <strong>Standalone / dev:</strong> use{" "}
-        <strong>r4.smarthealthit.org</strong> below — no registration or portal
-        needed.
+        <strong>SMART Health IT:</strong> no registration — use the preset below.
         <br />
-        <strong>EHR launch:</strong> go to{" "}
-        <strong>launch.smarthealthit.org</strong>, set your App Launch URL to{" "}
-        <code>{window.location.origin}/launch</code>, then click Launch there.
+        <strong>Epic sandbox:</strong> register at fhir.epic.com, set{" "}
+        <code>VITE_SMART_CLIENT_ID</code>, then use the Epic preset (ISS{" "}
+        <code>{EPIC_SANDBOX_ISS_DEFAULT}</code>).
+        <br />
+        <strong>EHR launch:</strong> SMART simulator or Epic launcher →{" "}
+        <code>{window.location.origin}/launch</code>
       </Alert>
 
       <Box
@@ -103,12 +113,20 @@ export default function LaunchPage() {
           width: "100%",
         }}
       >
+        <ButtonGroup fullWidth variant="outlined" aria-label="FHIR server preset">
+          <Button onClick={() => applyPreset("smart-health-it")}>
+            SMART Health IT
+          </Button>
+          <Button onClick={() => applyPreset("epic-sandbox")}>
+            Epic sandbox
+          </Button>
+        </ButtonGroup>
         <TextField
           label="FHIR Server URL (ISS)"
           value={iss}
           onChange={(e) => setIss(e.target.value)}
           fullWidth
-          placeholder="https://launch.smarthealthit.org/v/r4/fhir"
+          placeholder={EPIC_SANDBOX_ISS_DEFAULT}
         />
         <Button
           variant="contained"

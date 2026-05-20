@@ -15,8 +15,12 @@ import {
   downloadCcd,
   prefetchPatient,
   API_BASE,
+  setSmartFhirClient,
+  clearPatientCache,
+  isCcdExportAvailable,
 } from "../api/fhirApi";
 import { logAuditEvent } from "../api/auditApi";
+import type Client from "fhirclient/lib/Client";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,11 +40,15 @@ const errorResponse = (status: number, statusText = "") => ({
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn());
   setAuditUser(null);
+  setSmartFhirClient(null);
+  clearPatientCache();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  setSmartFhirClient(null);
+  clearPatientCache();
 });
 
 // ── API_BASE ──────────────────────────────────────────────────────────────────
@@ -264,6 +272,43 @@ describe("downloadCcd", () => {
         patientId: "pat-audit-001",
       }),
     );
+  });
+});
+
+// ── EHR SMART mode ────────────────────────────────────────────────────────────
+
+describe("EHR FHIR mode via setSmartFhirClient", () => {
+  it("routes patientApi.search through fhirclient.request", async () => {
+    const bundle = { resourceType: "Bundle", entry: [] };
+    const request = vi.fn().mockResolvedValue(bundle);
+    setSmartFhirClient({ request } as unknown as Client);
+
+    await patientApi.search(new URLSearchParams({ name: "Smith" }));
+
+    expect(request).toHaveBeenCalledWith("Patient?name=Smith");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("maps _getpagesoffset to _offset for EHR searches", async () => {
+    const request = vi.fn().mockResolvedValue({ resourceType: "Bundle", entry: [] });
+    setSmartFhirClient({ request } as unknown as Client);
+
+    await patientApi.search(
+      new URLSearchParams({ _getpagesoffset: "20", _count: "10" }),
+    );
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining("_offset=20"),
+    );
+    expect(request).not.toHaveBeenCalledWith(
+      expect.stringContaining("_getpagesoffset"),
+    );
+  });
+
+  it("disables CCD export while EHR session is active", () => {
+    setSmartFhirClient({ request: vi.fn() } as unknown as Client);
+    expect(isCcdExportAvailable()).toBe(false);
+    expect(() => downloadCcd("pat-1")).toThrow(/CCD export is only available/);
   });
 });
 

@@ -38,6 +38,16 @@ The browser and/or the API server make outbound HTTPS requests to the following 
 
 > **Production EHR:** If you are deploying against a real EHR, replace these with the EHR's FHIR base URL and authorization server URL (obtained from the SMART `.well-known/smart-configuration` endpoint).
 
+### Epic on FHIR sandbox (Option E)
+
+When testing against [Epic on FHIR](https://fhir.epic.com/), allow browser HTTPS egress to:
+
+| Domain | Port | Who calls it | Purpose |
+|--------|------|-------------|---------|
+| `fhir.epic.com` | 443 | Browser | OAuth authorize/token + FHIR R4 API (`interconnect-fhir-oauth`) |
+
+OAuth endpoints (same host): `/interconnect-fhir-oauth/oauth2/authorize`, `/interconnect-fhir-oauth/oauth2/token`.
+
 ### Optional — depends on features used
 
 | Domain | Port | Who calls it | Purpose |

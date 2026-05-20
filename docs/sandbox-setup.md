@@ -102,6 +102,66 @@ curl "https://hapi.fhir.org/baseR4/Patient?_count=5&_format=json"
 
 ---
 
+## Option E — Epic on FHIR sandbox (after registration)
+
+Use [Epic on FHIR](https://fhir.epic.com/) when you need Epic-realistic OAuth, scopes, and FHIR data (e.g. App Orchard prep). Registration is free; you need a client ID before the flow works.
+
+### Tonight (no registration)
+
+The app is already wired for Epic:
+
+- **Epic sandbox** preset on `/launch` and the Login dialog (ISS `https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4`)
+- Granular Epic OAuth scopes in `src/lib/smartConfig.ts`
+- After SMART sign-in, patient/chart FHIR reads go to the EHR via `fhirclient` (not local Synthea)
+- Copy `.env.epic.example` → `.env` when you have a client ID
+
+You can browse **without** signing in (Option A / local Synthea) until registration is done.
+
+### Tomorrow — registration checklist
+
+1. **Sign up** at [fhir.epic.com](https://fhir.epic.com/) → **Build Apps** → create a **Non-Production** SMART on FHIR client.
+2. **Redirect URI:** `http://localhost:5173/callback` (must match exactly).
+3. **Application audience:** Patient-facing and/or Clinician-facing per your test persona.
+4. **Request APIs** (minimum for fhirPlace panels) — enable **R4** read/search for:
+   - Patient (Demographics)
+   - Encounter (Patient Chart)
+   - Condition (Problems)
+   - Observation (Vital Signs) and/or Observation (Labs) if available
+   - MedicationRequest / MedicationOrder
+   - DiagnosticReport (Results)
+   - DocumentReference (Clinical Notes) — optional
+   - Immunization, Procedure, Claim, ExplanationOfBenefit — as needed for billing views
+5. **Save** and copy the **Non-Production Client ID**.
+6. **Configure `.env`** (from `.env.epic.example`):
+
+   ```dotenv
+   VITE_SMART_CLIENT_ID=<your-non-production-client-id>
+   VITE_SMART_ISS=https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4
+   VITE_SMART_REDIRECT_URI=http://localhost:5173/callback
+   ```
+
+7. **Run:** `npm run dev:all` → **Login** → **Epic sandbox** preset → **Launch with SMART** → sign in with Epic test users from their sandbox docs.
+
+### Embedded launch (optional)
+
+- Epic **Test** launcher: [fhir.epic.com/Test/Smart](https://fhir.epic.com/Test/Smart) with App URL `http://localhost:5173/launch`
+- Or **Hyperdrive** for in-EHR embedding (see Epic documentation)
+
+### Behavior notes
+
+| Feature | Local (no SMART) | After Epic SMART login |
+|--------|------------------|-------------------------|
+| Patient search | Synthea via local API | Epic FHIR server |
+| Patient chart panels | Synthea | Epic FHIR |
+| CCD export | Available | Hidden (local generator only) |
+| Audit log (local API) | Works | Login/logout + EHR FHIR access logged from browser |
+
+- Epic may return **403** until requested APIs are approved on your app registration.
+- **CCD export** remains a local Synthea feature; disconnect from Epic to test export.
+- Firewall: allow browser egress to `fhir.epic.com` (see [network-requirements.md](./network-requirements.md)).
+
+---
+
 ## Verifying the local API server
 
 Use these curl commands to confirm the local Express server is working correctly before connecting the React app.

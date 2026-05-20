@@ -82,7 +82,12 @@ const MedicationRequestView = lazy(
 );
 const BillingDashboard = lazy(() => import("./BillingDashboard"));
 import { useParams, useNavigate } from "react-router-dom";
-import { patientApi, observationApi, downloadCcd } from "../../api/fhirApi";
+import {
+  patientApi,
+  observationApi,
+  downloadCcd,
+  isCcdExportAvailable,
+} from "../../api/fhirApi";
 
 interface PatientViewProps {
   /** identifier used to fetch the patient from the API */
@@ -304,14 +309,16 @@ export default function PatientView({ patientId: propId }: PatientViewProps) {
     <Box sx={{ p: 3, mt: 2 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
         <Button onClick={() => navigate(-1)}>&larr; Back to search</Button>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<FileDownloadIcon />}
-          onClick={() => downloadCcd(patientId)}
-        >
-          Export CCD
-        </Button>
+        {isCcdExportAvailable() && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => downloadCcd(patientId)}
+          >
+            Export CCD
+          </Button>
+        )}
       </Box>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>

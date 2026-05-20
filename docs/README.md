@@ -13,7 +13,7 @@ Technical documentation for hospital IT teams evaluating or deploying fhirPlace.
 | [API Reference](./api-reference.md) | Every HTTP endpoint, query parameters, response shapes, required FHIR scopes |
 | [Environment Variables](./environment-variables.md) | All `VITE_*` variables — type, default, production requirements |
 | [Network Requirements](./network-requirements.md) | Ports, outbound domains to allowlist, CSP and CORS settings |
-| [Sandbox Setup](./sandbox-setup.md) | Step-by-step guide for local, SMART Health IT sandbox, and Docker testing |
+| [Sandbox Setup](./sandbox-setup.md) | Local Synthea, SMART Health IT, Epic on FHIR (Option E), Docker |
 | [Troubleshooting](./troubleshooting.md) | FAQ for common installation, auth, FHIR data, and Docker issues |
 
 ---

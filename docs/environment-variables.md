@@ -92,6 +92,23 @@ VITE_SMART_ISS=https://r4.smarthealthit.org
 
 ---
 
+### `VITE_EPIC_SANDBOX_ISS`
+
+| Property | Value |
+|---|---|
+| Type | `string` (URL) |
+| Required | No |
+| Default | *(none — falls back to `VITE_SMART_ISS`)* |
+| Example | `https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4` |
+
+When set, the Login and `/launch` dialogs default to this ISS (Epic sandbox preset). Use with a **Non-Production Client ID** from [Epic on FHIR](https://fhir.epic.com/). See [sandbox-setup.md](./sandbox-setup.md) Option E and `.env.epic.example`.
+
+```dotenv
+VITE_EPIC_SANDBOX_ISS=https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4
+```
+
+---
+
 ### `VITE_VITALS_ENDPOINT`
 
 | Property | Value |
@@ -143,4 +160,5 @@ The ASP.NET Core API reads the following environment variables at startup. These
 | `VITE_SMART_CLIENT_ID` | string | `fhirplace-dev` | Yes |
 | `VITE_SMART_REDIRECT_URI` | URL string | derived from origin | Recommended |
 | `VITE_SMART_ISS` | URL string | `https://r4.smarthealthit.org` | Yes |
+| `VITE_EPIC_SANDBOX_ISS` | URL string | none | No |
 | `VITE_VITALS_ENDPOINT` | URL string | none | No |

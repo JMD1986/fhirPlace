@@ -38,6 +38,8 @@ vi.mock("../api/fhirApi", () => ({
   observationApi: {
     search: vi.fn().mockResolvedValue({ entry: [] }),
   },
+  isCcdExportAvailable: () => true,
+  downloadCcd: vi.fn(),
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────

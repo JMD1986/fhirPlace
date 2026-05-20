@@ -24,6 +24,7 @@ const EncounterSearch = lazy(() => import("../Encounter/EncounterSearch"));
 // its chunk (MUI Dialog + form fields) is excluded from the initial bundle.
 const LoginSignupDialog = lazy(() => import("../Auth/LoginSignupDialog"));
 import { useAuth } from "../../context/AuthContext";
+import EhrSessionBanner from "../Auth/EhrSessionBanner";
 
 const SEARCH_TYPE_KEY = "fhirPlace_lastSearchType";
 type SearchType = "patient" | "encounter";
@@ -165,6 +166,7 @@ export default function SearchContainer() {
       <Suspense fallback={null}>
         <LoginSignupDialog open={authOpen} onClose={() => setAuthOpen(false)} />
       </Suspense>
+      <EhrSessionBanner />
       <Box sx={{ width: "100%", mt: 4, px: 3 }}>
         <Paper elevation={0} sx={{ p: 3, backgroundColor: "#f5f5f5" }}>
           <Suspense

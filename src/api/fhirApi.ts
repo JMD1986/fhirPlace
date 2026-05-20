@@ -25,6 +25,14 @@ import type {
   ProcedureResource,
 } from "../types/fhir";
 import { logAuditEvent } from "./auditApi";
+import {
+  ehrFhirGet,
+  ehrFhirSearch,
+  isEhrFhirMode,
+  setSmartFhirClient,
+} from "./smartFhir";
+
+export { isEhrFhirMode, setSmartFhirClient };
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 // Set VITE_API_BASE in your .env file. Defaults to localhost for development.
@@ -94,11 +102,24 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 // This eliminates the navigation delay when the user hovers before clicking View.
 const _patientCache = new Map<string, PatientResource>();
 
+/** Clears in-memory patient prefetch cache (e.g. on SMART logout). */
+export function clearPatientCache(): void {
+  _patientCache.clear();
+}
+
+/** CCD export is generated from local Synthea data only, not from the EHR. */
+export function isCcdExportAvailable(): boolean {
+  return !isEhrFhirMode();
+}
+
 // ── Patient endpoints (/api/patients & /fhir/Patient) ────────────────────────
 
 export const patientApi = {
   /** GET /fhir/Patient?<params> */
   search(params: URLSearchParams): Promise<FhirBundle<Patient>> {
+    if (isEhrFhirMode()) {
+      return ehrFhirSearch<Patient>("Patient", params);
+    }
     return apiFetch(`/fhir/Patient?${params.toString()}`);
   },
 
@@ -106,7 +127,10 @@ export const patientApi = {
   getById(id: string): Promise<PatientResource> {
     const cached = _patientCache.get(id);
     if (cached) return Promise.resolve(cached);
-    return apiFetch<PatientResource>(`/fhir/Patient/${id}`).then((p) => {
+    const load = isEhrFhirMode()
+      ? ehrFhirGet<PatientResource>("Patient", id)
+      : apiFetch<PatientResource>(`/fhir/Patient/${id}`);
+    return load.then((p) => {
       _patientCache.set(id, p);
       return p;
     });
@@ -126,6 +150,11 @@ export const patientApi = {
 /** Trigger a browser download of the patient's CCD XML export.
  *  Logs an audit event per ONC §170.315(d)(11) — Accounting of Disclosures. */
 export function downloadCcd(patientId: string): void {
+  if (!isCcdExportAvailable()) {
+    throw new Error(
+      "CCD export is only available for local Synthea data. Disconnect from the EHR or browse without SMART sign-in.",
+    );
+  }
   const url = `${API_BASE}/api/patients/${encodeURIComponent(patientId)}/ccd`;
   const a = document.createElement("a");
   a.href = url;
@@ -160,21 +189,29 @@ export function prefetchPatient(id: string): void {
 export const encounterApi = {
   /** GET /fhir/Encounter?<params> */
   search(params: URLSearchParams): Promise<FhirBundle<EncounterResource>> {
+    if (isEhrFhirMode()) {
+      return ehrFhirSearch<EncounterResource>("Encounter", params);
+    }
     return apiFetch(`/fhir/Encounter?${params.toString()}`);
   },
 
   /** GET /fhir/Encounter/:id */
   getById(id: string): Promise<EncounterResource> {
+    if (isEhrFhirMode()) {
+      return ehrFhirGet<EncounterResource>("Encounter", id);
+    }
     return apiFetch(`/fhir/Encounter/${id}`);
   },
 
   /** GET /fhir/Encounter/_types  (dropdown options) */
   getTypes(): Promise<string[]> {
+    if (isEhrFhirMode()) return Promise.resolve([]);
     return apiFetch("/fhir/Encounter/_types");
   },
 
   /** GET /fhir/Encounter/_classes  (dropdown options) */
   getClasses(): Promise<string[]> {
+    if (isEhrFhirMode()) return Promise.resolve([]);
     return apiFetch("/fhir/Encounter/_classes");
   },
 };
@@ -189,6 +226,9 @@ export function fhirSearch<T = AnyResource>(
   resourceType: string,
   params: URLSearchParams,
 ): Promise<FhirBundle<T>> {
+  if (isEhrFhirMode()) {
+    return ehrFhirSearch<T>(resourceType, params);
+  }
   return apiFetch(`/fhir/${resourceType}?${params.toString()}`);
 }
 
@@ -200,6 +240,9 @@ export function fhirGet<T = AnyResource>(
   resourceType: string,
   id: string,
 ): Promise<T> {
+  if (isEhrFhirMode()) {
+    return ehrFhirGet<T>(resourceType, id);
+  }
   return apiFetch(`/fhir/${resourceType}/${id}`);
 }
 

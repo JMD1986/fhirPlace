@@ -11,7 +11,16 @@ import FHIR from "fhirclient";
 import type Client from "fhirclient/lib/Client";
 import { scrubFhirClientState } from "../lib/smartStorage";
 import { clientMetadataNowIso } from "../lib/timekeeping";
-import { setAuditUser } from "../api/fhirApi";
+import {
+  clearPatientCache,
+  setAuditUser,
+  setSmartFhirClient,
+} from "../api/fhirApi";
+import {
+  getSmartClientId,
+  getSmartRedirectUri,
+  getSmartScopes,
+} from "../lib/smartConfig";
 import { setAuditHeaders, logAuditEvent } from "../api/auditApi";
 import { useInactivityTimeout } from "../hooks/useInactivityTimeout";
 import SessionTimeoutWarning from "../Components/Auth/SessionTimeoutWarning";
@@ -149,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .ready()
       .then((fhirClient) => {
         setClient(fhirClient);
+        setSmartFhirClient(fhirClient);
         const derived = deriveUser(fhirClient);
         setUser(derived);
         const auditIdentity = {
@@ -175,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const _receiveClient = useCallback(
     (fhirClient: Client) => {
       setClient(fhirClient);
+      setSmartFhirClient(fhirClient);
       const derived = deriveUser(fhirClient);
       setUser(derived);
       const auditIdentity = {
@@ -196,7 +207,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const launchStandalone = useCallback((iss?: string) => {
     const serverUrl =
-      iss ?? import.meta.env.VITE_SMART_ISS ?? "https://r4.smarthealthit.org";
+      iss ??
+      import.meta.env.VITE_SMART_ISS ??
+      import.meta.env.VITE_EPIC_SANDBOX_ISS ??
+      "https://r4.smarthealthit.org";
     if (!serverUrl) {
       setError(
         "No FHIR server URL provided. Pass an ISS or set VITE_SMART_ISS in .env",
@@ -204,10 +218,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     FHIR.oauth2.authorize({
-      clientId: import.meta.env.VITE_SMART_CLIENT_ID ?? "fhirplace-dev",
-      // Standalone: no EHR launch token, so omit launch/patient
-      scope: "openid fhirUser patient/*.read offline_access",
-      redirectUri: `${window.location.origin}/callback`,
+      clientId: getSmartClientId(),
+      scope: getSmartScopes({ iss: serverUrl, embedded: false }),
+      redirectUri: getSmartRedirectUri(),
       iss: serverUrl,
     });
   }, []);
@@ -218,6 +231,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
     scrubFhirClientState(); // Belt-and-suspenders: scrub any lingering SMART sessionStorage
+    setSmartFhirClient(null);
+    clearPatientCache();
     setUser(null);
     setClient(null);
     setError(null);
