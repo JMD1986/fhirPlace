@@ -95,8 +95,6 @@ export function useInactivityTimeout({
     if (!enabled) {
       clearAllTimers();
       showWarningRef.current = false;
-      setShowWarning(false);
-      setSecondsLeft(0);
       return;
     }
 
@@ -108,8 +106,6 @@ export function useInactivityTimeout({
       }
     };
 
-    // Kick off the initial timer (schedules timeouts; resets warning UI state)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- bootstrap on mount / when enabled
     resetTimers();
 
     for (const evt of ACTIVITY_EVENTS) {
@@ -129,5 +125,9 @@ export function useInactivityTimeout({
     resetTimers();
   }, [resetTimers]);
 
-  return { showWarning, secondsLeft, stayLoggedIn };
+  return {
+    showWarning: enabled ? showWarning : false,
+    secondsLeft: enabled ? secondsLeft : 0,
+    stayLoggedIn,
+  };
 }
